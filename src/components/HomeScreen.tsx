@@ -1,7 +1,11 @@
 "use client";
 
-export default function HomeScreen() {
-  const profName = "The Bishop";
+interface HomeScreenProps {
+  profName: string;
+  onProfileTap: () => void;
+}
+
+export default function HomeScreen({ profName, onProfileTap }: HomeScreenProps) {
   const initials = profName
     .split(" ")
     .map((w) => (w[0] || "").toUpperCase())
@@ -33,11 +37,12 @@ export default function HomeScreen() {
                 GloomBuilder
               </div>
               <div style={{ fontSize: 13, color: "#928982", marginTop: 2 }}>
-                by {profName} · Build. Share. Steal. Repeat.
+                by The Bishop · Build. Share. Steal. Repeat.
               </div>
             </div>
           </div>
           <div
+            onClick={onProfileTap}
             style={{
               width: 42,
               height: 42,

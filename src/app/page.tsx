@@ -14,12 +14,21 @@ export default function App() {
   const [tab, setTab] = useState<"home" | "library" | "locker" | "profile">("home");
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
+  const [profile, setProfile] = useState<{ f3_name: string; ao: string; state: string; region: string } | null>(null);
 
   const supabase = createClient();
 
   const checkUser = async () => {
     const { data } = await supabase.auth.getUser();
     setUser(data.user);
+    if (data.user) {
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", data.user.id)
+        .single();
+      if (prof) setProfile(prof);
+    }
     setChecking(false);
   };
 
@@ -28,6 +37,7 @@ export default function App() {
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (!session?.user) setProfile(null);
     });
 
     return () => {
@@ -74,10 +84,15 @@ export default function App() {
         position: "relative",
       }}
     >
-      {tab === "home" && <HomeScreen />}
+      {tab === "home" && (
+        <HomeScreen
+          profName={profile?.f3_name || "PAX"}
+          onProfileTap={() => setTab("profile")}
+        />
+      )}
       {tab === "library" && <LibraryScreen />}
       {tab === "locker" && <LockerScreen />}
-      {tab === "profile" && <ProfileScreen />}
+      {tab === "profile" && <ProfileScreen onProfileSaved={checkUser} />}
       <BottomNav active={tab} onTabChange={setTab} />
     </div>
   );
