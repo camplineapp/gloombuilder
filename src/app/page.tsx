@@ -11,7 +11,18 @@ export default function App() {
   const [tab, setTab] = useState<"home" | "library" | "locker" | "profile">("home");
 
   return (
-    <div className="min-h-screen bg-gb-bg font-outfit pb-20">
+    <div
+      style={{
+        maxWidth: 430,
+        margin: "0 auto",
+        minHeight: "100vh",
+        background: "#0E0E10",
+        fontFamily: "'Outfit', system-ui, sans-serif",
+        paddingTop: 20,
+        paddingBottom: 100,
+        position: "relative",
+      }}
+    >
       {tab === "home" && <HomeScreen />}
       {tab === "library" && <LibraryScreen />}
       {tab === "locker" && <LockerScreen />}
