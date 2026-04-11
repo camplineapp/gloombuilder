@@ -29,7 +29,7 @@ interface GeneratorScreenProps {
   onClose: () => void;
   onSave: (beatdown: {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
-    src: string; dur: string | null; sites: string[]; eq: string[];
+    src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
   }) => void;
 }
 
