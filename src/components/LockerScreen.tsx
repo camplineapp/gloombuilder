@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import type { Section } from "@/lib/exercises";
+import CopyModal from "@/components/CopyModal";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -33,34 +35,28 @@ function dc(d: string) {
 
 interface LockerBeatdown {
   id: number; nm: string; dt: string; src: string; d: string; desc: string;
-  secs: { label: string; color: string; exercises: { n: string; r: string; c: string; nt: string }[]; note: string }[];
-  tg: string[]; inspiredBy?: string;
+  secs: Section[]; tg: string[]; inspiredBy?: string;
 }
 
 interface LockerExercise {
   id: number; nm: string; tags: string[]; how: string; src: string; inspiredBy?: string;
 }
 
-interface BookmarkItem {
-  id: number; nm: string; au: string; ao: string; d: string; ds: string; dt: string;
-  tp: string; tg?: string[]; et?: string[];
-  secs?: { label: string; color: string; exercises: { n: string; r: string; c: string; nt: string }[]; note: string }[];
-}
-
 interface LockerScreenProps {
-  onNavigate?: (tab: string, view?: string) => void;
+  lk: LockerBeatdown[];
+  setLk: (lk: LockerBeatdown[]) => void;
+  lkEx: LockerExercise[];
+  setLkEx: (lkEx: LockerExercise[]) => void;
+  lkBm: never[];
+  onNavigate?: (view: string) => void;
 }
 
-export default function LockerScreen({ onNavigate }: LockerScreenProps) {
+export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, onNavigate }: LockerScreenProps) {
   const [lT, setLT] = useState(0);
-  const [lk, setLk] = useState<LockerBeatdown[]>([]);
-  const [lkEx, setLkEx] = useState<LockerExercise[]>([]);
-  const [lkBm, setLkBm] = useState<BookmarkItem[]>([]);
   const [toast, setToast] = useState("");
-
-  // Exercise edit state
   const [edLkExI, setEdLkExI] = useState<number | null>(null);
   const [edLkExD, setEdLkExD] = useState<LockerExercise | null>(null);
+  const [copySecs, setCopySecs] = useState<LockerBeatdown | null>(null);
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 
@@ -78,20 +74,18 @@ export default function LockerScreen({ onNavigate }: LockerScreenProps) {
         <div style={{ fontSize: 18, fontWeight: 800, color: T1, marginBottom: 16 }}>Edit exercise</div>
         <div style={{ marginBottom: 14 }}>
           <label style={{ fontFamily: F, color: T5, fontSize: 12, textTransform: "uppercase", letterSpacing: 1.5, display: "block", marginBottom: 4, fontWeight: 600 }}>Name</label>
-          <input value={edLkExD.nm} onChange={e => setEdLkExD({ ...edLkExD, nm: e.target.value })} style={ist} />
+          <input value={edLkExD.nm} maxLength={50} onChange={e => setEdLkExD({ ...edLkExD, nm: e.target.value })} style={ist} />
         </div>
         <div style={{ marginBottom: 14 }}>
           <label style={{ fontFamily: F, color: T5, fontSize: 12, textTransform: "uppercase", letterSpacing: 1.5, display: "block", marginBottom: 4, fontWeight: 600 }}>How-to</label>
-          <textarea value={edLkExD.how || ""} onChange={e => setEdLkExD({ ...edLkExD, how: e.target.value })} rows={4} style={{ ...ist, resize: "vertical" as const }} />
+          <textarea value={edLkExD.how || ""} maxLength={500} onChange={e => setEdLkExD({ ...edLkExD, how: e.target.value })} rows={4} style={{ ...ist, resize: "vertical" as const }} />
         </div>
         <div style={{ marginBottom: 14 }}>
           <label style={{ fontFamily: F, color: T5, fontSize: 12, textTransform: "uppercase", letterSpacing: 1.5, display: "block", marginBottom: 8, fontWeight: 600 }}>Tags</label>
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
             {TAGS.map(t => {
               const sel = (edLkExD.tags || []).includes(t);
-              return (
-                <button key={t} onClick={() => setEdLkExD({ ...edLkExD, tags: sel ? (edLkExD.tags || []).filter(x => x !== t) : [...(edLkExD.tags || []), t] })} style={{ fontFamily: F, background: sel ? G + "20" : "rgba(255,255,255,0.04)", color: sel ? G : T5, border: "1px solid " + (sel ? G + "30" : BD), padding: "6px 12px", borderRadius: 20, fontSize: 11, cursor: "pointer", textTransform: "uppercase", fontWeight: 600 }}>{t}</button>
-              );
+              return <button key={t} onClick={() => setEdLkExD({ ...edLkExD, tags: sel ? (edLkExD.tags || []).filter(x => x !== t) : [...(edLkExD.tags || []), t] })} style={{ fontFamily: F, background: sel ? G + "20" : "rgba(255,255,255,0.04)", color: sel ? G : T5, border: "1px solid " + (sel ? G + "30" : BD), padding: "6px 12px", borderRadius: 20, fontSize: 11, cursor: "pointer", textTransform: "uppercase", fontWeight: 600 }}>{t}</button>;
             })}
           </div>
         </div>
@@ -122,10 +116,10 @@ export default function LockerScreen({ onNavigate }: LockerScreenProps) {
         {lT === 0 ? (
           <div>
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <div onClick={() => onNavigate?.("home", "gen")} style={{ flex: 1, background: CD, border: "1px dashed " + G + "30", borderRadius: 14, padding: "16px 14px", textAlign: "center", cursor: "pointer" }}>
+              <div onClick={() => onNavigate?.("gen")} style={{ flex: 1, background: CD, border: "1px dashed " + G + "30", borderRadius: 14, padding: "16px 14px", textAlign: "center", cursor: "pointer" }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: G }}>+ Generate</div>
               </div>
-              <div onClick={() => onNavigate?.("home", "build")} style={{ flex: 1, background: CD, border: "1px dashed " + A + "30", borderRadius: 14, padding: "16px 14px", textAlign: "center", cursor: "pointer" }}>
+              <div onClick={() => onNavigate?.("build")} style={{ flex: 1, background: CD, border: "1px dashed " + A + "30", borderRadius: 14, padding: "16px 14px", textAlign: "center", cursor: "pointer" }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: A }}>+ Build manually</div>
               </div>
             </div>
@@ -147,7 +141,7 @@ export default function LockerScreen({ onNavigate }: LockerScreenProps) {
                 {bd.tg && bd.tg.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 10, flexWrap: "wrap" }}>{bd.tg.map(t => <span key={t} style={{ background: "rgba(255,255,255,0.04)", color: T4, fontSize: 10, padding: "2px 9px", borderRadius: 5, fontFamily: F }}>{t}</span>)}</div> : null}
                 <div style={{ display: "flex", gap: 8, marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
                   <button onClick={() => fl("Edit coming soon")} style={{ fontFamily: F, background: G + "12", color: G, border: "1px solid " + G + "20", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Edit</button>
-                  <button onClick={() => fl("Copy coming soon")} style={{ fontFamily: F, background: "rgba(255,255,255,0.04)", color: T3, border: "1px solid " + BD, padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Copy for Slack</button>
+                  <button onClick={() => setCopySecs(bd)} style={{ fontFamily: F, background: "rgba(255,255,255,0.04)", color: T3, border: "1px solid " + BD, padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Copy for Slack</button>
                   <span onClick={() => { setLk(lk.filter((_, j) => j !== i)); fl("Deleted"); }} style={{ color: R, padding: "6px 10px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center" }}>Delete</span>
                 </div>
               </div>
@@ -158,7 +152,7 @@ export default function LockerScreen({ onNavigate }: LockerScreenProps) {
         {/* ════ EXERCISES TAB ════ */}
         {lT === 1 ? (
           <div>
-            <div onClick={() => onNavigate?.("home", "create-ex")} style={{ background: CD, border: "1px dashed " + G + "30", borderRadius: 14, padding: "20px 18px", textAlign: "center", cursor: "pointer", marginBottom: 8 }}>
+            <div onClick={() => onNavigate?.("create-ex")} style={{ background: CD, border: "1px dashed " + G + "30", borderRadius: 14, padding: "20px 18px", textAlign: "center", cursor: "pointer", marginBottom: 8 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: G }}>+ Create new exercise</div>
             </div>
             {lkEx.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 20 }}>No custom exercises yet</div> : null}
@@ -181,32 +175,11 @@ export default function LockerScreen({ onNavigate }: LockerScreenProps) {
         {lT === 2 ? (
           <div>
             {lkBm.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40, border: "1px dashed " + BD, borderRadius: 14 }}>No bookmarks yet</div> : null}
-            {lkBm.map((bd, i) => {
-              const isBd = bd.tp !== "exercise";
-              return (
-                <div key={bd.id + "-" + i} style={{ background: CD, border: "1px solid " + BD, borderLeft: "3px solid " + (isBd ? A + "40" : P + "40"), borderRadius: 14, padding: "16px 18px", marginBottom: 8 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: T2 }}>{bd.nm}</div>
-                        <span style={{ background: isBd ? A + "12" : P + "12", color: isBd ? A : P, fontSize: 9, padding: "2px 7px", borderRadius: 4, fontWeight: 700, textTransform: "uppercase" }}>{isBd ? "Beatdown" : "Exercise"}</span>
-                      </div>
-                      <div style={{ fontSize: 12, color: T4, marginTop: 4 }}>{bd.au} · {bd.ao}</div>
-                      {bd.ds ? <div style={{ fontSize: 12, color: T5, marginTop: 4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical" }}>{bd.ds}</div> : null}
-                    </div>
-                    <span style={{ background: dc(bd.d) + "15", color: dc(bd.d), fontSize: 10, padding: "3px 9px", borderRadius: 5, fontWeight: 700, fontFamily: F, textTransform: "uppercase", flexShrink: 0 }}>{bd.d}</span>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                    <button onClick={() => { fl("Stolen!"); }} style={{ fontFamily: F, background: P + "12", color: P, border: "1px solid " + P + "20", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Steal to locker</button>
-                    <button onClick={() => { setLkBm(lkBm.filter((_, j) => j !== i)); fl("Removed"); }} style={{ fontFamily: F, background: "rgba(255,255,255,0.04)", color: T3, border: "1px solid " + BD, padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Remove</button>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         ) : null}
 
       </div>
+      {copySecs ? <CopyModal secs={copySecs.secs} beatdownName={copySecs.nm} beatdownDesc={copySecs.desc} qName="The Bishop" onClose={() => setCopySecs(null)} onToast={fl} /> : null}
       {toastEl}
     </div>
   );

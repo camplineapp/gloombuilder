@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { EX, TAGS, DIFFS, SITES, EQUIP } from "@/lib/exercises";
 import type { Section, SectionExercise, ExerciseData } from "@/lib/exercises";
+import CopyModal from "@/components/CopyModal";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -54,6 +55,7 @@ export default function BuilderScreen({ onClose, onSave }: BuilderScreenProps) {
   const [pS, setPS] = useState("");
   const [pTg, setPTg] = useState<string | null>(null);
   const [exD, setExD] = useState<ExerciseData | null>(null);
+  const [copyModal, setCopyModal] = useState(false);
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
   const sC = [G, "#3b82f6", A, R, P, "#ec4899", "#06b6d4"];
@@ -145,8 +147,10 @@ export default function BuilderScreen({ onClose, onSave }: BuilderScreenProps) {
   return (
     <div style={{ padding: "0 24px" }}>
       {exDM}{pkM}{toastEl}
+      {copyModal ? <CopyModal secs={secs} beatdownName={bT || "Untitled Beatdown"} beatdownDesc={bD} qName="The Bishop" onClose={() => setCopyModal(false)} onToast={fl} /> : null}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <button onClick={onClose} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14 }}>← Home</button>
+        <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, background: A + "15", color: A, border: "1px solid " + A + "30", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Copy for Slack</button>
       </div>
       <div style={{ fontSize: 20, fontWeight: 800, color: T1, marginBottom: 4 }}>Build beatdown</div>
       <input value={bT} maxLength={50} onChange={e => setBT(e.target.value)} placeholder="Name this beatdown..." style={{ ...ist, background: "none", border: "none", borderBottom: "2px solid " + BD, borderRadius: 0, fontSize: 22, fontWeight: 800, color: T1, padding: "0 0 10px" }} />
@@ -272,9 +276,7 @@ export default function BuilderScreen({ onClose, onSave }: BuilderScreenProps) {
         <button onClick={() => {
           const nm = bT.trim() || "Untitled";
           const tgs = [bDur, (DIFFS.find(x => x.id === bDiff) || { l: "" }).l, ...bSites.map(s => (SITES.find(x => x.id === s) || { l: "" }).l), ...bEq.filter(e => e !== "none").map(e => (EQUIP.find(x => x.id === e) || { l: "" }).l)].filter((v): v is string => Boolean(v));
-          onSave({ nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq });
-          fl("Saved to locker!");
-          setTimeout(() => onClose(), 500);
+          onSave({ nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib });
         }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save to locker</button>
       </div>
     </div>

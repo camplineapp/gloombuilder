@@ -62,7 +62,12 @@ function srcBadge(s: string) {
   return { bg: "#94a3b8" + "15", c: "#94a3b8", l: "AI Generated" };
 }
 
-export default function LibraryScreen() {
+interface LibraryScreenProps {
+  sharedItems?: FeedItem[];
+  profName?: string;
+}
+
+export default function LibraryScreen({ sharedItems = [], profName = "" }: LibraryScreenProps) {
   const [libDet, setLibDet] = useState<FeedItem | null>(null);
   const [libSearch, setLibSearch] = useState("");
   const [libT, setLibT] = useState("beatdowns");
@@ -197,7 +202,7 @@ export default function LibraryScreen() {
   }
 
   // ════ FEED LIST ════
-  let feed = [...FEED];
+  let feed = [...FEED, ...sharedItems];
   if (libSearch.trim()) {
     const q = libSearch.toLowerCase();
     feed = feed.filter(b => (b.nm || "").toLowerCase().includes(q) || (b.au || "").toLowerCase().includes(q) || (b.ao || "").toLowerCase().includes(q) || (b.ds || "").toLowerCase().includes(q));
@@ -246,7 +251,7 @@ export default function LibraryScreen() {
                 <div style={{ fontSize: 18, fontWeight: 700, color: T2 }}>{bd.nm}</div>
                 {bd.src && bd.tp !== "exercise" ? (() => { const sb = srcBadge(bd.src); return <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, fontWeight: 700, background: sb.bg, color: sb.c }}>{sb.l}</span>; })() : null}
               </div>
-              <div style={{ fontSize: 14, color: T4, marginTop: 5 }}>{bd.au} · {bd.ao}</div>
+              <div style={{ fontSize: 14, color: T4, marginTop: 5 }}>{bd.au} · {bd.ao}{bd.au === profName ? <span style={{ color: G, fontSize: 11, marginLeft: 6 }}>· You</span> : null}</div>
               <div style={{ fontSize: 12, color: T5, marginTop: 3 }}>{bd.dt}</div>
             </div>
             <span style={{ background: dc(bd.d) + "15", color: dc(bd.d), fontSize: 12, padding: "4px 10px", borderRadius: 6, fontWeight: 700, fontFamily: F, textTransform: "uppercase" }}>{bd.d}</span>

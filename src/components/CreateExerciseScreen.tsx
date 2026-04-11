@@ -75,9 +75,6 @@ export default function CreateExerciseScreen({ onClose, onSave }: CreateExercise
       <button onClick={() => {
         if (!cxN.trim()) { fl("Name required"); return; }
         onSave({ nm: cxN, tags: cxT, how: cxH, share: cxShare });
-        fl("Saved to locker!" + (cxShare ? " Shared to community!" : ""));
-        setCxN(""); setCxH(""); setCxT([]); setCxShare(false);
-        setTimeout(() => onClose(), 500);
       }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save exercise to locker</button>
     </div>
   );
