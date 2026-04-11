@@ -226,9 +226,9 @@ export default function GeneratorScreen({ onClose, onSave }: GeneratorScreenProp
                       </div>
                       <span onClick={() => { const i = EX.find(x => x.n === ex.n); if (i) setExD(i); }} style={{ color: T1, fontSize: 15, fontWeight: 700, cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.2)" }}>{ex.n} <span style={{ fontSize: 10, color: T5 }}>ⓘ</span></span>
                     </div>
-                    <div style={{ display: "flex", gap: 8 }}>
+                    <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
                       <button onClick={() => setEditEx(null)} style={{ background: "none", border: "none", color: G, cursor: "pointer", fontSize: 12, fontFamily: F, fontWeight: 600 }}>Done</button>
-                      <button onClick={() => removeEx(si, ei)} style={{ background: "none", border: "none", color: R, cursor: "pointer", fontSize: 14 }}>✕</button>
+                      <button onClick={() => removeEx(si, ei)} style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", color: R, cursor: "pointer", fontSize: 12, padding: "4px 10px", borderRadius: 6, fontFamily: F }}>✕</button>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8, marginTop: 10, alignItems: "center" }}>
