@@ -9,14 +9,20 @@ import HomeScreen from "@/components/HomeScreen";
 import LibraryScreen from "@/components/LibraryScreen";
 import LockerScreen from "@/components/LockerScreen";
 import ProfileScreen from "@/components/ProfileScreen";
+import GeneratorScreen from "@/components/GeneratorScreen";
+import type { Section } from "@/lib/exercises";
 
 export default function App() {
   const [tab, setTab] = useState<"home" | "library" | "locker" | "profile">("home");
+  const [vw, setVw] = useState<string | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
   const [profile, setProfile] = useState<{ f3_name: string; ao: string; state: string; region: string } | null>(null);
+  const [toast, setToast] = useState("");
 
   const supabase = createClient();
+
+  const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 
   const checkUser = async () => {
     const { data } = await supabase.auth.getUser();
@@ -34,35 +40,18 @@ export default function App() {
 
   useEffect(() => {
     checkUser();
-
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (!session?.user) setProfile(null);
     });
-
-    return () => {
-      listener.subscription.unsubscribe();
-    };
+    return () => { listener.subscription.unsubscribe(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (checking) {
     return (
-      <div
-        style={{
-          maxWidth: 430,
-          margin: "0 auto",
-          minHeight: "100vh",
-          background: "#0E0E10",
-          fontFamily: "'Outfit', system-ui, sans-serif",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <div style={{ fontSize: 18, fontWeight: 700, color: "#928982" }}>
-          Loading...
-        </div>
+      <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: "#928982" }}>Loading...</div>
       </div>
     );
   }
@@ -71,29 +60,44 @@ export default function App() {
     return <AuthScreen onAuth={checkUser} />;
   }
 
+  const toastEl = toast ? (
+    <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: "#22c55e", color: "#0E0E10", padding: "10px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: "'Outfit', system-ui, sans-serif", zIndex: 300 }}>{toast}</div>
+  ) : null;
+
+  // ════ GENERATOR VIEW ════
+  if (vw === "gen") {
+    return (
+      <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: 20, paddingBottom: 100, position: "relative" }}>
+        <GeneratorScreen
+          onClose={() => setVw(null)}
+          onSave={(bd) => {
+            // For now just show toast — Supabase save comes later
+            fl("Saved to locker!");
+            setVw(null);
+            setTab("locker");
+          }}
+        />
+        {toastEl}
+      </div>
+    );
+  }
+
   return (
-    <div
-      style={{
-        maxWidth: 430,
-        margin: "0 auto",
-        minHeight: "100vh",
-        background: "#0E0E10",
-        fontFamily: "'Outfit', system-ui, sans-serif",
-        paddingTop: 20,
-        paddingBottom: 100,
-        position: "relative",
-      }}
-    >
+    <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: 20, paddingBottom: 100, position: "relative" }}>
       {tab === "home" && (
         <HomeScreen
           profName={profile?.f3_name || "PAX"}
           onProfileTap={() => setTab("profile")}
+          onGenerate={() => setVw("gen")}
+          onBuild={() => fl("Manual builder coming soon")}
+          onCreateEx={() => fl("Create exercise coming soon")}
         />
       )}
       {tab === "library" && <LibraryScreen />}
       {tab === "locker" && <LockerScreen />}
       {tab === "profile" && <ProfileScreen onProfileSaved={checkUser} />}
-      <BottomNav active={tab} onTabChange={setTab} />
+      <BottomNav active={tab} onTabChange={(t) => { setTab(t); setVw(null); }} />
+      {toastEl}
     </div>
   );
 }
