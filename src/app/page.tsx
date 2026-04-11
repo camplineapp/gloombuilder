@@ -10,7 +10,8 @@ import LibraryScreen from "@/components/LibraryScreen";
 import LockerScreen from "@/components/LockerScreen";
 import ProfileScreen from "@/components/ProfileScreen";
 import GeneratorScreen from "@/components/GeneratorScreen";
-import type { Section } from "@/lib/exercises";
+import BuilderScreen from "@/components/BuilderScreen";
+import CreateExerciseScreen from "@/components/CreateExerciseScreen";
 
 export default function App() {
   const [tab, setTab] = useState<"home" | "library" | "locker" | "profile">("home");
@@ -64,19 +65,28 @@ export default function App() {
     <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: "#22c55e", color: "#0E0E10", padding: "10px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: "'Outfit', system-ui, sans-serif", zIndex: 300 }}>{toast}</div>
   ) : null;
 
-  // ════ GENERATOR VIEW ════
-  if (vw === "gen") {
+  // ════ FULL-SCREEN VIEWS ════
+  if (vw === "gen" || vw === "build" || vw === "create-ex") {
     return (
       <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: 20, paddingBottom: 100, position: "relative" }}>
-        <GeneratorScreen
-          onClose={() => setVw(null)}
-          onSave={(bd) => {
-            // For now just show toast — Supabase save comes later
-            fl("Saved to locker!");
-            setVw(null);
-            setTab("locker");
-          }}
-        />
+        {vw === "gen" && (
+          <GeneratorScreen
+            onClose={() => setVw(null)}
+            onSave={() => { fl("Saved to locker!"); setVw(null); setTab("locker"); }}
+          />
+        )}
+        {vw === "build" && (
+          <BuilderScreen
+            onClose={() => setVw(null)}
+            onSave={() => { fl("Saved to locker!"); setVw(null); setTab("locker"); }}
+          />
+        )}
+        {vw === "create-ex" && (
+          <CreateExerciseScreen
+            onClose={() => setVw(null)}
+            onSave={() => { fl("Saved to locker!"); setVw(null); setTab("locker"); }}
+          />
+        )}
         {toastEl}
       </div>
     );
@@ -89,8 +99,8 @@ export default function App() {
           profName={profile?.f3_name || "PAX"}
           onProfileTap={() => setTab("profile")}
           onGenerate={() => setVw("gen")}
-          onBuild={() => fl("Manual builder coming soon")}
-          onCreateEx={() => fl("Create exercise coming soon")}
+          onBuild={() => setVw("build")}
+          onCreateEx={() => setVw("create-ex")}
         />
       )}
       {tab === "library" && <LibraryScreen />}
