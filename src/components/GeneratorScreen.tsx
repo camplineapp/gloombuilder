@@ -253,7 +253,7 @@ export default function GeneratorScreen({ onClose, onSave }: GeneratorScreenProp
         <div style={{ marginTop: 32 }}>
           <button onClick={() => {
             const nm = grT.trim() || "Generated Beatdown";
-            const tgs = [gc.dur, (DIFFS.find(x => x.id === gc.diff) || { l: "" }).l, ...gc.sites.map(s => (SITES.find(x => x.id === s) || { l: "" }).l), ...gc.eq.filter(e => e !== "none").map(e => (EQUIP.find(x => x.id === e) || { l: "" }).l)].filter(Boolean);
+            const tgs = [gc.dur, (DIFFS.find(x => x.id === gc.diff) || { l: "" }).l, ...gc.sites.map(s => (SITES.find(x => x.id === s) || { l: "" }).l), ...gc.eq.filter(e => e !== "none").map(e => (EQUIP.find(x => x.id === e) || { l: "" }).l)].filter((v): v is string => Boolean(v));
             onSave({ nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq });
             fl("Saved to locker!");
             setTimeout(() => { setGr(null); setGs(0); onClose(); }, 500);
