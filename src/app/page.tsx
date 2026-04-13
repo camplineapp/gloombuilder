@@ -123,7 +123,7 @@ export default function App() {
         v: 0, u: 0, cm: 0,
         ds: bd.desc || bd.nm,
         dt: new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
-        src: bd.src === "Generated" ? "AI Generated" : "Hand Built",
+        src: bd.src === "Generated" ? "GloomBuilder" : "Hand Built",
         tp: "beatdown",
         tg: bd.tg,
         comments: [],
