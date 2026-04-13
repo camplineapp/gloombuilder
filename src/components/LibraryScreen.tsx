@@ -31,7 +31,7 @@ interface Comment { au: string; ao: string; txt: string; dt: string }
 interface Exercise { n: string; r: string; c: string; nt: string }
 interface Section { label: string; color: string; exercises: Exercise[]; note: string }
 interface FeedItem {
-  id: number; src: string; nm: string; au: string; ao: string; reg: string;
+  id: number | string; src: string; nm: string; au: string; ao: string; reg: string;
   d: string; dur: string | null; aoT: string[]; v: number; u: number; cm: number;
   ds: string; dt: string; tp: string; tg?: string[]; et?: string[];
   comments: Comment[]; secs?: Section[];
