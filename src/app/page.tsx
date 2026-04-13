@@ -156,7 +156,7 @@ export default function App() {
     const publicBeatdowns = await loadPublicBeatdowns();
     const publicExercises = await loadPublicExercises();
     const bdItems = publicBeatdowns.map(dbToShared);
-    const exItems = publicExercises.map((row: Record<string, unknown>) => { const p = row.profiles as Record<string, unknown> | null; return { id: row.id as string, nm: (row.name as string) || '', au: (p?.f3_name as string) || 'Unknown', ao: ((p?.ao as string) || '') + ((p?.state as string) ? ', ' + (p.state as string) : ''), reg: (p?.region as string) || '', d: 'medium', dur: null, aoT: [] as string[], v: 0, u: 0, cm: 0, ds: (row.how_to as string) || (row.description as string) || '', dt: new Date(row.created_at as string).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }), src: 'Hand Built', tp: 'exercise', et: (row.body_part as string[]) || [], comments: [], secs: [], } as SharedItem; });
+    const exItems = publicExercises.map((row: Record<string, unknown>) => { const p = row.profiles as Record<string, unknown> | null; return { id: row.id as string, nm: (row.name as string) || '', au: (p?.f3_name as string) || 'Unknown', ao: ((p?.ao as string) || '') + ((p?.state as string) ? ', ' + (p?.state as string) : ''), reg: (p?.region as string) || '', d: 'medium', dur: null, aoT: [] as string[], v: 0, u: 0, cm: 0, ds: (row.how_to as string) || (row.description as string) || '', dt: new Date(row.created_at as string).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }), src: 'Hand Built', tp: 'exercise', et: (row.body_part as string[]) || [], comments: [], secs: [], } as SharedItem; });
     setSharedItems([...bdItems, ...exItems]);
   }, []);
 
