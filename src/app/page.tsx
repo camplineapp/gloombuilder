@@ -79,7 +79,7 @@ function dbToShared(row: Record<string, unknown>): SharedItem {
     id: row.id as string,
     nm: (row.name as string) || "",
     au: (profile?.f3_name as string) || "Unknown",
-    ao: ((profile?.ao as string) || "") + ((profile?.state as string) ? ", " + (profile.state as string) : ""),
+    ao: ((profile?.ao as string) || "") + ((profile?.state as string) ? ", " + (profile?.state as string) : ""),
     reg: (profile?.region as string) || "",
     d: (row.difficulty as string) || "medium",
     dur: (row.duration as number) ? (row.duration as number) + " min" : null,
