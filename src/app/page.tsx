@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
+import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises } from "@/lib/db";
 import type { User } from "@supabase/supabase-js";
 import type { Section } from "@/lib/exercises";
 import AuthScreen from "@/components/AuthScreen";
@@ -15,20 +16,96 @@ import BuilderScreen from "@/components/BuilderScreen";
 import CreateExerciseScreen from "@/components/CreateExerciseScreen";
 
 export interface LockerBeatdown {
-  id: number; nm: string; dt: string; src: string; d: string; desc: string;
-  secs: Section[]; tg: string[]; inspiredBy?: string;
+  id: string;
+  nm: string;
+  dt: string;
+  src: string;
+  d: string;
+  desc: string;
+  secs: Section[];
+  tg: string[];
+  inspiredBy?: string;
 }
 
 export interface LockerExercise {
-  id: number; nm: string; tags: string[]; how: string; src: string; inspiredBy?: string;
+  id: string;
+  nm: string;
+  tags: string[];
+  how: string;
+  src: string;
+  inspiredBy?: string;
 }
 
 export interface SharedItem {
-  id: number; src: string; nm: string; au: string; ao: string; reg: string;
-  d: string; dur: string | null; aoT: string[]; v: number; u: number; cm: number;
-  ds: string; dt: string; tp: string; tg?: string[]; et?: string[];
+  id: string;
+  src: string;
+  nm: string;
+  au: string;
+  ao: string;
+  reg: string;
+  d: string;
+  dur: string | null;
+  aoT: string[];
+  v: number;
+  u: number;
+  cm: number;
+  ds: string;
+  dt: string;
+  tp: string;
+  tg?: string[];
+  et?: string[];
   comments: { au: string; ao: string; txt: string; dt: string }[];
   secs?: Section[];
+}
+
+// Convert Supabase beatdown row to LockerBeatdown
+function dbToLocker(row: Record<string, unknown>): LockerBeatdown {
+  return {
+    id: row.id as string,
+    nm: (row.name as string) || "",
+    dt: new Date(row.created_at as string).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "2-digit", year: "numeric" }),
+    src: (row.generated as boolean) ? "Generated" : "Manual",
+    d: (row.difficulty as string) || "medium",
+    desc: (row.description as string) || "",
+    secs: (row.sections as Section[]) || [],
+    tg: (row.tags as string[]) || [],
+  };
+}
+
+// Convert Supabase beatdown row to SharedItem for Library
+function dbToShared(row: Record<string, unknown>): SharedItem {
+  const profile = row.profiles as Record<string, unknown> | null;
+  return {
+    id: row.id as string,
+    nm: (row.name as string) || "",
+    au: (profile?.f3_name as string) || "Unknown",
+    ao: ((profile?.ao as string) || "") + ((profile?.state as string) ? ", " + (profile.state as string) : ""),
+    reg: (profile?.region as string) || "",
+    d: (row.difficulty as string) || "medium",
+    dur: (row.duration as number) ? (row.duration as number) + " min" : null,
+    aoT: (row.site_features as string[]) || [],
+    v: (row.vote_count as number) || 0,
+    u: (row.steal_count as number) || 0,
+    cm: 0,
+    ds: (row.description as string) || "",
+    dt: new Date(row.created_at as string).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
+    src: (row.generated as boolean) ? "GloomBuilder" : "Hand Built",
+    tp: "beatdown",
+    tg: (row.tags as string[]) || [],
+    comments: [],
+    secs: (row.sections as Section[]) || [],
+  };
+}
+
+// Convert Supabase exercise row to LockerExercise
+function dbToExercise(row: Record<string, unknown>): LockerExercise {
+  return {
+    id: row.id as string,
+    nm: (row.name as string) || "",
+    tags: (row.body_part as string[]) || [],
+    how: (row.how_to as string) || (row.description as string) || "",
+    src: (row.source as string) || "community",
+  };
 }
 
 export default function App() {
@@ -39,12 +116,12 @@ export default function App() {
   const [profile, setProfile] = useState<{ f3_name: string; ao: string; state: string; region: string } | null>(null);
   const [toast, setToast] = useState("");
 
-  // Locker state
+  // Locker state — loaded from Supabase
   const [lk, setLk] = useState<LockerBeatdown[]>([]);
   const [lkEx, setLkEx] = useState<LockerExercise[]>([]);
   const [lkBm, setLkBm] = useState<never[]>([]);
 
-  // Shared items (appear in Library)
+  // Library shared items — loaded from Supabase
   const [sharedItems, setSharedItems] = useState<SharedItem[]>([]);
 
   const supabase = createClient();
@@ -65,6 +142,24 @@ export default function App() {
     setChecking(false);
   };
 
+  // Load locker data from Supabase
+  const loadLocker = useCallback(async () => {
+    const beatdowns = await loadMyBeatdowns();
+    setLk(beatdowns.map(dbToLocker));
+
+    const exercises = await loadMyExercises();
+    setLkEx(exercises.map(dbToExercise));
+  }, []);
+
+  // Load library data from Supabase
+  const loadLibrary = useCallback(async () => {
+    const publicBeatdowns = await loadPublicBeatdowns();
+    const publicExercises = await loadPublicExercises();
+    const bdItems = publicBeatdowns.map(dbToShared);
+    const exItems = publicExercises.map((row: Record<string, unknown>) => { const p = row.profiles as Record<string, unknown> | null; return { id: row.id as string, nm: (row.name as string) || '', au: (p?.f3_name as string) || 'Unknown', ao: ((p?.ao as string) || '') + ((p?.state as string) ? ', ' + (p.state as string) : ''), reg: (p?.region as string) || '', d: 'medium', dur: null, aoT: [] as string[], v: 0, u: 0, cm: 0, ds: (row.how_to as string) || (row.description as string) || '', dt: new Date(row.created_at as string).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }), src: 'Hand Built', tp: 'exercise', et: (row.body_part as string[]) || [], comments: [], secs: [], } as SharedItem; });
+    setSharedItems([...bdItems, ...exItems]);
+  }, []);
+
   useEffect(() => {
     checkUser();
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -74,6 +169,14 @@ export default function App() {
     return () => { listener.subscription.unsubscribe(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load data after user is confirmed
+  useEffect(() => {
+    if (user) {
+      loadLocker();
+      loadLibrary();
+    }
+  }, [user, loadLocker, loadLibrary]);
 
   if (checking) {
     return (
@@ -96,83 +199,72 @@ export default function App() {
     <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: "#22c55e", color: "#0E0E10", padding: "10px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: "'Outfit', system-ui, sans-serif", zIndex: 300 }}>{toast}</div>
   ) : null;
 
-  const handleSaveBeatdown = (bd: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean }) => {
-    const now = new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "2-digit", year: "numeric" });
-    const newBd: LockerBeatdown = {
-      id: Date.now(),
+  const handleSaveBeatdown = async (bd: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean }) => {
+    const result = await saveBeatdown({
       nm: bd.nm,
-      dt: now,
-      src: bd.src === "Generated" ? "Generated" : "Manual",
-      d: bd.d,
       desc: bd.desc,
+      d: bd.d,
       secs: bd.secs,
       tg: bd.tg,
-    };
-    setLk([newBd, ...lk]);
+      src: bd.src,
+      dur: bd.dur,
+      sites: bd.sites,
+      eq: bd.eq,
+      isPublic: bd.share || false,
+    });
 
-    if (bd.share) {
-      const sharedItem: SharedItem = {
-        id: Date.now() + 1,
-        nm: bd.nm,
-        au: profName,
-        ao: (profAO ? profAO + ", " : "") + profState,
-        reg: profRegion,
-        d: bd.d,
-        dur: bd.dur,
-        aoT: bd.sites,
-        v: 0, u: 0, cm: 0,
-        ds: bd.desc || bd.nm,
-        dt: new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
-        src: bd.src === "Generated" ? "GloomBuilder" : "Hand Built",
-        tp: "beatdown",
-        tg: bd.tg,
-        comments: [],
-        secs: bd.secs,
-      };
-      setSharedItems([...sharedItems, sharedItem]);
-      fl("Saved to locker! Shared to community!");
+    if (result) {
+      // Reload from database to get fresh data
+      await loadLocker();
+      if (bd.share) {
+        await loadLibrary();
+        fl("Saved to locker! Shared to community!");
+      } else {
+        fl("Saved to locker!");
+      }
     } else {
-      fl("Saved to locker!");
+      fl("Error saving — try again");
     }
     setVw(null);
     setTab("locker");
   };
 
-  const handleSaveExercise = (ex: { nm: string; tags: string[]; how: string; share: boolean }) => {
-    const newEx: LockerExercise = {
-      id: Date.now(),
+  const handleSaveExercise = async (ex: { nm: string; tags: string[]; how: string; share: boolean }) => {
+    const result = await saveExercise({
       nm: ex.nm,
-      tags: ex.tags,
       how: ex.how,
-      src: "Created",
-    };
-    setLkEx([...lkEx, newEx]);
+      tags: ex.tags,
+      isPublic: ex.share,
+    });
 
-    if (ex.share) {
-      const sharedItem: SharedItem = {
-        id: Date.now() + 1,
-        nm: ex.nm,
-        au: profName,
-        ao: (profAO ? profAO + ", " : "") + profState,
-        reg: profRegion,
-        d: "medium",
-        dur: null,
-        aoT: [],
-        v: 0, u: 0, cm: 0,
-        ds: ex.how,
-        dt: new Date().toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
-        src: "Hand Built",
-        tp: "exercise",
-        et: ex.tags,
-        comments: [],
-      };
-      setSharedItems([...sharedItems, sharedItem]);
-      fl("Saved to locker! Shared to community!");
-    } else {
+    if (result) {
+      await loadLocker();
       fl("Saved to locker!");
+    } else {
+      fl("Error saving — try again");
     }
     setVw(null);
     setTab("locker");
+  };
+
+  const handleDeleteBeatdown = async (id: string) => {
+    const success = await deleteBeatdown(id);
+    if (success) {
+      setLk(lk.filter(b => b.id !== id));
+      fl("Deleted");
+    } else {
+      fl("Error deleting");
+    }
+  };
+
+  const handleDeleteExercise = async (id: string) => {
+    const success = await deleteExercise(id);
+    if (success) {
+      setLkEx(lkEx.filter(e => e.id !== id));
+      fl("Deleted");
+    } else {
+      fl("Error deleting");
+    }
   };
 
   // ════ FULL-SCREEN VIEWS ════
@@ -207,6 +299,8 @@ export default function App() {
           setLkEx={setLkEx}
           lkBm={lkBm}
           onNavigate={(view) => setVw(view)}
+          onDeleteBeatdown={handleDeleteBeatdown}
+          onDeleteExercise={handleDeleteExercise}
         />
       )}
       {tab === "profile" && <ProfileScreen onProfileSaved={checkUser} />}
@@ -215,3 +309,4 @@ export default function App() {
     </div>
   );
 }
+
