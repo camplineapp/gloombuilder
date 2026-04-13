@@ -45,7 +45,26 @@ const FEED: FeedItem[] = [
   {id:5,src:"Hand Built",nm:"Pain Train Express",au:"GloomBuilder",ao:"F3 Southwest, TX",reg:"Southwest",d:"beast",dur:"45 min",aoT:["field","benches"],v:0,u:2,cm:31,ds:"EMOM ladder with escalating burpees.",dt:"Apr 1, 2026",tp:"beatdown",tg:["Field","Benches"],comments:[{au:"GloomBuilder PAX",ao:"F3 Southeast, GA",txt:"This destroyed us. 5 stars.",dt:"Apr 3"}],secs:[{label:"Warmup",color:G,exercises:[{n:"SSH",r:"25",c:"IC",nt:""},{n:"Good Morning",r:"15",c:"IC",nt:""}],note:""},{label:"Round 1",color:A,exercises:[{n:"Burpee",r:"10",c:"OYO",nt:""},{n:"Merkin",r:"25",c:"OYO",nt:""},{n:"Squat",r:"30",c:"OYO",nt:""}],note:"EMOM: 1 burpee each minute"},{label:"Round 2",color:R,exercises:[{n:"Burpee",r:"15",c:"OYO",nt:""},{n:"Diamond Merkin",r:"20",c:"OYO",nt:""},{n:"Jump Squat",r:"25",c:"OYO",nt:""}],note:"EMOM: 2 burpees each minute"},{label:"Mary",color:P,exercises:[{n:"LBC",r:"25",c:"IC",nt:""},{n:"Plank",r:"90 sec",c:"OYO",nt:""}],note:""}]},
   {id:6,src:"GloomBuilder",nm:"Block Party",au:"GloomBuilder",ao:"F3 Southeast, FL",reg:"Southeast",d:"medium",dur:"45 min",aoT:["parking"],v:2,u:2,cm:9,ds:"All coupon. 4-round circuit.",dt:"Apr 3, 2026",tp:"beatdown",tg:["Coupon","Parking lot"],comments:[{au:"GloomBuilder PAX",ao:"F3 Southeast, NC",txt:"Simple but effective. Great coupon day.",dt:"Apr 4"},{au:"GloomBuilder PAX",ao:"F3 Southeast, GA",txt:"We added coupon swings between rounds.",dt:"Apr 5"}],secs:[{label:"Warmup",color:G,exercises:[{n:"SSH",r:"15",c:"IC",nt:""}],note:""},{label:"The Thang",color:A,exercises:[{n:"Coupon Curl",r:"15",c:"OYO",nt:""},{n:"Coupon Press",r:"15",c:"OYO",nt:""},{n:"Coupon Squat",r:"15",c:"OYO",nt:""},{n:"Coupon Row",r:"15",c:"OYO",nt:""}],note:"4 rounds. Mosey between."},{label:"Mary",color:P,exercises:[{n:"American Hammer",r:"20",c:"IC",nt:""}],note:""}]},
   {id:7,src:"Hand Built",nm:"Crab Flip Merkin",au:"GloomBuilder",ao:"F3 Southeast, SC",reg:"Southeast",d:"hard",dur:null,aoT:[],v:0,u:1,cm:4,ds:"10 crab walks then 5 merkins across the lot.",dt:"Apr 2, 2026",tp:"exercise",et:["Full Body","Arms","Transport"],comments:[{au:"GloomBuilder PAX",ao:"F3 Midwest, OH",txt:"Arms were toast after 3 sets of these.",dt:"Apr 3"},{au:"GloomBuilder PAX",ao:"F3 Southwest, AZ",txt:"Great transport exercise.",dt:"Apr 4"}]},
-  {id:8,src:"Hand Built",nm:"Iron Horse Circuit",au:"GloomBuilder",ao:"F3 Southeast, GA",reg:"Southeast",d:"beast",dur:"60 min",aoT:["field","hills"],v:1,u:0,cm:28,ds:"Hill repeats with coupon stations.",dt:"Apr 4, 2026",tp:"beatdown",tg:["Hills","Coupon"],comments:[{au:"GloomBuilder PAX",ao:"F3 Essex, NJ",txt:"This is a top 5 beatdown. Brought it to Essex.",dt:"Apr 5"},{au:"GloomBuilder PAX",ao:"F3 Southwest, TX",txt:"The ascending rounds are pure misery. Love it.",dt:"Apr 6"}],secs:[{label:"Warmup",color:G,exercises:[{n:"SSH",r:"25",c:"IC",nt:""},{n:"Karaoke",r:"50 yds",c:"OYO",nt:"Each way"}],note:""},{label:"The Thang",color:A,exercises:[{n:"Hill Sprint",r:"4 trips",c:"OYO",nt:""},{n:"Coupon Thruster",r:"25",c:"OYO",nt:""},{n:"Bear Crawl",r:"50 yds",c:"OYO",nt:""},{n:"Burpee",r:"20",c:"OYO",nt:""}],note:"4 rounds ascending."},{label:"Mary",color:P,exercises:[{n:"LBC",r:"30",c:"IC",  profName?: string;
+  {id:8,src:"Hand Built",nm:"Iron Horse Circuit",au:"GloomBuilder",ao:"F3 Southeast, GA",reg:"Southeast",d:"beast",dur:"60 min",aoT:["field","hills"],v:1,u:0,cm:28,ds:"Hill repeats with coupon stations.",dt:"Apr 4, 2026",tp:"beatdown",tg:["Hills","Coupon"],comments:[{au:"GloomBuilder PAX",ao:"F3 Essex, NJ",txt:"This is a top 5 beatdown. Brought it to Essex.",dt:"Apr 5"},{au:"GloomBuilder PAX",ao:"F3 Southwest, TX",txt:"The ascending rounds are pure misery. Love it.",dt:"Apr 6"}],secs:[{label:"Warmup",color:G,exercises:[{n:"SSH",r:"25",c:"IC",nt:""},{n:"Karaoke",r:"50 yds",c:"OYO",nt:"Each way"}],note:""},{label:"The Thang",color:A,exercises:[{n:"Hill Sprint",r:"4 trips",c:"OYO",nt:""},{n:"Coupon Thruster",r:"25",c:"OYO",nt:""},{n:"Bear Crawl",r:"50 yds",c:"OYO",nt:""},{n:"Burpee",r:"20",c:"OYO",nt:""}],note:"4 rounds ascending."},{label:"Mary",color:P,exercises:[{n:"LBC",r:"30",c:"IC",nt:""},{n:"Plank",r:"90 sec",c:"OYO",nt:""}],note:""}]},
+  {id:9,src:"Hand Built",nm:"Plank Jack Burner",au:"GloomBuilder",ao:"F3 Southwest, AZ",reg:"Southwest",d:"easy",dur:null,aoT:[],v:2,u:1,cm:8,ds:"Plank jack, merkin, repeat. No rest.",dt:"Apr 5, 2026",tp:"exercise",et:["Core","Chest","Cardio"],comments:[{au:"GloomBuilder PAX",ao:"F3 Southeast, SC",txt:"Simple and devastating. Perfect Mary finisher.",dt:"Apr 6"},{au:"GloomBuilder PAX",ao:"F3 Southeast, FL",txt:"Did 5 rounds of 10 as a Thang closer.",dt:"Apr 7"}]},
+];
+
+function dc(d: string) {
+  if (d === "easy" || d === "Beginner") return G;
+  if (d === "medium" || d === "Intermediate") return A;
+  if (d === "hard" || d === "Advanced") return R;
+  if (d === "beast" || d === "Beast") return "#dc2626";
+  return T4;
+}
+
+function srcBadge(s: string) {
+  if (s === "Hand Built") return { bg: "#E8A820" + "18", c: "#E8A820", l: "Hand Built" };
+  return { bg: "#22c55e" + "15", c: "#22c55e", l: "GloomBuilder" };
+}
+
+interface LibraryScreenProps {
+  sharedItems?: FeedItem[];
+  profName?: string;
 }
 
 export default function LibraryScreen({ sharedItems = [], profName = "" }: LibraryScreenProps) {
@@ -67,7 +86,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
   const [toast, setToast] = useState("");
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
-  const toggleVote = (id: number) => { setVotes({ ...votes, [id]: !votes[id] }); };
+  const toggleVote = (id: number | string) => { setVotes({ ...votes, [id]: !votes[id] }); };
 
   const toastEl = toast ? (
     <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: G, color: BG, padding: "10px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: F, zIndex: 100 }}>{toast}</div>
