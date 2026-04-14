@@ -66,7 +66,7 @@ export default function CreateExerciseScreen({ onClose, onSave }: CreateExercise
       </div>
 
       {/* Share toggle */}
-      <div onClick={() => setCxShare(!cxShare)} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, padding: "10px 14px", background: cxShare ? G + "10" : CD, border: "1px solid " + (cxShare ? G + "25" : BD), borderRadius: 10, cursor: "pointer" }}>
+      <div onClick={() => { if (!cxShare) { if (confirm("Share to community? This can't be undone.")) setCxShare(true); } else { setCxShare(false); } }} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, padding: "10px 14px", background: cxShare ? G + "10" : CD, border: "1px solid " + (cxShare ? G + "25" : BD), borderRadius: 10, cursor: "pointer" }}>
         <div style={{ width: 18, height: 18, borderRadius: 4, border: "2px solid " + (cxShare ? G : T5), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: BG, background: cxShare ? G : "transparent" }}>{cxShare ? "✓" : ""}</div>
         <span style={{ fontSize: 13, color: cxShare ? G : T4 }}>Share to community library</span>
       </div>

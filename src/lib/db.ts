@@ -177,3 +177,33 @@ export async function loadPublicExercises() {
   }
   return data || [];
 }
+
+// ════ SHARE (make public after saving) ════
+
+export async function shareBeatdown(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("beatdowns")
+    .update({ is_public: true })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Share beatdown error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function shareExercise(id: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("exercises")
+    .update({ source: "community" })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Share exercise error:", error);
+    return false;
+  }
+  return true;
+}

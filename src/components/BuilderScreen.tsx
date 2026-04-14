@@ -158,7 +158,7 @@ export default function BuilderScreen({ onClose, onSave }: BuilderScreenProps) {
       <div style={{ color: T5, fontSize: 12, marginTop: 8 }}>by The Bishop · F3 Essex</div>
 
       {/* Share toggle */}
-      <div onClick={() => setShareLib(!shareLib)} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, padding: "10px 14px", background: shareLib ? G + "10" : CD, border: "1px solid " + (shareLib ? G + "25" : BD), borderRadius: 10, cursor: "pointer" }}>
+      <div onClick={() => { if (!shareLib) { if (confirm("Share to community? This can't be undone.")) setShareLib(true); } else { setShareLib(false); } }} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, padding: "10px 14px", background: shareLib ? G + "10" : CD, border: "1px solid " + (shareLib ? G + "25" : BD), borderRadius: 10, cursor: "pointer" }}>
         <div style={{ width: 18, height: 18, borderRadius: 4, border: "2px solid " + (shareLib ? G : T5), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: BG, background: shareLib ? G : "transparent" }}>{shareLib ? "✓" : ""}</div>
         <span style={{ fontSize: 13, color: shareLib ? G : T4 }}>Share to community library</span>
       </div>

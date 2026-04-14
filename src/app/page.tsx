@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
-import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises } from "@/lib/db";
+import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise } from "@/lib/db";
 import type { User } from "@supabase/supabase-js";
 import type { Section } from "@/lib/exercises";
 import AuthScreen from "@/components/AuthScreen";
@@ -25,6 +25,7 @@ export interface LockerBeatdown {
   secs: Section[];
   tg: string[];
   inspiredBy?: string;
+  isPublic?: boolean;
 }
 
 export interface LockerExercise {
@@ -34,6 +35,7 @@ export interface LockerExercise {
   how: string;
   src: string;
   inspiredBy?: string;
+  shared?: boolean;
 }
 
 export interface SharedItem {
@@ -69,6 +71,7 @@ function dbToLocker(row: Record<string, unknown>): LockerBeatdown {
     desc: (row.description as string) || "",
     secs: (row.sections as Section[]) || [],
     tg: (row.tags as string[]) || [],
+    isPublic: (row.is_public as boolean) || false,
   };
 }
 
@@ -105,6 +108,7 @@ function dbToExercise(row: Record<string, unknown>): LockerExercise {
     tags: (row.body_part as string[]) || [],
     how: (row.how_to as string) || (row.description as string) || "",
     src: (row.source as string) || "community",
+    shared: (row.source as string) === "community",
   };
 }
 
@@ -156,7 +160,27 @@ export default function App() {
     const publicBeatdowns = await loadPublicBeatdowns();
     const publicExercises = await loadPublicExercises();
     const bdItems = publicBeatdowns.map(dbToShared);
-    const exItems = publicExercises.map((row: Record<string, unknown>) => { const p = row.profiles as Record<string, unknown> | null; return { id: row.id as string, nm: (row.name as string) || '', au: (p?.f3_name as string) || 'Unknown', ao: ((p?.ao as string) || '') + ((p?.state as string) ? ', ' + (p?.state as string) : ''), reg: (p?.region as string) || '', d: 'medium', dur: null, aoT: [] as string[], v: 0, u: 0, cm: 0, ds: (row.how_to as string) || (row.description as string) || '', dt: new Date(row.created_at as string).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }), src: 'Hand Built', tp: 'exercise', et: (row.body_part as string[]) || [], comments: [], secs: [], } as SharedItem; });
+    const exItems: SharedItem[] = publicExercises.map((row: Record<string, unknown>) => {
+      const p = row.profiles as Record<string, unknown> | null;
+      return {
+        id: row.id as string,
+        nm: (row.name as string) || "",
+        au: (p?.f3_name as string) || "Unknown",
+        ao: ((p?.ao as string) || "") + ((p?.state as string) ? ", " + (p?.state as string) : ""),
+        reg: (p?.region as string) || "",
+        d: "medium",
+        dur: null,
+        aoT: [] as string[],
+        v: 0, u: 0, cm: 0,
+        ds: (row.how_to as string) || (row.description as string) || "",
+        dt: new Date(row.created_at as string).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
+        src: "Hand Built",
+        tp: "exercise",
+        et: (row.body_part as string[]) || [],
+        comments: [],
+        secs: [],
+      };
+    });
     setSharedItems([...bdItems, ...exItems]);
   }, []);
 
@@ -237,7 +261,16 @@ export default function App() {
       isPublic: ex.share,
     });
 
-    if (result) { await loadLocker(); if (ex.share) { await loadLibrary(); fl("Saved to locker! Shared to community!"); } else { fl("Saved to locker!"); } } else { fl("Error saving — try again");
+    if (result) {
+      await loadLocker();
+      if (ex.share) {
+        await loadLibrary();
+        fl("Saved to locker! Shared to community!");
+      } else {
+        fl("Saved to locker!");
+      }
+    } else {
+      fl("Error saving — try again");
     }
     setVw(null);
     setTab("locker");
@@ -246,7 +279,7 @@ export default function App() {
   const handleDeleteBeatdown = async (id: string) => {
     const success = await deleteBeatdown(id);
     if (success) {
-      setLk(lk.filter(b => b.id !== id)); await loadLibrary();
+      setLk(lk.filter(b => b.id !== id));
       fl("Deleted");
     } else {
       fl("Error deleting");
@@ -256,10 +289,32 @@ export default function App() {
   const handleDeleteExercise = async (id: string) => {
     const success = await deleteExercise(id);
     if (success) {
-      setLkEx(lkEx.filter(e => e.id !== id)); await loadLibrary();
+      setLkEx(lkEx.filter(e => e.id !== id));
       fl("Deleted");
     } else {
       fl("Error deleting");
+    }
+  };
+
+  const handleShareBeatdown = async (id: string) => {
+    const success = await shareBeatdown(id);
+    if (success) {
+      setLk(lk.map(b => b.id === id ? { ...b, isPublic: true } : b));
+      await loadLibrary();
+      fl("Shared to community!");
+    } else {
+      fl("Error sharing");
+    }
+  };
+
+  const handleShareExercise = async (id: string) => {
+    const success = await shareExercise(id);
+    if (success) {
+      setLkEx(lkEx.map(e => e.id === id ? { ...e, shared: true } : e));
+      await loadLibrary();
+      fl("Shared to community!");
+    } else {
+      fl("Error sharing");
     }
   };
 
@@ -297,6 +352,8 @@ export default function App() {
           onNavigate={(view) => setVw(view)}
           onDeleteBeatdown={handleDeleteBeatdown}
           onDeleteExercise={handleDeleteExercise}
+          onShareBeatdown={handleShareBeatdown}
+          onShareExercise={handleShareExercise}
         />
       )}
       {tab === "profile" && <ProfileScreen onProfileSaved={checkUser} />}
@@ -305,5 +362,3 @@ export default function App() {
     </div>
   );
 }
-
-
