@@ -237,11 +237,7 @@ export default function App() {
       isPublic: ex.share,
     });
 
-    if (result) {
-      await loadLocker();
-      fl("Saved to locker!");
-    } else {
-      fl("Error saving — try again");
+    if (result) { await loadLocker(); if (ex.share) { await loadLibrary(); fl("Saved to locker! Shared to community!"); } else { fl("Saved to locker!"); } } else { fl("Error saving — try again");
     }
     setVw(null);
     setTab("locker");
@@ -309,4 +305,5 @@ export default function App() {
     </div>
   );
 }
+
 
