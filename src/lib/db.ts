@@ -475,3 +475,38 @@ export async function updateExercise(id: string, data: {
   }
   return true;
 }
+
+// ════ COMMENTS ════
+
+export async function addComment(itemId: string, itemType: "beatdown" | "exercise", text: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from("comments")
+    .insert({ user_id: user.id, item_id: itemId, item_type: itemType, text })
+    .select("*, profiles:user_id(f3_name, ao, state)")
+    .single();
+
+  if (error) {
+    console.error("Add comment error:", error);
+    return null;
+  }
+  return data;
+}
+
+export async function loadComments(itemId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("comments")
+    .select("*, profiles:user_id(f3_name, ao, state)")
+    .eq("item_id", itemId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Load comments error:", error);
+    return [];
+  }
+  return data || [];
+}
