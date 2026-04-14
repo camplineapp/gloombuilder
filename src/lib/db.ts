@@ -278,3 +278,150 @@ export async function loadUserVotes() {
   }
   return (data || []).map(v => v.item_id as string);
 }
+
+// ════ BOOKMARKS ════
+
+export async function addBookmark(itemId: string, itemType: "beatdown" | "exercise") {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase
+    .from("bookmarks")
+    .insert({ user_id: user.id, item_id: itemId, item_type: itemType });
+
+  if (error) {
+    console.error("Add bookmark error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function removeBookmark(itemId: string, itemType: "beatdown" | "exercise") {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase
+    .from("bookmarks")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("item_id", itemId)
+    .eq("item_type", itemType);
+
+  if (error) {
+    console.error("Remove bookmark error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function loadMyBookmarks() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("bookmarks")
+    .select("item_id, item_type")
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Load bookmarks error:", error);
+    return [];
+  }
+  return data || [];
+}
+
+// ════ STEAL ════
+
+export async function stealBeatdown(originalId: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Load original
+  const { data: original } = await supabase
+    .from("beatdowns")
+    .select("*")
+    .eq("id", originalId)
+    .single();
+
+  if (!original) return null;
+
+  // Insert copy
+  const { data: copy, error } = await supabase
+    .from("beatdowns")
+    .insert({
+      name: original.name,
+      description: original.description,
+      difficulty: original.difficulty,
+      duration: original.duration,
+      site_features: original.site_features,
+      equipment: original.equipment,
+      tags: original.tags,
+      sections: original.sections,
+      created_by: user.id,
+      is_public: false,
+      generated: original.generated,
+      inspired_by: original.created_by,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Steal beatdown error:", error);
+    return null;
+  }
+
+  // Increment steal_count on original (SECURITY DEFINER not needed — we use direct SQL)
+  await supabase.rpc("increment_steal_count", { beatdown_id: originalId });
+
+  return copy;
+}
+
+export async function stealExercise(originalId: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Load original
+  const { data: original } = await supabase
+    .from("exercises")
+    .select("*")
+    .eq("id", originalId)
+    .single();
+
+  if (!original) return null;
+
+  // Insert copy
+  const { data: copy, error } = await supabase
+    .from("exercises")
+    .insert({
+      name: original.name,
+      aliases: original.aliases,
+      description: original.description,
+      how_to: original.how_to,
+      body_part: original.body_part,
+      exercise_type: original.exercise_type,
+      equipment: original.equipment,
+      site_type: original.site_type,
+      cadence: original.cadence,
+      difficulty: original.difficulty,
+      intensity: original.intensity,
+      movement_type: original.movement_type,
+      is_mary: original.is_mary,
+      is_transport: original.is_transport,
+      source: "private",
+      created_by: user.id,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Steal exercise error:", error);
+    return null;
+  }
+
+  return copy;
+}

@@ -60,9 +60,12 @@ interface LibraryScreenProps {
   profName?: string;
   userVotes?: Set<string>;
   onToggleVote?: (id: string, itemType?: "beatdown" | "exercise") => void;
+  userBookmarks?: Set<string>;
+  onBookmark?: (id: string, itemType: "beatdown" | "exercise") => void;
+  onSteal?: (id: string, itemType: "beatdown" | "exercise") => void;
 }
 
-export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote }: LibraryScreenProps) {
+export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote, userBookmarks = new Set(), onBookmark, onSteal }: LibraryScreenProps) {
   const [libDet, setLibDet] = useState<FeedItem | null>(null);
   const [libSearch, setLibSearch] = useState("");
   const [libT, setLibT] = useState("beatdowns");
@@ -78,6 +81,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
   const [showAllCmt, setShowAllCmt] = useState(false);
   const [cmtText, setCmtText] = useState("");
   const [toast, setToast] = useState("");
+  const [saveSheet, setSaveSheet] = useState<FeedItem | null>(null);
   const [exMode, setExMode] = useState<"shared" | "database">("shared");
   const [seedEx, setSeedEx] = useState<ExerciseData[]>([]);
   const [dbSearch, setDbSearch] = useState("");
@@ -125,6 +129,32 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     </div>
   ) : null;
 
+  // Save sheet (Bookmark vs Steal)
+  const saveSheetEl = saveSheet ? (
+    <div onClick={() => setSaveSheet(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#111318", borderRadius: "24px 24px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 430, border: "1px solid " + BD, borderBottom: "none" }}>
+        <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, margin: "0 auto 20px" }} />
+        <div style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: T1, textAlign: "center", marginBottom: 6 }}>Save to locker</div>
+        <div style={{ fontFamily: F, fontSize: 13, color: T4, textAlign: "center", marginBottom: 24 }}>{saveSheet.nm}</div>
+        {userBookmarks.has(String(saveSheet.id)) ? (
+          <button onClick={() => { onBookmark?.(String(saveSheet.id), saveSheet.tp as "beatdown" | "exercise"); setSaveSheet(null); }} style={{ width: "100%", padding: 20, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)", borderRadius: 16, cursor: "pointer", textAlign: "left", marginBottom: 12 }}>
+            <div style={{ fontFamily: F, fontSize: 17, fontWeight: 700, color: A }}>Remove bookmark</div>
+            <div style={{ fontFamily: F, color: T4, fontSize: 13, marginTop: 5 }}>Remove from your bookmarks</div>
+          </button>
+        ) : (
+          <button onClick={() => { onBookmark?.(String(saveSheet.id), saveSheet.tp as "beatdown" | "exercise"); setSaveSheet(null); }} style={{ width: "100%", padding: 20, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)", borderRadius: 16, cursor: "pointer", textAlign: "left", marginBottom: 12 }}>
+            <div style={{ fontFamily: F, fontSize: 17, fontWeight: 700, color: A }}>Bookmark</div>
+            <div style={{ fontFamily: F, color: T4, fontSize: 13, marginTop: 5 }}>Read-only reference. View anytime in your Locker.</div>
+          </button>
+        )}
+        <button onClick={() => { onSteal?.(String(saveSheet.id), saveSheet.tp as "beatdown" | "exercise"); setSaveSheet(null); }} style={{ width: "100%", padding: 20, background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.12)", borderRadius: 16, cursor: "pointer", textAlign: "left" }}>
+          <div style={{ fontFamily: F, fontSize: 17, fontWeight: 700, color: P }}>Steal to locker</div>
+          <div style={{ fontFamily: F, color: T4, fontSize: 13, marginTop: 5 }}>Editable copy. Credit stays with original creator.</div>
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   const filterBtn = (label: string, sel: boolean, onClick: () => void) => (
     <button key={label} onClick={onClick} style={{ fontFamily: F, background: sel ? G + "20" : "rgba(255,255,255,0.04)", color: sel ? G : T4, border: "1px solid " + (sel ? G + "30" : BD), padding: "7px 14px", borderRadius: 10, fontSize: 12, cursor: "pointer", fontWeight: sel ? 700 : 500 }}>{label}</button>
   );
@@ -139,6 +169,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     return (
       <div style={{ padding: "0 24px" }}>
         {exDetailModal}
+        {saveSheetEl}
         <button onClick={() => { setLibDet(null); setShowAllCmt(false); }} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14, marginBottom: 20 }}>← Library</button>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ flex: 1 }}>
@@ -193,7 +224,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
           </div>
         </div>
         <div style={{ marginTop: 24 }}>
-          <button onClick={() => fl("Saved!")} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save to locker</button>
+          <button onClick={() => setSaveSheet(bd)} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save to locker</button>
         </div>
         {toastEl}
       </div>
@@ -266,6 +297,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
   return (
     <div style={{ padding: "0 24px" }}>
       {exDetailModal}
+        {saveSheetEl}
       <div style={{ fontSize: 28, fontWeight: 800, color: T1, marginBottom: 12 }}>Library</div>
       {!(libT === "exercises" && exMode === "database") ? <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Search by title, Q name, AO..." style={{ ...ist, marginBottom: 14 }} /> : null}
       <div style={{ display: "flex", gap: 0, background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid " + BD, padding: 3, marginBottom: 16 }}>
@@ -330,6 +362,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
           })()}
 
           {exDetailModal}
+        {saveSheetEl}
         </div>
       ) : (
       <>
@@ -361,7 +394,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
               <span>Stolen {bd.u}x</span>
               {(bd.comments || []).length > 0 ? <span>{(bd.comments || []).length} comments</span> : null}
             </div>
-            <span onClick={e => { e.stopPropagation(); fl("Saved!"); }} style={{ fontSize: 14, color: G, cursor: "pointer", padding: "4px 8px", fontWeight: 600 }}>Save</span>
+            <span onClick={e => { e.stopPropagation(); setSaveSheet(bd); }} style={{ fontSize: 14, color: G, cursor: "pointer", padding: "4px 8px", fontWeight: 600 }}>Save</span>
           </div>
         </div>
       ))}

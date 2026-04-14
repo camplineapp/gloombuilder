@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
-import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, addVote, removeVote, loadUserVotes } from "@/lib/db";
+import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, addVote, removeVote, loadUserVotes, addBookmark, removeBookmark, loadMyBookmarks, stealBeatdown, stealExercise } from "@/lib/db";
 import type { User } from "@supabase/supabase-js";
 import type { Section } from "@/lib/exercises";
 import AuthScreen from "@/components/AuthScreen";
@@ -63,16 +63,18 @@ export interface SharedItem {
 
 // Convert Supabase beatdown row to LockerBeatdown
 function dbToLocker(row: Record<string, unknown>): LockerBeatdown {
+  const hasInspiredBy = !!(row.inspired_by);
   return {
     id: row.id as string,
     nm: (row.name as string) || "",
     dt: new Date(row.created_at as string).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "2-digit", year: "numeric" }),
-    src: (row.generated as boolean) ? "Generated" : "Manual",
+    src: hasInspiredBy ? "Stolen" : (row.generated as boolean) ? "Generated" : "Manual",
     d: (row.difficulty as string) || "medium",
     desc: (row.description as string) || "",
     secs: (row.sections as Section[]) || [],
     tg: (row.tags as string[]) || [],
     isPublic: (row.is_public as boolean) || false,
+    inspiredBy: hasInspiredBy ? "a fellow PAX" : undefined,
   };
 }
 
@@ -124,7 +126,7 @@ export default function App() {
   // Locker state — loaded from Supabase
   const [lk, setLk] = useState<LockerBeatdown[]>([]);
   const [lkEx, setLkEx] = useState<LockerExercise[]>([]);
-  const [lkBm, setLkBm] = useState<never[]>([]);
+  const [lkBm, setLkBm] = useState<Set<string>>(new Set());
 
   // Library shared items — loaded from Supabase
   const [sharedItems, setSharedItems] = useState<SharedItem[]>([]);
@@ -203,6 +205,7 @@ export default function App() {
       loadLocker();
       loadLibrary();
       loadUserVotes().then(ids => setUserVotes(new Set(ids)));
+      loadMyBookmarks().then(bms => setLkBm(new Set(bms.map(b => b.item_id as string))));
     }
   }, [user, loadLocker, loadLibrary]);
 
@@ -346,6 +349,50 @@ export default function App() {
     }
   };
 
+  const handleBookmark = async (itemId: string, itemType: "beatdown" | "exercise") => {
+    const isBookmarked = lkBm.has(itemId);
+    if (isBookmarked) {
+      const success = await removeBookmark(itemId, itemType);
+      if (success) {
+        const nb = new Set(lkBm);
+        nb.delete(itemId);
+        setLkBm(nb);
+        fl("Bookmark removed");
+      }
+    } else {
+      const success = await addBookmark(itemId, itemType);
+      if (success) {
+        const nb = new Set(lkBm);
+        nb.add(itemId);
+        setLkBm(nb);
+        fl("Bookmarked!");
+      } else {
+        fl("Bookmark failed");
+      }
+    }
+  };
+
+  const handleSteal = async (itemId: string, itemType: "beatdown" | "exercise") => {
+    if (itemType === "beatdown") {
+      const copy = await stealBeatdown(itemId);
+      if (copy) {
+        await loadLocker();
+        await loadLibrary();
+        fl("Stolen to locker!");
+      } else {
+        fl("Steal failed");
+      }
+    } else {
+      const copy = await stealExercise(itemId);
+      if (copy) {
+        await loadLocker();
+        fl("Stolen to locker!");
+      } else {
+        fl("Steal failed");
+      }
+    }
+  };
+
   // ════ FULL-SCREEN VIEWS ════
   if (vw === "gen" || vw === "build" || vw === "create-ex") {
     return (
@@ -369,7 +416,7 @@ export default function App() {
           onCreateEx={() => setVw("create-ex")}
         />
       )}
-      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} />}
+      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} userBookmarks={lkBm} onBookmark={handleBookmark} onSteal={handleSteal} />}
       {tab === "locker" && (
         <LockerScreen
           lk={lk}
@@ -377,11 +424,14 @@ export default function App() {
           lkEx={lkEx}
           setLkEx={setLkEx}
           lkBm={lkBm}
+          sharedItems={sharedItems}
           onNavigate={(view) => setVw(view)}
           onDeleteBeatdown={handleDeleteBeatdown}
           onDeleteExercise={handleDeleteExercise}
           onShareBeatdown={handleShareBeatdown}
           onShareExercise={handleShareExercise}
+          onRemoveBookmark={handleBookmark}
+          onSteal={handleSteal}
         />
       )}
       {tab === "profile" && <ProfileScreen onProfileSaved={checkUser} />}

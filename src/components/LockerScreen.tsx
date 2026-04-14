@@ -42,20 +42,28 @@ interface LockerExercise {
   id: string; nm: string; tags: string[]; how: string; src: string; inspiredBy?: string; shared?: boolean;
 }
 
+interface SharedItem {
+  id: number | string; nm: string; au: string; ao: string; d: string; ds: string; dt: string;
+  tp: string; tg?: string[]; et?: string[];
+}
+
 interface LockerScreenProps {
   lk: LockerBeatdown[];
   setLk: (lk: LockerBeatdown[]) => void;
   lkEx: LockerExercise[];
   setLkEx: (lkEx: LockerExercise[]) => void;
-  lkBm: never[];
+  lkBm: Set<string>;
+  sharedItems?: SharedItem[];
   onNavigate?: (view: string) => void;
   onDeleteBeatdown?: (id: string) => void;
   onDeleteExercise?: (id: string) => void;
   onShareBeatdown?: (id: string) => void;
   onShareExercise?: (id: string) => void;
+  onRemoveBookmark?: (id: string, itemType: "beatdown" | "exercise") => void;
+  onSteal?: (id: string, itemType: "beatdown" | "exercise") => void;
 }
 
-export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, onNavigate, onDeleteBeatdown, onDeleteExercise, onShareBeatdown, onShareExercise }: LockerScreenProps) {
+export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedItems = [], onNavigate, onDeleteBeatdown, onDeleteExercise, onShareBeatdown, onShareExercise, onRemoveBookmark, onSteal }: LockerScreenProps) {
   const [lT, setLT] = useState(0);
   const [toast, setToast] = useState("");
   const [edLkExI, setEdLkExI] = useState<number | null>(null);
@@ -175,7 +183,29 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, onNavigat
 
         {lT === 2 ? (
           <div>
-            {lkBm.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40, border: "1px dashed " + BD, borderRadius: 14 }}>No bookmarks yet</div> : null}
+            {lkBm.size === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40, border: "1px dashed " + BD, borderRadius: 14 }}>No bookmarks yet</div> : null}
+            {sharedItems.filter(item => lkBm.has(String(item.id))).map(bd => {
+              const isBd = bd.tp !== "exercise";
+              return (
+                <div key={bd.id} style={{ background: CD, border: "1px solid " + BD, borderLeft: "3px solid " + (isBd ? A + "40" : P + "40"), borderRadius: 14, padding: "16px 18px", marginBottom: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: T2 }}>{bd.nm}</div>
+                        <span style={{ background: isBd ? A + "12" : P + "12", color: isBd ? A : P, fontSize: 9, padding: "2px 7px", borderRadius: 4, fontWeight: 700, textTransform: "uppercase" }}>{isBd ? "Beatdown" : "Exercise"}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: T4, marginTop: 4 }}>{bd.au} · {bd.ao}</div>
+                      {bd.ds ? <div style={{ fontSize: 12, color: T5, marginTop: 4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical" }}>{bd.ds}</div> : null}
+                    </div>
+                    <span style={{ background: dc(bd.d) + "15", color: dc(bd.d), fontSize: 10, padding: "3px 9px", borderRadius: 5, fontWeight: 700, fontFamily: F, textTransform: "uppercase", flexShrink: 0 }}>{bd.d}</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                    <button onClick={() => onSteal?.(String(bd.id), bd.tp as "beatdown" | "exercise")} style={{ fontFamily: F, background: P + "12", color: P, border: "1px solid " + P + "20", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Steal to locker</button>
+                    <button onClick={() => onRemoveBookmark?.(String(bd.id), bd.tp as "beatdown" | "exercise")} style={{ fontFamily: F, background: "rgba(255,255,255,0.04)", color: T3, border: "1px solid " + BD, padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Remove</button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : null}
 
