@@ -227,14 +227,14 @@ export async function loadSeedExercises() {
 
 // ════ VOTES ════
 
-export async function addVote(beatdownId: string) {
+export async function addVote(itemId: string, itemType: "beatdown" | "exercise") {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
 
   const { error } = await supabase
     .from("votes")
-    .insert({ user_id: user.id, beatdown_id: beatdownId });
+    .insert({ user_id: user.id, item_id: itemId, item_type: itemType });
 
   if (error) {
     console.error("Add vote error:", error);
@@ -243,7 +243,7 @@ export async function addVote(beatdownId: string) {
   return true;
 }
 
-export async function removeVote(beatdownId: string) {
+export async function removeVote(itemId: string, itemType: "beatdown" | "exercise") {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
@@ -252,7 +252,8 @@ export async function removeVote(beatdownId: string) {
     .from("votes")
     .delete()
     .eq("user_id", user.id)
-    .eq("beatdown_id", beatdownId);
+    .eq("item_id", itemId)
+    .eq("item_type", itemType);
 
   if (error) {
     console.error("Remove vote error:", error);
@@ -268,12 +269,12 @@ export async function loadUserVotes() {
 
   const { data, error } = await supabase
     .from("votes")
-    .select("beatdown_id")
+    .select("item_id")
     .eq("user_id", user.id);
 
   if (error) {
     console.error("Load votes error:", error);
     return [];
   }
-  return (data || []).map(v => v.beatdown_id as string);
+  return (data || []).map(v => v.item_id as string);
 }

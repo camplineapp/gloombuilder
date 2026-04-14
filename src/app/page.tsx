@@ -56,6 +56,7 @@ export interface SharedItem {
   tp: string;
   tg?: string[];
   et?: string[];
+  howTo?: string;
   comments: { au: string; ao: string; txt: string; dt: string }[];
   secs?: Section[];
 }
@@ -172,8 +173,9 @@ export default function App() {
         d: "medium",
         dur: null,
         aoT: [] as string[],
-        v: 0, u: 0, cm: 0,
-        ds: (row.how_to as string) || (row.description as string) || "",
+        v: (row.vote_count as number) || 0, u: 0, cm: 0,
+        ds: (row.description as string) || (row.how_to as string) || "",
+        howTo: (row.how_to as string) || "",
         dt: new Date(row.created_at as string).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
         src: "Hand Built",
         tp: "exercise",
@@ -321,19 +323,19 @@ export default function App() {
     }
   };
 
-  const handleToggleVote = async (beatdownId: string) => {
-    const isVoted = userVotes.has(beatdownId);
+  const handleToggleVote = async (itemId: string, itemType: "beatdown" | "exercise" = "beatdown") => {
+    const isVoted = userVotes.has(itemId);
     // Optimistic update
     const newVotes = new Set(userVotes);
     if (isVoted) {
-      newVotes.delete(beatdownId);
+      newVotes.delete(itemId);
     } else {
-      newVotes.add(beatdownId);
+      newVotes.add(itemId);
     }
     setUserVotes(newVotes);
 
     // Update server
-    const success = isVoted ? await removeVote(beatdownId) : await addVote(beatdownId);
+    const success = isVoted ? await removeVote(itemId, itemType) : await addVote(itemId, itemType);
     if (success) {
       // Reload library to get updated vote_count from trigger
       await loadLibrary();
