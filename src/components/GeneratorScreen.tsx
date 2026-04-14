@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { EX, TAGS, DIFFS, SITES, EQUIP, generate } from "@/lib/exercises";
+import { useState, useEffect } from "react";
+import { EX, TAGS, DIFFS, SITES, EQUIP, generate, mapSupabaseExercise } from "@/lib/exercises";
 import type { GenConfig, Section, SectionExercise, ExerciseData } from "@/lib/exercises";
+import { loadSeedExercises } from "@/lib/db";
 import CopyModal from "@/components/CopyModal";
 
 const CD = "rgba(255,255,255,0.028)";
@@ -42,6 +43,17 @@ export default function GeneratorScreen({ onClose, onSave }: GeneratorScreenProp
   const [ld, setLd] = useState(false);
   const [shareLib, setShareLib] = useState(false);
   const [toast, setToast] = useState("");
+  const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
+
+  // Load 904 exercises from Supabase on mount
+  useEffect(() => {
+    loadSeedExercises().then(rows => {
+      if (rows.length > 0) {
+        const mapped = rows.map(r => mapSupabaseExercise(r as Record<string, unknown>));
+        setAllEx(mapped);
+      }
+    });
+  }, []);
 
   // Section editor state
   const [editEx, setEditEx] = useState<{ si: number; ei: number } | null>(null);
@@ -111,7 +123,7 @@ export default function GeneratorScreen({ onClose, onSave }: GeneratorScreenProp
   const pkM = pk2 && gr ? (() => {
     const sec = gr[pkI];
     if (!sec) return null;
-    const fi = EX.filter(e => {
+    const fi = allEx.filter(e => {
       const ms = !pS || e.n.toLowerCase().includes(pS.toLowerCase()) || e.f.toLowerCase().includes(pS.toLowerCase());
       const mt = !pTg || e.t.includes(pTg);
       return ms && mt;
@@ -169,7 +181,7 @@ export default function GeneratorScreen({ onClose, onSave }: GeneratorScreenProp
           <button onClick={() => { setGr(null); setGs(0); onClose(); }} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14 }}>← Home</button>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, background: A + "15", color: A, border: "1px solid " + A + "30", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Copy for Slack</button>
-            <button onClick={() => { setGr(generate(gc)); setGrT(""); setGrD(""); }} style={{ fontFamily: F, background: A + "15", color: A, border: "1px solid " + A + "30", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Reroll</button>
+            <button onClick={() => { setGr(generate(gc, allEx)); setGrT(""); setGrD(""); }} style={{ fontFamily: F, background: A + "15", color: A, border: "1px solid " + A + "30", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Reroll</button>
           </div>
         </div>
         <div style={{ fontSize: 20, fontWeight: 800, color: T1, marginBottom: 4 }}>Edit your beatdown</div>
@@ -230,7 +242,7 @@ export default function GeneratorScreen({ onClose, onSave }: GeneratorScreenProp
                         <button onClick={() => moveExFn(si, ei, -1)} disabled={ei === 0} style={{ background: "none", border: "none", color: ei === 0 ? T6 : T3, cursor: ei === 0 ? "default" : "pointer", fontSize: 12, padding: "2px 6px", lineHeight: 1 }}>▲</button>
                         <button onClick={() => moveExFn(si, ei, 1)} disabled={ei === sec.exercises.length - 1} style={{ background: "none", border: "none", color: ei === sec.exercises.length - 1 ? T6 : T3, cursor: ei === sec.exercises.length - 1 ? "default" : "pointer", fontSize: 12, padding: "2px 6px", lineHeight: 1 }}>▼</button>
                       </div>
-                      <span onClick={() => { const i = EX.find(x => x.n === ex.n); if (i) setExD(i); }} style={{ color: T1, fontSize: 15, fontWeight: 700, cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.2)" }}>{ex.n} <span style={{ fontSize: 10, color: T5 }}>ⓘ</span></span>
+                      <span onClick={() => { const i = allEx.find(x => x.n === ex.n); if (i) setExD(i); }} style={{ color: T1, fontSize: 15, fontWeight: 700, cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.2)" }}>{ex.n} <span style={{ fontSize: 10, color: T5 }}>ⓘ</span></span>
                     </div>
                     <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
                       <button onClick={() => setEditEx(null)} style={{ background: "none", border: "none", color: G, cursor: "pointer", fontSize: 12, fontFamily: F, fontWeight: 600 }}>Done</button>
@@ -349,7 +361,7 @@ export default function GeneratorScreen({ onClose, onSave }: GeneratorScreenProp
         })}
       </div>
       <div style={{ padding: "8px 24px 0" }}>
-        <button onClick={() => { setLd(true); setTimeout(() => { setGr(generate(gc)); setGrT(""); setGrD(""); setLd(false); }, 1000); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Generate beatdown</button>
+        <button onClick={() => { setLd(true); setTimeout(() => { setGr(generate(gc, allEx)); setGrT(""); setGrD(""); setLd(false); }, 1000); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Generate beatdown</button>
       </div>
     </div>
   );

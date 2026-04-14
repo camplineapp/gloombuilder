@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { EX, TAGS, DIFFS, SITES, EQUIP } from "@/lib/exercises";
+import { useState, useEffect } from "react";
+import { EX, TAGS, DIFFS, SITES, EQUIP, mapSupabaseExercise } from "@/lib/exercises";
 import type { Section, SectionExercise, ExerciseData } from "@/lib/exercises";
+import { loadSeedExercises } from "@/lib/db";
 import CopyModal from "@/components/CopyModal";
 
 const CD = "rgba(255,255,255,0.028)";
@@ -47,6 +48,17 @@ export default function BuilderScreen({ onClose, onSave }: BuilderScreenProps) {
   ]);
   const [shareLib, setShareLib] = useState(false);
   const [toast, setToast] = useState("");
+  const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
+
+  useEffect(() => {
+    loadSeedExercises().then(rows => {
+      if (rows.length > 0) {
+        const mapped = rows.map(r => mapSupabaseExercise(r as Record<string, unknown>));
+        setAllEx(mapped);
+      }
+    });
+  }, []);
+
   const [editEx, setEditEx] = useState<{ si: number; ei: number } | null>(null);
   const [eL, setEL] = useState<string | null>(null);
   const [aS, setAS] = useState("");
@@ -105,7 +117,7 @@ export default function BuilderScreen({ onClose, onSave }: BuilderScreenProps) {
   const pkM = pk2 ? (() => {
     const sec = secs[pkI];
     if (!sec) return null;
-    const fi = EX.filter(e => {
+    const fi = allEx.filter(e => {
       const ms = !pS || e.n.toLowerCase().includes(pS.toLowerCase()) || e.f.toLowerCase().includes(pS.toLowerCase());
       const mt = !pTg || e.t.includes(pTg);
       return ms && mt;
@@ -244,7 +256,7 @@ export default function BuilderScreen({ onClose, onSave }: BuilderScreenProps) {
                       <button onClick={() => moveExFn(si, ei, -1)} disabled={ei === 0} style={{ background: "none", border: "none", color: ei === 0 ? T6 : T3, cursor: ei === 0 ? "default" : "pointer", fontSize: 12, padding: "2px 6px", lineHeight: 1 }}>▲</button>
                       <button onClick={() => moveExFn(si, ei, 1)} disabled={ei === sec.exercises.length - 1} style={{ background: "none", border: "none", color: ei === sec.exercises.length - 1 ? T6 : T3, cursor: ei === sec.exercises.length - 1 ? "default" : "pointer", fontSize: 12, padding: "2px 6px", lineHeight: 1 }}>▼</button>
                     </div>
-                    <span onClick={() => { const i = EX.find(x => x.n === ex.n); if (i) setExD(i); }} style={{ color: T1, fontSize: 15, fontWeight: 700, cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.2)" }}>{ex.n} <span style={{ fontSize: 10, color: T5 }}>ⓘ</span></span>
+                    <span onClick={() => { const i = allEx.find(x => x.n === ex.n); if (i) setExD(i); }} style={{ color: T1, fontSize: 15, fontWeight: 700, cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.2)" }}>{ex.n} <span style={{ fontSize: 10, color: T5 }}>ⓘ</span></span>
                   </div>
                   <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
                     <button onClick={() => setEditEx(null)} style={{ background: "none", border: "none", color: G, cursor: "pointer", fontSize: 12, fontFamily: F, fontWeight: 600 }}>Done</button>

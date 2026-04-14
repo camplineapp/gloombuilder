@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { loadSeedExercises } from "@/lib/db";
+import { mapSupabaseExercise } from "@/lib/exercises";
+import type { ExerciseData } from "@/lib/exercises";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -74,6 +77,22 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
   const [cmtText, setCmtText] = useState("");
   const [votes, setVotes] = useState<Record<string | number, boolean>>({});
   const [toast, setToast] = useState("");
+  const [exMode, setExMode] = useState<"shared" | "database">("shared");
+  const [seedEx, setSeedEx] = useState<ExerciseData[]>([]);
+  const [dbSearch, setDbSearch] = useState("");
+  const [dbTag, setDbTag] = useState("All");
+  const [dbDetail, setDbDetail] = useState<ExerciseData | null>(null);
+
+  useEffect(() => {
+    if (exMode === "database" && seedEx.length === 0) {
+      loadSeedExercises().then(rows => {
+        if (rows.length > 0) {
+          const mapped = rows.map(r => mapSupabaseExercise(r as Record<string, unknown>));
+          setSeedEx(mapped);
+        }
+      });
+    }
+  }, [exMode, seedEx.length]);
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
   const toggleVote = (id: number | string) => { setVotes({ ...votes, [id]: !votes[id] }); };
@@ -221,12 +240,70 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
   return (
     <div style={{ padding: "0 24px" }}>
       <div style={{ fontSize: 28, fontWeight: 800, color: T1, marginBottom: 12 }}>Library</div>
-      <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Search by title, Q name, AO..." style={{ ...ist, marginBottom: 14 }} />
+      {!(libT === "exercises" && exMode === "database") ? <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Search by title, Q name, AO..." style={{ ...ist, marginBottom: 14 }} /> : null}
       <div style={{ display: "flex", gap: 0, background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid " + BD, padding: 3, marginBottom: 16 }}>
         {["beatdowns", "exercises"].map(sv => (
           <div key={sv} onClick={() => setLibT(sv)} style={{ flex: 1, textAlign: "center", padding: "10px 0", fontSize: 13, fontWeight: libT === sv ? 700 : 500, color: libT === sv ? G : T4, background: libT === sv ? "rgba(34,197,94,0.08)" : "transparent", borderRadius: 10, cursor: "pointer", textTransform: "capitalize" }}>{sv}</div>
         ))}
       </div>
+      {/* Exercises sub-toggle */}
+      {libT === "exercises" ? (
+        <div style={{ display: "flex", gap: 0, background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid " + BD, padding: 2, marginBottom: 14 }}>
+          {(["shared", "database"] as const).map(mode => (
+            <div key={mode} onClick={() => setExMode(mode)} style={{ flex: 1, textAlign: "center", padding: "8px 0", fontSize: 12, fontWeight: exMode === mode ? 700 : 500, color: exMode === mode ? P : T4, background: exMode === mode ? P + "12" : "transparent", borderRadius: 8, cursor: "pointer" }}>{mode === "shared" ? "Shared" : "Exercise Database"}</div>
+          ))}
+        </div>
+      ) : null}
+
+      {/* Exercise Database view */}
+      {libT === "exercises" && exMode === "database" ? (
+        <div>
+          <input value={dbSearch} onChange={e => setDbSearch(e.target.value)} placeholder="Search 904 exercises..." style={{ ...ist, marginBottom: 10 }} />
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 14 }}>
+            {["All", ...TAGS].map(t => (
+              <button key={t} onClick={() => setDbTag(t)} style={{ fontFamily: F, background: dbTag === t ? P + "20" : "rgba(255,255,255,0.04)", color: dbTag === t ? P : T5, border: "1px solid " + (dbTag === t ? P + "30" : BD), padding: "5px 11px", borderRadius: 20, fontSize: 10, cursor: "pointer", textTransform: "uppercase", fontWeight: 600 }}>{t}</button>
+            ))}
+          </div>
+          {seedEx.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>Loading exercises...</div> : null}
+          {seedEx.filter(e => {
+            const mS = !dbSearch.trim() || e.n.toLowerCase().includes(dbSearch.toLowerCase()) || e.f.toLowerCase().includes(dbSearch.toLowerCase()) || e.h.toLowerCase().includes(dbSearch.toLowerCase());
+            const mT = dbTag === "All" || e.t.includes(dbTag);
+            return mS && mT;
+          }).slice(0, 50).map(e => (
+            <div key={e.n} onClick={() => setDbDetail(e)} style={{ background: CD, border: "1px solid " + BD, borderLeft: "3px solid " + P + "40", borderRadius: 14, padding: "14px 18px", marginBottom: 6, cursor: "pointer" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: T2 }}>{e.n}</div>
+                  <div style={{ fontSize: 12, color: T4, marginTop: 3 }}>{e.f !== e.n ? e.f : ""}</div>
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: T3, marginTop: 6, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{e.h}</div>
+              {e.t.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" }}>{e.t.map(t => <span key={t} style={{ background: P + "10", color: P, fontSize: 10, padding: "2px 8px", borderRadius: 5, fontFamily: F, textTransform: "uppercase" }}>{t}</span>)}</div> : null}
+            </div>
+          ))}
+          {seedEx.length > 0 && seedEx.filter(e => {
+            const mS = !dbSearch.trim() || e.n.toLowerCase().includes(dbSearch.toLowerCase()) || e.f.toLowerCase().includes(dbSearch.toLowerCase()) || e.h.toLowerCase().includes(dbSearch.toLowerCase());
+            const mT = dbTag === "All" || e.t.includes(dbTag);
+            return mS && mT;
+          }).length > 50 ? <div style={{ textAlign: "center", color: T5, padding: 16, fontSize: 12 }}>Showing first 50 results. Search to narrow down.</div> : null}
+
+          {/* Exercise Database Detail */}
+          {dbDetail ? (
+            <div onClick={() => setDbDetail(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+              <div onClick={e => e.stopPropagation()} style={{ background: "#111318", borderRadius: "24px 24px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 430, maxHeight: "65vh", overflowY: "auto", border: "1px solid " + BD, borderBottom: "none" }}>
+                <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, margin: "0 auto 24px" }} />
+                <div style={{ fontFamily: F, fontSize: 24, fontWeight: 800, color: T1 }}>{dbDetail.n}</div>
+                {dbDetail.f !== dbDetail.n ? <div style={{ fontFamily: F, color: T4, fontSize: 13, marginTop: 6 }}>{dbDetail.f}</div> : null}
+                <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>{dbDetail.t.map(t => <span key={t} style={{ background: P + "12", color: P, fontSize: 10, padding: "3px 9px", borderRadius: 5, fontFamily: F, textTransform: "uppercase" }}>{t}</span>)}</div>
+                {dbDetail.s.length > 0 ? <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>{dbDetail.s.map(s => <span key={s} style={{ background: A + "12", color: A, fontSize: 10, padding: "3px 9px", borderRadius: 5, fontFamily: F }}>{s}</span>)}</div> : null}
+                <div style={{ fontFamily: F, marginTop: 24, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>How to execute</div>
+                <div style={{ fontFamily: F, color: T3, fontSize: 15, lineHeight: 1.8, marginTop: 12 }}>{dbDetail.h}</div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+      <>
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
         {[{ k: "new", l: "New" }, { k: "top", l: "Top voted" }, { k: "stolen", l: "Most stolen" }].map(sv => (
           <button key={sv.k} onClick={() => setFSort(sv.k)} style={{ fontFamily: F, background: fSort === sv.k ? G + "15" : "rgba(255,255,255,0.04)", color: fSort === sv.k ? G : T4, padding: "7px 14px", borderRadius: 10, fontSize: 13, border: "none", cursor: "pointer", fontWeight: fSort === sv.k ? 700 : 500 }}>{sv.l}</button>
@@ -260,6 +337,8 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
         </div>
       ))}
       {feed.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>No results match your filters</div> : null}
+      </>
+      )}
       {toastEl}
     </div>
   );

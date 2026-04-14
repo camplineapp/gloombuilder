@@ -1,12 +1,13 @@
-// Exercise database from prototype
+// Exercise database and generator
 export interface ExerciseData {
   n: string; // name
-  f: string; // full name
+  f: string; // full name / alias
   t: string[]; // tags
   s: string[]; // site requirements
   h: string; // how-to
 }
 
+// Local fallback exercises (45) — used if Supabase load fails
 export const EX: ExerciseData[] = [
   { n:"SSH",f:"Side Straddle Hop",t:["Cardio","Warm-Up"],s:[],h:"Jump feet apart while raising arms overhead. Jump back to start." },
   { n:"Imperial Walker",f:"Knee-to-Elbow March",t:["Core","Warm-Up"],s:[],h:"Hands behind head. Bring knee up to opposite elbow, alternating." },
@@ -87,6 +88,64 @@ export interface Section {
   label: string; color: string; exercises: SectionExercise[]; note: string;
 }
 
+// ════ MAP SUPABASE EXERCISE TO EXERCISEDATA ════
+
+const BODY_MAP: Record<string, string> = {
+  upper: "Chest", lower: "Legs", core: "Core", full_body: "Full Body",
+};
+
+const SITE_MAP: Record<string, string> = {
+  field: "field", parking_lot: "parking", track: "track",
+  stairs: "stairs", hill: "hills", court: "field", wall: "walls",
+  bench: "benches",
+};
+
+export function mapSupabaseExercise(row: Record<string, unknown>): ExerciseData {
+  const name = (row.name as string) || "";
+  const aliases = (row.aliases as string[]) || [];
+  const bodyPart = (row.body_part as string[]) || [];
+  const exerciseType = (row.exercise_type as string) || "";
+  const equipment = (row.equipment as string) || "none";
+  const siteType = (row.site_type as string[]) || [];
+  const intensity = (row.intensity as string) || "medium";
+  const difficulty = (row.difficulty as number) || 2;
+  const movementType = (row.movement_type as string) || "dynamic";
+  const isMary = (row.is_mary as boolean) || false;
+  const isTransport = (row.is_transport as boolean) || false;
+  const howTo = (row.how_to as string) || "";
+
+  // Build tags from Supabase fields
+  const tags: string[] = [];
+  bodyPart.forEach(bp => { if (BODY_MAP[bp]) tags.push(BODY_MAP[bp]); });
+  if (exerciseType === "cardio") tags.push("Cardio");
+  if (equipment === "coupon") tags.push("Coupon");
+  if (isMary) tags.push("Mary");
+  if (isTransport) tags.push("Transport");
+  if (movementType === "static_hold") tags.push("Static");
+  // Warm-up candidates: low intensity, beginner-intermediate difficulty, dynamic movement
+  if (intensity === "low" && difficulty <= 2 && movementType === "dynamic" && !isMary) {
+    tags.push("Warm-Up");
+  }
+  // Deduplicate
+  const uniqueTags = [...new Set(tags)];
+
+  // Build site requirements from Supabase site_type array
+  const sites: string[] = [];
+  siteType.forEach(st => {
+    if (st !== "any" && SITE_MAP[st]) sites.push(SITE_MAP[st]);
+  });
+
+  return {
+    n: name,
+    f: aliases.length > 0 ? aliases[0] : name,
+    t: uniqueTags,
+    s: sites,
+    h: howTo,
+  };
+}
+
+// ════ GENERATOR ════
+
 function pk(a: ExerciseData[], n: number) {
   return a.slice().sort(() => Math.random() - 0.5).slice(0, n);
 }
@@ -94,15 +153,17 @@ function rn(lo: number, hi: number) {
   return lo + Math.floor(Math.random() * (hi - lo + 1));
 }
 
-export function generate(cfg: GenConfig): Section[] {
+export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] {
   const G = "#22c55e", A = "#f59e0b", P = "#a78bfa";
+  const exList = exercises && exercises.length > 0 ? exercises : EX;
+
   let rL: number, rH: number;
   if (cfg.diff === "easy") { rL = 8; rH = 12; }
   else if (cfg.diff === "medium") { rL = 10; rH = 15; }
   else if (cfg.diff === "hard") { rL = 15; rH = 20; }
   else { rL = 20; rH = 30; }
 
-  const pool = EX.filter(e => e.s.length === 0 || e.s.some(s => cfg.sites.includes(s)));
+  const pool = exList.filter(e => e.s.length === 0 || e.s.some(s => cfg.sites.includes(s)));
   const wP = pool.filter(e => e.t.includes("Warm-Up"));
   let mP = pool.filter(e => !e.t.includes("Warm-Up") && !e.t.includes("Mary"));
   const yP = pool.filter(e => e.t.includes("Mary"));

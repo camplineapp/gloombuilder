@@ -207,3 +207,19 @@ export async function shareExercise(id: string) {
   }
   return true;
 }
+
+// ════ LOAD SEED EXERCISES FOR GENERATOR ════
+
+export async function loadSeedExercises() {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("exercises")
+    .select("name, aliases, how_to, body_part, exercise_type, equipment, site_type, cadence, difficulty, intensity, movement_type, is_mary, is_transport")
+    .eq("source", "seed");
+
+  if (error) {
+    console.error("Load seed exercises error:", error);
+    return [];
+  }
+  return data || [];
+}
