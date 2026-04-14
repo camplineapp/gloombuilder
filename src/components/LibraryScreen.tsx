@@ -37,7 +37,7 @@ interface FeedItem {
   id: number | string; src: string; nm: string; au: string; ao: string; reg: string;
   d: string; dur: string | null; aoT: string[]; v: number; u: number; cm: number;
   ds: string; dt: string; tp: string; tg?: string[]; et?: string[];
-  howTo?: string; comments: Comment[]; secs?: Section[];
+  howTo?: string; inspiredBy?: string; comments: Comment[]; secs?: Section[];
 }
 
 // Sample data removed — Library now uses only Supabase data
@@ -176,6 +176,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
             <div style={{ fontSize: 24, fontWeight: 800, color: T1 }}>{bd.nm}</div>
             {bd.src && bd.tp !== "exercise" ? (() => { const sb = srcBadge(bd.src); return <div style={{ marginTop: 8 }}><span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 6, fontWeight: 700, background: sb.bg, color: sb.c }}>{sb.l}</span></div>; })() : null}
             <div style={{ fontSize: 15, color: T4, marginTop: 6 }}>{bd.au} · {bd.ao}</div>
+            {bd.inspiredBy ? <div style={{ fontSize: 12, color: A, marginTop: 4 }}>Inspired by {bd.inspiredBy}</div> : null}
             <div style={{ fontSize: 13, color: T5, marginTop: 3 }}>{bd.dt}</div>
           </div>
           <span style={{ background: dc(bd.d) + "15", color: dc(bd.d), fontSize: 12, padding: "4px 10px", borderRadius: 6, fontWeight: 700, fontFamily: F, textTransform: "uppercase" }}>{bd.d}</span>
@@ -382,6 +383,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
                 {bd.src && bd.tp !== "exercise" ? (() => { const sb = srcBadge(bd.src); return <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, fontWeight: 700, background: sb.bg, color: sb.c }}>{sb.l}</span>; })() : null}
               </div>
               <div style={{ fontSize: 14, color: T4, marginTop: 5 }}>{bd.au} · {bd.ao}{bd.au === profName ? <span style={{ color: G, fontSize: 11, marginLeft: 6 }}>· You</span> : null}</div>
+              {bd.inspiredBy ? <div style={{ fontSize: 11, color: A, marginTop: 3 }}>Inspired by {bd.inspiredBy}</div> : null}
               <div style={{ fontSize: 12, color: T5, marginTop: 3 }}>{bd.dt}</div>
             </div>
             <span style={{ background: dc(bd.d) + "15", color: dc(bd.d), fontSize: 12, padding: "4px 10px", borderRadius: 6, fontWeight: 700, fontFamily: F, textTransform: "uppercase" }}>{bd.d}</span>

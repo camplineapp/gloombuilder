@@ -61,9 +61,10 @@ interface LockerScreenProps {
   onShareExercise?: (id: string) => void;
   onRemoveBookmark?: (id: string, itemType: "beatdown" | "exercise") => void;
   onSteal?: (id: string, itemType: "beatdown" | "exercise") => void;
+  onUpdateExercise?: (id: string, data: { nm: string; how: string; tags: string[] }) => void;
 }
 
-export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedItems = [], onNavigate, onDeleteBeatdown, onDeleteExercise, onShareBeatdown, onShareExercise, onRemoveBookmark, onSteal }: LockerScreenProps) {
+export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedItems = [], onNavigate, onDeleteBeatdown, onDeleteExercise, onShareBeatdown, onShareExercise, onRemoveBookmark, onSteal, onUpdateExercise }: LockerScreenProps) {
   const [lT, setLT] = useState(0);
   const [toast, setToast] = useState("");
   const [edLkExI, setEdLkExI] = useState<number | null>(null);
@@ -102,7 +103,7 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedIte
           </div>
         </div>
         {edLkExD.inspiredBy ? <div style={{ fontSize: 12, color: A, marginBottom: 14, fontStyle: "italic" }}>Inspired by {edLkExD.inspiredBy}</div> : null}
-        <button onClick={() => { const u = [...lkEx]; u[edLkExI] = edLkExD; setLkEx(u); fl("Exercise saved!"); setEdLkExI(null); setEdLkExD(null); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save exercise</button>
+        <button onClick={() => { onUpdateExercise?.(edLkExD.id, { nm: edLkExD.nm, how: edLkExD.how, tags: edLkExD.tags }); setEdLkExI(null); setEdLkExD(null); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save exercise</button>
         {toastEl}
       </div>
     );

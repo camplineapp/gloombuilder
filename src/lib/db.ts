@@ -51,7 +51,7 @@ export async function loadMyBeatdowns() {
 
   const { data, error } = await supabase
     .from("beatdowns")
-    .select("*")
+    .select("*, inspired_profile:inspired_by(f3_name)")
     .eq("created_by", user.id)
     .order("created_at", { ascending: false });
 
@@ -66,7 +66,7 @@ export async function loadPublicBeatdowns() {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("beatdowns")
-    .select("*, profiles:created_by(f3_name, ao, state, region)")
+    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
     .eq("is_public", true)
     .order("created_at", { ascending: false });
 
@@ -139,7 +139,7 @@ export async function loadMyExercises() {
 
   const { data, error } = await supabase
     .from("exercises")
-    .select("*")
+    .select("*, inspired_profile:inspired_by(f3_name)")
     .eq("created_by", user.id)
     .order("created_at", { ascending: false });
 
@@ -168,7 +168,7 @@ export async function loadPublicExercises() {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("exercises")
-    .select("*, profiles:created_by(f3_name, ao, state, region)")
+    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
     .eq("source", "community")
     .order("created_at", { ascending: false });
 
@@ -414,6 +414,7 @@ export async function stealExercise(originalId: string) {
       is_transport: original.is_transport,
       source: "private",
       created_by: user.id,
+      inspired_by: original.created_by,
     })
     .select()
     .single();
@@ -424,4 +425,30 @@ export async function stealExercise(originalId: string) {
   }
 
   return copy;
+}
+
+// ════ UPDATE EXERCISE ════
+
+export async function updateExercise(id: string, data: {
+  nm: string;
+  how: string;
+  tags: string[];
+}) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("exercises")
+    .update({
+      name: data.nm,
+      how_to: data.how,
+      body_part: data.tags.filter(t => ["Core", "Chest", "Arms", "Shoulders", "Legs"].includes(t)).map(t => t.toLowerCase()),
+      is_mary: data.tags.includes("Mary"),
+      is_transport: data.tags.includes("Transport"),
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Update exercise error:", error);
+    return false;
+  }
+  return true;
 }

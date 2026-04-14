@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
-import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, addVote, removeVote, loadUserVotes, addBookmark, removeBookmark, loadMyBookmarks, stealBeatdown, stealExercise } from "@/lib/db";
+import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, addVote, removeVote, loadUserVotes, addBookmark, removeBookmark, loadMyBookmarks, stealBeatdown, stealExercise, updateExercise } from "@/lib/db";
 import type { User } from "@supabase/supabase-js";
 import type { Section } from "@/lib/exercises";
 import AuthScreen from "@/components/AuthScreen";
@@ -57,6 +57,7 @@ export interface SharedItem {
   tg?: string[];
   et?: string[];
   howTo?: string;
+  inspiredBy?: string;
   comments: { au: string; ao: string; txt: string; dt: string }[];
   secs?: Section[];
 }
@@ -64,6 +65,7 @@ export interface SharedItem {
 // Convert Supabase beatdown row to LockerBeatdown
 function dbToLocker(row: Record<string, unknown>): LockerBeatdown {
   const hasInspiredBy = !!(row.inspired_by);
+  const inspiredProfile = row.inspired_profile as Record<string, unknown> | null;
   return {
     id: row.id as string,
     nm: (row.name as string) || "",
@@ -74,13 +76,14 @@ function dbToLocker(row: Record<string, unknown>): LockerBeatdown {
     secs: (row.sections as Section[]) || [],
     tg: (row.tags as string[]) || [],
     isPublic: (row.is_public as boolean) || false,
-    inspiredBy: hasInspiredBy ? "a fellow PAX" : undefined,
+    inspiredBy: hasInspiredBy ? (inspiredProfile?.f3_name as string) || "a fellow PAX" : undefined,
   };
 }
 
 // Convert Supabase beatdown row to SharedItem for Library
 function dbToShared(row: Record<string, unknown>): SharedItem {
   const profile = row.profiles as Record<string, unknown> | null;
+  const inspiredProfile = row.inspired_profile as Record<string, unknown> | null;
   return {
     id: row.id as string,
     nm: (row.name as string) || "",
@@ -98,20 +101,47 @@ function dbToShared(row: Record<string, unknown>): SharedItem {
     src: (row.generated as boolean) ? "GloomBuilder" : "Hand Built",
     tp: "beatdown",
     tg: (row.tags as string[]) || [],
+    inspiredBy: inspiredProfile ? (inspiredProfile.f3_name as string) || undefined : undefined,
     comments: [],
     secs: (row.sections as Section[]) || [],
   };
 }
 
+// Map raw body_part values to display tags
+function mapBodyPartTags(bodyPart: string[], isMary?: boolean, isTransport?: boolean): string[] {
+  const MAP: Record<string, string> = {
+    // Seed exercises use these
+    upper: "Chest", lower: "Legs", core: "Core", full_body: "Full Body",
+    // User-created exercises save lowercase display names
+    chest: "Chest", arms: "Arms", shoulders: "Shoulders", legs: "Legs",
+    cardio: "Cardio",
+  };
+  const tags: string[] = [];
+  (bodyPart || []).forEach(bp => {
+    const mapped = MAP[bp.toLowerCase()];
+    if (mapped) tags.push(mapped);
+  });
+  if (isMary) tags.push("Mary");
+  if (isTransport) tags.push("Transport");
+  return [...new Set(tags)]; // deduplicate
+}
+
 // Convert Supabase exercise row to LockerExercise
 function dbToExercise(row: Record<string, unknown>): LockerExercise {
+  const hasInspiredBy = !!(row.inspired_by);
+  const inspiredProfile = row.inspired_profile as Record<string, unknown> | null;
   return {
     id: row.id as string,
     nm: (row.name as string) || "",
-    tags: (row.body_part as string[]) || [],
+    tags: mapBodyPartTags(
+      (row.body_part as string[]) || [],
+      row.is_mary as boolean,
+      row.is_transport as boolean
+    ),
     how: (row.how_to as string) || (row.description as string) || "",
-    src: (row.source as string) || "community",
+    src: hasInspiredBy ? "Stolen" : (row.source as string) || "community",
     shared: (row.source as string) === "community",
+    inspiredBy: hasInspiredBy ? (inspiredProfile?.f3_name as string) || "a fellow PAX" : undefined,
   };
 }
 
@@ -166,6 +196,7 @@ export default function App() {
     const bdItems = publicBeatdowns.map(dbToShared);
     const exItems: SharedItem[] = publicExercises.map((row: Record<string, unknown>) => {
       const p = row.profiles as Record<string, unknown> | null;
+      const ip = row.inspired_profile as Record<string, unknown> | null;
       return {
         id: row.id as string,
         nm: (row.name as string) || "",
@@ -181,7 +212,12 @@ export default function App() {
         dt: new Date(row.created_at as string).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
         src: "Hand Built",
         tp: "exercise",
-        et: (row.body_part as string[]) || [],
+        et: mapBodyPartTags(
+          (row.body_part as string[]) || [],
+          row.is_mary as boolean,
+          row.is_transport as boolean
+        ),
+        inspiredBy: ip ? (ip.f3_name as string) || undefined : undefined,
         comments: [],
         secs: [],
       };
@@ -288,6 +324,7 @@ export default function App() {
     const success = await deleteBeatdown(id);
     if (success) {
       setLk(lk.filter(b => b.id !== id));
+      await loadLibrary();
       fl("Deleted");
     } else {
       fl("Error deleting");
@@ -298,6 +335,7 @@ export default function App() {
     const success = await deleteExercise(id);
     if (success) {
       setLkEx(lkEx.filter(e => e.id !== id));
+      await loadLibrary();
       fl("Deleted");
     } else {
       fl("Error deleting");
@@ -323,6 +361,17 @@ export default function App() {
       fl("Shared to community!");
     } else {
       fl("Error sharing");
+    }
+  };
+
+  const handleUpdateExercise = async (id: string, data: { nm: string; how: string; tags: string[] }) => {
+    const success = await updateExercise(id, data);
+    if (success) {
+      await loadLocker();
+      await loadLibrary();
+      fl("Exercise saved!");
+    } else {
+      fl("Error saving");
     }
   };
 
@@ -432,6 +481,7 @@ export default function App() {
           onShareExercise={handleShareExercise}
           onRemoveBookmark={handleBookmark}
           onSteal={handleSteal}
+          onUpdateExercise={handleUpdateExercise}
         />
       )}
       {tab === "profile" && <ProfileScreen onProfileSaved={checkUser} />}
