@@ -96,6 +96,7 @@ export async function deleteBeatdown(id: string) {
 export async function saveExercise(data: {
   nm: string;
   how: string;
+  desc: string;
   tags: string[];
   isPublic: boolean;
 }) {
@@ -107,7 +108,7 @@ export async function saveExercise(data: {
     .from("exercises")
     .insert({
       name: data.nm,
-      description: data.how,
+      description: data.desc || data.how,
       how_to: data.how,
       body_part: data.tags.filter(t => ["Core", "Chest", "Arms", "Shoulders", "Legs"].includes(t)).map(t => t.toLowerCase()),
       exercise_type: "strength",
@@ -214,7 +215,7 @@ export async function loadSeedExercises() {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("exercises")
-    .select("name, aliases, how_to, body_part, exercise_type, equipment, site_type, cadence, difficulty, intensity, movement_type, is_mary, is_transport")
+    .select("name, aliases, description, how_to, body_part, exercise_type, equipment, site_type, cadence, difficulty, intensity, movement_type, is_mary, is_transport")
     .eq("source", "seed");
 
   if (error) {

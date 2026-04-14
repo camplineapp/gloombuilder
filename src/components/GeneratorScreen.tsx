@@ -113,8 +113,9 @@ export default function GeneratorScreen({ onClose, onSave }: GeneratorScreenProp
         <div style={{ fontFamily: F, fontSize: 24, fontWeight: 800, color: T1 }}>{exD.n}</div>
         <div style={{ fontFamily: F, color: T4, fontSize: 13, marginTop: 6 }}>{exD.f}</div>
         <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>{exD.t.map(t => <span key={t} style={{ background: A + "12", color: A, fontSize: 10, padding: "3px 9px", borderRadius: 5, fontFamily: F, textTransform: "uppercase" }}>{t}</span>)}</div>
-        <div style={{ fontFamily: F, marginTop: 24, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>How to execute</div>
-        <div style={{ fontFamily: F, color: T3, fontSize: 15, lineHeight: 1.8, marginTop: 12 }}>{exD.h}</div>
+        {exD.d ? <><div style={{ fontFamily: F, marginTop: 20, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>Description</div><div style={{ fontFamily: F, color: T3, fontSize: 15, lineHeight: 1.7, marginTop: 8 }}>{exD.d}</div></> : null}
+        <div style={{ fontFamily: F, marginTop: 20, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>How to execute</div>
+        <div style={{ fontFamily: F, color: T3, fontSize: 15, lineHeight: 1.8, marginTop: 8 }}>{exD.h}</div>
       </div>
     </div>
   ) : null;
@@ -148,7 +149,7 @@ export default function GeneratorScreen({ onClose, onSave }: GeneratorScreenProp
             <div key={e.n} style={{ padding: "14px 16px", background: CD, border: "1px solid " + BD, borderRadius: 14, marginBottom: 6, display: "flex", alignItems: "center" }}>
               <div onClick={() => setExD(e)} style={{ cursor: "pointer", flex: 1 }}>
                 <div style={{ fontFamily: F, color: T2, fontWeight: 600, fontSize: 15 }}>{e.n} <span style={{ fontSize: 11, color: T5 }}>ⓘ</span></div>
-                <div style={{ fontFamily: F, color: T4, fontSize: 12, marginTop: 3 }}>{e.f}</div>
+                <div style={{ fontFamily: F, color: T4, fontSize: 12, marginTop: 3 }}>{e.d || e.f}</div>
               </div>
               <button onClick={() => {
                 const add: SectionExercise = { n: e.n, r: "10", c: "IC", nt: "" };

@@ -84,7 +84,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
   const [dbDetail, setDbDetail] = useState<ExerciseData | null>(null);
 
   useEffect(() => {
-    if (exMode === "database" && seedEx.length === 0) {
+    if (seedEx.length === 0) {
       loadSeedExercises().then(rows => {
         if (rows.length > 0) {
           const mapped = rows.map(r => mapSupabaseExercise(r as Record<string, unknown>));
@@ -92,13 +92,29 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
         }
       });
     }
-  }, [exMode, seedEx.length]);
+  }, [seedEx.length]);
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
   const toggleVote = (id: number | string) => { setVotes({ ...votes, [id]: !votes[id] }); };
 
   const toastEl = toast ? (
     <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: G, color: BG, padding: "10px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: F, zIndex: 100 }}>{toast}</div>
+  ) : null;
+
+  // Exercise detail modal (shared between database browser and beatdown detail)
+  const exDetailModal = dbDetail ? (
+    <div onClick={() => setDbDetail(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#111318", borderRadius: "24px 24px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 430, maxHeight: "65vh", overflowY: "auto", border: "1px solid " + BD, borderBottom: "none" }}>
+        <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, margin: "0 auto 24px" }} />
+        <div style={{ fontFamily: F, fontSize: 24, fontWeight: 800, color: T1 }}>{dbDetail.n}</div>
+        {dbDetail.f !== dbDetail.n ? <div style={{ fontFamily: F, color: T4, fontSize: 13, marginTop: 6 }}>{dbDetail.f}</div> : null}
+        <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>{dbDetail.t.map(t => <span key={t} style={{ background: P + "12", color: P, fontSize: 10, padding: "3px 9px", borderRadius: 5, fontFamily: F, textTransform: "uppercase" }}>{t}</span>)}</div>
+        {dbDetail.s.length > 0 ? <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>{dbDetail.s.map(s => <span key={s} style={{ background: A + "12", color: A, fontSize: 10, padding: "3px 9px", borderRadius: 5, fontFamily: F }}>{s}</span>)}</div> : null}
+        {dbDetail.d ? <><div style={{ fontFamily: F, marginTop: 20, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>Description</div><div style={{ fontFamily: F, color: T3, fontSize: 15, lineHeight: 1.7, marginTop: 8 }}>{dbDetail.d}</div></> : null}
+        <div style={{ fontFamily: F, marginTop: 20, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>How to execute</div>
+        <div style={{ fontFamily: F, color: T3, fontSize: 15, lineHeight: 1.8, marginTop: 8 }}>{dbDetail.h}</div>
+      </div>
+    </div>
   ) : null;
 
   const filterBtn = (label: string, sel: boolean, onClick: () => void) => (
@@ -114,6 +130,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
 
     return (
       <div style={{ padding: "0 24px" }}>
+        {exDetailModal}
         <button onClick={() => { setLibDet(null); setShowAllCmt(false); }} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14, marginBottom: 20 }}>← Library</button>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ flex: 1 }}>
@@ -134,9 +151,9 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
           <div key={si} style={{ marginTop: 16 }}>
             <div style={{ color: sec.color, fontSize: 12, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8, fontWeight: 700 }}>{sec.label}</div>
             {sec.exercises.map((ex, ei) => (
-              <div key={ei} style={{ padding: "10px 14px", background: CD, borderLeft: "3px solid " + sec.color + "40", borderRadius: "0 10px 10px 0", marginBottom: 4 }}>
+              <div key={ei} onClick={() => { const found = seedEx.find(se => se.n.toLowerCase() === ex.n.toLowerCase()); if (found) setDbDetail(found); }} style={{ padding: "10px 14px", background: CD, borderLeft: "3px solid " + sec.color + "40", borderRadius: "0 10px 10px 0", marginBottom: 4, cursor: "pointer" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ color: T2, fontSize: 15, fontWeight: 600 }}>{ex.n}</span>
+                  <span style={{ color: T2, fontSize: 15, fontWeight: 600, borderBottom: "1px dashed rgba(255,255,255,0.15)" }}>{ex.n} <span style={{ fontSize: 10, color: T5 }}>ⓘ</span></span>
                   <span style={{ color: sec.color, fontSize: 13, fontWeight: 600 }}>x{ex.r} {ex.c}</span>
                 </div>
                 {ex.nt ? <div style={{ color: T4, fontSize: 12, marginTop: 4, fontStyle: "italic" }}>{ex.nt}</div> : null}
@@ -239,6 +256,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
 
   return (
     <div style={{ padding: "0 24px" }}>
+      {exDetailModal}
       <div style={{ fontSize: 28, fontWeight: 800, color: T1, marginBottom: 12 }}>Library</div>
       {!(libT === "exercises" && exMode === "database") ? <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Search by title, Q name, AO..." style={{ ...ist, marginBottom: 14 }} /> : null}
       <div style={{ display: "flex", gap: 0, background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid " + BD, padding: 3, marginBottom: 16 }}>
@@ -265,42 +283,42 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
             ))}
           </div>
           {seedEx.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>Loading exercises...</div> : null}
-          {seedEx.filter(e => {
-            const mS = !dbSearch.trim() || e.n.toLowerCase().includes(dbSearch.toLowerCase()) || e.f.toLowerCase().includes(dbSearch.toLowerCase()) || e.h.toLowerCase().includes(dbSearch.toLowerCase());
-            const mT = dbTag === "All" || e.t.includes(dbTag);
-            return mS && mT;
-          }).slice(0, 50).map(e => (
-            <div key={e.n} onClick={() => setDbDetail(e)} style={{ background: CD, border: "1px solid " + BD, borderLeft: "3px solid " + P + "40", borderRadius: 14, padding: "14px 18px", marginBottom: 6, cursor: "pointer" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <div>
+          {(() => {
+            let filtered = seedEx.filter(e => {
+              const mS = !dbSearch.trim() || e.n.toLowerCase().includes(dbSearch.toLowerCase()) || e.f.toLowerCase().includes(dbSearch.toLowerCase()) || (e.d || "").toLowerCase().includes(dbSearch.toLowerCase());
+              const mT = dbTag === "All" || e.t.includes(dbTag);
+              return mS && mT;
+            });
+            // Sort: name matches first, then alias, then description
+            if (dbSearch.trim()) {
+              const q = dbSearch.toLowerCase();
+              filtered.sort((a, b) => {
+                const aName = a.n.toLowerCase().includes(q) ? 0 : 1;
+                const bName = b.n.toLowerCase().includes(q) ? 0 : 1;
+                if (aName !== bName) return aName - bName;
+                const aAlias = a.f.toLowerCase().includes(q) ? 0 : 1;
+                const bAlias = b.f.toLowerCase().includes(q) ? 0 : 1;
+                return aAlias - bAlias;
+              });
+            }
+            const shown = filtered.slice(0, 50);
+            return (
+              <>
+              {shown.map(e => (
+                <div key={e.n} onClick={() => setDbDetail(e)} style={{ background: CD, border: "1px solid " + BD, borderLeft: "3px solid " + P + "40", borderRadius: 14, padding: "14px 18px", marginBottom: 6, cursor: "pointer" }}>
                   <div style={{ fontSize: 15, fontWeight: 700, color: T2 }}>{e.n}</div>
-                  <div style={{ fontSize: 12, color: T4, marginTop: 3 }}>{e.f !== e.n ? e.f : ""}</div>
+                  {e.f !== e.n ? <div style={{ fontSize: 12, color: T4, marginTop: 3 }}>{e.f}</div> : null}
+                  {e.d ? <div style={{ fontSize: 13, color: T3, marginTop: 6, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{e.d}</div> : null}
+                  {e.t.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" }}>{e.t.map(t => <span key={t} style={{ background: P + "10", color: P, fontSize: 10, padding: "2px 8px", borderRadius: 5, fontFamily: F, textTransform: "uppercase" }}>{t}</span>)}</div> : null}
                 </div>
-              </div>
-              <div style={{ fontSize: 13, color: T3, marginTop: 6, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{e.h}</div>
-              {e.t.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" }}>{e.t.map(t => <span key={t} style={{ background: P + "10", color: P, fontSize: 10, padding: "2px 8px", borderRadius: 5, fontFamily: F, textTransform: "uppercase" }}>{t}</span>)}</div> : null}
-            </div>
-          ))}
-          {seedEx.length > 0 && seedEx.filter(e => {
-            const mS = !dbSearch.trim() || e.n.toLowerCase().includes(dbSearch.toLowerCase()) || e.f.toLowerCase().includes(dbSearch.toLowerCase()) || e.h.toLowerCase().includes(dbSearch.toLowerCase());
-            const mT = dbTag === "All" || e.t.includes(dbTag);
-            return mS && mT;
-          }).length > 50 ? <div style={{ textAlign: "center", color: T5, padding: 16, fontSize: 12 }}>Showing first 50 results. Search to narrow down.</div> : null}
+              ))}
+              {filtered.length === 0 && seedEx.length > 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>No exercises match your search</div> : null}
+              {filtered.length > 50 ? <div style={{ textAlign: "center", color: T5, padding: 16, fontSize: 12 }}>Showing first 50 of {filtered.length} results. Search to narrow down.</div> : null}
+              </>
+            );
+          })()}
 
-          {/* Exercise Database Detail */}
-          {dbDetail ? (
-            <div onClick={() => setDbDetail(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-              <div onClick={e => e.stopPropagation()} style={{ background: "#111318", borderRadius: "24px 24px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 430, maxHeight: "65vh", overflowY: "auto", border: "1px solid " + BD, borderBottom: "none" }}>
-                <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, margin: "0 auto 24px" }} />
-                <div style={{ fontFamily: F, fontSize: 24, fontWeight: 800, color: T1 }}>{dbDetail.n}</div>
-                {dbDetail.f !== dbDetail.n ? <div style={{ fontFamily: F, color: T4, fontSize: 13, marginTop: 6 }}>{dbDetail.f}</div> : null}
-                <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>{dbDetail.t.map(t => <span key={t} style={{ background: P + "12", color: P, fontSize: 10, padding: "3px 9px", borderRadius: 5, fontFamily: F, textTransform: "uppercase" }}>{t}</span>)}</div>
-                {dbDetail.s.length > 0 ? <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>{dbDetail.s.map(s => <span key={s} style={{ background: A + "12", color: A, fontSize: 10, padding: "3px 9px", borderRadius: 5, fontFamily: F }}>{s}</span>)}</div> : null}
-                <div style={{ fontFamily: F, marginTop: 24, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>How to execute</div>
-                <div style={{ fontFamily: F, color: T3, fontSize: 15, lineHeight: 1.8, marginTop: 12 }}>{dbDetail.h}</div>
-              </div>
-            </div>
-          ) : null}
+          {exDetailModal}
         </div>
       ) : (
       <>

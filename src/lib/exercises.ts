@@ -5,6 +5,7 @@ export interface ExerciseData {
   t: string[]; // tags
   s: string[]; // site requirements
   h: string; // how-to
+  d?: string; // short description
 }
 
 // Local fallback exercises (45) — used if Supabase load fails
@@ -90,9 +91,17 @@ export interface Section {
 
 // ════ MAP SUPABASE EXERCISE TO EXERCISEDATA ════
 
-const BODY_MAP: Record<string, string> = {
-  upper: "Chest", lower: "Legs", core: "Core", full_body: "Full Body",
+const BODY_MAP: Record<string, string[]> = {
+  upper: ["Chest", "Arms", "Shoulders"],
+  lower: ["Legs"],
+  core: ["Core"],
+  full_body: ["Full Body"],
 };
+
+// Keyword detection for more specific upper body tagging
+const ARM_KEYWORDS = ["curl", "row", "pull-up", "pull up", "tricep", "hammer", "dip"];
+const SHOULDER_KEYWORDS = ["shoulder", "press", "overhead", "pike", "raise", "shrug", "arnold"];
+const CHEST_KEYWORDS = ["merkin", "push-up", "push up", "fly", "bench press", "chest"];
 
 const SITE_MAP: Record<string, string> = {
   field: "field", parking_lot: "parking", track: "track",
@@ -102,6 +111,7 @@ const SITE_MAP: Record<string, string> = {
 
 export function mapSupabaseExercise(row: Record<string, unknown>): ExerciseData {
   const name = (row.name as string) || "";
+  const nameLower = name.toLowerCase();
   const aliases = (row.aliases as string[]) || [];
   const bodyPart = (row.body_part as string[]) || [];
   const exerciseType = (row.exercise_type as string) || "";
@@ -113,10 +123,30 @@ export function mapSupabaseExercise(row: Record<string, unknown>): ExerciseData 
   const isMary = (row.is_mary as boolean) || false;
   const isTransport = (row.is_transport as boolean) || false;
   const howTo = (row.how_to as string) || "";
+  const description = (row.description as string) || "";
 
   // Build tags from Supabase fields
   const tags: string[] = [];
-  bodyPart.forEach(bp => { if (BODY_MAP[bp]) tags.push(BODY_MAP[bp]); });
+
+  // Body part mapping — smart detection for upper body
+  bodyPart.forEach(bp => {
+    if (bp === "upper") {
+      // Use keyword detection for specific upper body tags
+      const hasArm = ARM_KEYWORDS.some(k => nameLower.includes(k));
+      const hasShoulder = SHOULDER_KEYWORDS.some(k => nameLower.includes(k));
+      const hasChest = CHEST_KEYWORDS.some(k => nameLower.includes(k));
+      if (hasArm) tags.push("Arms");
+      if (hasShoulder) tags.push("Shoulders");
+      if (hasChest) tags.push("Chest");
+      // If no specific match, add all three so exercise is discoverable
+      if (!hasArm && !hasShoulder && !hasChest) {
+        tags.push("Chest", "Arms", "Shoulders");
+      }
+    } else if (BODY_MAP[bp]) {
+      tags.push(...BODY_MAP[bp]);
+    }
+  });
+
   if (exerciseType === "cardio") tags.push("Cardio");
   if (equipment === "coupon") tags.push("Coupon");
   if (isMary) tags.push("Mary");
@@ -141,6 +171,7 @@ export function mapSupabaseExercise(row: Record<string, unknown>): ExerciseData 
     t: uniqueTags,
     s: sites,
     h: howTo,
+    d: description,
   };
 }
 
@@ -179,7 +210,19 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
     n: e.n, r: String(rn(rL, rH)), c: "IC", nt: "",
   }));
 
-  const t = pk(mP, tC).map(e => {
+  // When coupon selected, guarantee 2-3 coupon exercises in The Thang
+  let thangPicks: ExerciseData[];
+  if (cfg.eq.includes("coupon")) {
+    const couponPool = mP.filter(e => e.t.includes("Coupon"));
+    const nonCouponPool = mP.filter(e => !e.t.includes("Coupon"));
+    const couponCount = Math.min(Math.ceil(tC / 3), couponPool.length);
+    const nonCouponCount = tC - couponCount;
+    thangPicks = [...pk(couponPool, couponCount), ...pk(nonCouponPool, nonCouponCount)];
+  } else {
+    thangPicks = pk(mP, tC);
+  }
+
+  const t = thangPicks.map(e => {
     const iS = e.t.includes("Static");
     const r = iS ? (cfg.diff === "beast" ? "90 sec" : "45 sec") : String(rn(rL, rH));
     let nt = "";

@@ -19,11 +19,12 @@ const ist: React.CSSProperties = {
 
 interface CreateExerciseScreenProps {
   onClose: () => void;
-  onSave: (exercise: { nm: string; tags: string[]; how: string; share: boolean }) => void;
+  onSave: (exercise: { nm: string; tags: string[]; how: string; desc: string; share: boolean }) => void;
 }
 
 export default function CreateExerciseScreen({ onClose, onSave }: CreateExerciseScreenProps) {
   const [cxN, setCxN] = useState("");
+  const [cxDesc, setCxDesc] = useState("");
   const [cxH, setCxH] = useState("");
   const [cxT, setCxT] = useState<string[]>([]);
   const [cxShare, setCxShare] = useState(false);
@@ -48,10 +49,16 @@ export default function CreateExerciseScreen({ onClose, onSave }: CreateExercise
         <input value={cxN} maxLength={50} onChange={e => setCxN(e.target.value)} placeholder="e.g. The Bishop Special" style={ist} />
       </div>
 
+      {/* Description */}
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ fontFamily: F, color: T5, fontSize: 12, textTransform: "uppercase", letterSpacing: 1.5, display: "block", marginBottom: 4, fontWeight: 600 }}>Description</label>
+        <textarea value={cxDesc} maxLength={200} onChange={e => setCxDesc(e.target.value)} placeholder="Short description of what this exercise is..." rows={2} style={{ ...ist, resize: "vertical" as const }} />
+      </div>
+
       {/* How-to */}
       <div style={{ marginBottom: 14 }}>
         <label style={{ fontFamily: F, color: T5, fontSize: 12, textTransform: "uppercase", letterSpacing: 1.5, display: "block", marginBottom: 4, fontWeight: 600 }}>How-to</label>
-        <textarea value={cxH} maxLength={500} onChange={e => setCxH(e.target.value)} placeholder="Describe how to perform this exercise..." rows={4} style={{ ...ist, resize: "vertical" as const }} />
+        <textarea value={cxH} maxLength={500} onChange={e => setCxH(e.target.value)} placeholder="Step by step instructions to perform this exercise..." rows={4} style={{ ...ist, resize: "vertical" as const }} />
       </div>
 
       {/* Tags */}
@@ -74,7 +81,7 @@ export default function CreateExerciseScreen({ onClose, onSave }: CreateExercise
       {/* Save */}
       <button onClick={() => {
         if (!cxN.trim()) { fl("Name required"); return; }
-        onSave({ nm: cxN, tags: cxT, how: cxH, share: cxShare });
+        onSave({ nm: cxN, tags: cxT, how: cxH, desc: cxDesc, share: cxShare });
       }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save exercise to locker</button>
     </div>
   );

@@ -253,10 +253,11 @@ export default function App() {
     setTab("locker");
   };
 
-  const handleSaveExercise = async (ex: { nm: string; tags: string[]; how: string; share: boolean }) => {
+  const handleSaveExercise = async (ex: { nm: string; tags: string[]; how: string; desc: string; share: boolean }) => {
     const result = await saveExercise({
       nm: ex.nm,
       how: ex.how,
+      desc: ex.desc,
       tags: ex.tags,
       isPublic: ex.share,
     });
