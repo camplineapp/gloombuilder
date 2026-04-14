@@ -45,6 +45,30 @@ export default function ProfileScreen({ onProfileSaved }: ProfileScreenProps) {
   const [profState, setProfState] = useState("New Jersey");
   const [profRegion, setProfRegion] = useState("Northeast");
   const [customAmt, setCustomAmt] = useState("");
+  const [donating, setDonating] = useState(false);
+
+  const handleDonate = async (amount: number | string) => {
+    const amt = Number(amount);
+    if (!amt || amt < 1) { fl("Minimum $1"); return; }
+    setDonating(true);
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: amt }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        fl(data.error || "Payment failed");
+        setDonating(false);
+      }
+    } catch {
+      fl("Payment failed");
+      setDonating(false);
+    }
+  };
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -225,7 +249,37 @@ export default function ProfileScreen({ onProfileSaved }: ProfileScreenProps) {
               marginBottom: 10,
             }}
           >
-            The community is the heart
+            Emergency Q? No sweat.
+          </div>
+          <p style={{ color: T3, fontSize: 14, lineHeight: 1.8, margin: 0 }}>
+            We&apos;ve all been there. You roll up to the AO and the Q
+            fartsacked. No call, no text — just 15 PAX staring at you.
+            Don&apos;t spiral. Open GloomBuilder, generate a beatdown in 30
+            seconds, or steal one straight from the community library.
+            You&apos;re locked and loaded before the first SSH. The Gloom
+            doesn&apos;t wait, and neither does GloomBuilder.
+          </p>
+        </div>
+
+        <div
+          style={{
+            background: CD,
+            border: "1px solid " + BD,
+            borderRadius: 18,
+            padding: 24,
+            marginTop: 16,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 14,
+              fontWeight: 800,
+              color: A,
+              textTransform: "uppercase",
+              marginBottom: 10,
+            }}
+          >
+            Iron sharpens iron
           </div>
           <p style={{ color: T3, fontSize: 14, lineHeight: 1.8, margin: 0 }}>
             The generator gets you in the door, but the community library is
@@ -253,7 +307,7 @@ export default function ProfileScreen({ onProfileSaved }: ProfileScreenProps) {
               marginBottom: 8,
             }}
           >
-            Support GloomBuilder
+            Support GloomBuilder 💚
           </div>
           <div
             style={{
@@ -263,19 +317,21 @@ export default function ProfileScreen({ onProfileSaved }: ProfileScreenProps) {
               marginBottom: 16,
             }}
           >
-            Your support keeps GloomBuilder running and growing — server costs,
-            new features, and the time it takes to keep building something
-            useful for Qs everywhere.
+            Built by a PAX for the PAX — out of pocket, on my own time, because
+            this tool needs to exist. If GloomBuilder has been worth showing up
+            to, show some love, brother. Every dollar helps keep it going and
+            the features coming.
           </div>
-          <div style={{ display: "flex", gap: 10 }}>
+          {donating ? <div style={{ textAlign: "center", color: G, fontSize: 14, fontWeight: 700, padding: 20 }}>Redirecting to payment...</div> : null}
+          <div style={{ display: "flex", gap: 10, opacity: donating ? 0.4 : 1, pointerEvents: donating ? "none" : "auto" }}>
             {[
-              { a: 3, l: "Post with me" },
-              { a: 7, l: "Ruck plate" },
-              { a: 15, l: "You're a HIM" },
+              { a: 3, l: "Light coupon" },
+              { a: 7, l: "Standard block" },
+              { a: 15, l: "Heavy carry" },
             ].map((t) => (
               <button
                 key={t.a}
-                onClick={() => fl("Thanks brother!")}
+                onClick={() => handleDonate(t.a)}
                 style={{
                   background: CD,
                   border: "1px solid " + BD,
@@ -344,8 +400,7 @@ export default function ProfileScreen({ onProfileSaved }: ProfileScreenProps) {
                   fl("Enter an amount");
                   return;
                 }
-                fl("Thanks brother! $" + customAmt);
-                setCustomAmt("");
+                handleDonate(customAmt);
               }}
               style={{
                 background: CD,
