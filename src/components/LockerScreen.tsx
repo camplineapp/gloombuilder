@@ -62,9 +62,10 @@ interface LockerScreenProps {
   onRemoveBookmark?: (id: string, itemType: "beatdown" | "exercise") => void;
   onSteal?: (id: string, itemType: "beatdown" | "exercise") => void;
   onUpdateExercise?: (id: string, data: { nm: string; how: string; tags: string[] }) => void;
+  onEditBeatdown?: (bd: LockerBeatdown) => void;
 }
 
-export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedItems = [], onNavigate, onDeleteBeatdown, onDeleteExercise, onShareBeatdown, onShareExercise, onRemoveBookmark, onSteal, onUpdateExercise }: LockerScreenProps) {
+export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedItems = [], onNavigate, onDeleteBeatdown, onDeleteExercise, onShareBeatdown, onShareExercise, onRemoveBookmark, onSteal, onUpdateExercise, onEditBeatdown }: LockerScreenProps) {
   const [lT, setLT] = useState(0);
   const [toast, setToast] = useState("");
   const [edLkExI, setEdLkExI] = useState<number | null>(null);
@@ -150,7 +151,7 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedIte
                 </div>
                 {bd.tg && bd.tg.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 10, flexWrap: "wrap" }}>{bd.tg.map(t => <span key={t} style={{ background: "rgba(255,255,255,0.04)", color: T4, fontSize: 10, padding: "2px 9px", borderRadius: 5, fontFamily: F }}>{t}</span>)}</div> : null}
                 <div style={{ display: "flex", gap: 8, marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                  <button onClick={() => fl("Edit coming soon")} style={{ fontFamily: F, background: G + "12", color: G, border: "1px solid " + G + "20", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Edit</button>
+                  <button onClick={() => onEditBeatdown?.(bd)} style={{ fontFamily: F, background: G + "12", color: G, border: "1px solid " + G + "20", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Edit</button>
                   <button onClick={() => setCopySecs(bd)} style={{ fontFamily: F, background: "rgba(255,255,255,0.04)", color: T3, border: "1px solid " + BD, padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Copy for Slack</button>
                   {!bd.isPublic ? <button onClick={() => { if (confirm("Share to community? This can't be undone.")) onShareBeatdown?.(bd.id); }} style={{ fontFamily: F, background: A + "12", color: A, border: "1px solid " + A + "20", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Share</button> : <span style={{ color: G, fontSize: 12, padding: "6px 10px", display: "flex", alignItems: "center" }}>✓ Shared</span>}
                   <span onClick={() => onDeleteBeatdown?.(bd.id)} style={{ color: R, padding: "6px 10px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center" }}>Delete</span>

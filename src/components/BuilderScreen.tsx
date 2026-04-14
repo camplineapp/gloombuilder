@@ -32,21 +32,29 @@ interface BuilderScreenProps {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
   }) => void;
+  editData?: {
+    id: string; nm: string; desc: string; d: string; secs: Section[];
+    tg: string[]; dur: string | null; sites: string[]; eq: string[]; isPublic?: boolean;
+  };
+  onUpdate?: (id: string, data: {
+    nm: string; desc: string; d: string; secs: Section[]; tg: string[];
+    dur: string | null; sites: string[]; eq: string[];
+  }) => void;
 }
 
-export default function BuilderScreen({ onClose, onSave }: BuilderScreenProps) {
-  const [bT, setBT] = useState("");
-  const [bD, setBD] = useState("");
-  const [bDur, setBDur] = useState<string | null>(null);
-  const [bDiff, setBDiff] = useState<string | null>(null);
-  const [bSites, setBSites] = useState<string[]>([]);
-  const [bEq, setBEq] = useState<string[]>([]);
-  const [secs, setSecs] = useState<Section[]>([
+export default function BuilderScreen({ onClose, onSave, editData, onUpdate }: BuilderScreenProps) {
+  const [bT, setBT] = useState(editData?.nm || "");
+  const [bD, setBD] = useState(editData?.desc || "");
+  const [bDur, setBDur] = useState<string | null>(editData?.dur || null);
+  const [bDiff, setBDiff] = useState<string | null>(editData?.d || null);
+  const [bSites, setBSites] = useState<string[]>(editData?.sites || []);
+  const [bEq, setBEq] = useState<string[]>(editData?.eq || []);
+  const [secs, setSecs] = useState<Section[]>(editData?.secs && editData.secs.length > 0 ? editData.secs : [
     { label: "Warmup", color: G, exercises: [], note: "" },
     { label: "The Thang", color: A, exercises: [], note: "" },
     { label: "Mary", color: P, exercises: [], note: "" },
   ]);
-  const [shareLib, setShareLib] = useState(false);
+  const [shareLib, setShareLib] = useState(editData?.isPublic || false);
   const [toast, setToast] = useState("");
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
 
@@ -175,19 +183,21 @@ export default function BuilderScreen({ onClose, onSave }: BuilderScreenProps) {
       {exDM}{pkM}{toastEl}
       {copyModal ? <CopyModal secs={secs} beatdownName={bT || "Untitled Beatdown"} beatdownDesc={bD} qName="The Bishop" onClose={() => setCopyModal(false)} onToast={fl} /> : null}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <button onClick={onClose} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14 }}>← Home</button>
+        <button onClick={onClose} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14 }}>{editData ? "← Locker" : "← Home"}</button>
         <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, background: A + "15", color: A, border: "1px solid " + A + "30", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Copy for Slack</button>
       </div>
-      <div style={{ fontSize: 20, fontWeight: 800, color: T1, marginBottom: 4 }}>Build beatdown</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color: T1, marginBottom: 4 }}>{editData ? "Edit beatdown" : "Build beatdown"}</div>
       <input value={bT} maxLength={50} onChange={e => setBT(e.target.value)} placeholder="Name this beatdown..." style={{ ...ist, background: "none", border: "none", borderBottom: "2px solid " + BD, borderRadius: 0, fontSize: 22, fontWeight: 800, color: T1, padding: "0 0 10px" }} />
       <textarea value={bD} onChange={e => setBD(e.target.value)} placeholder="Describe this beatdown..." rows={2} style={{ ...ist, marginTop: 10, resize: "vertical", fontStyle: "italic" }} />
       <div style={{ color: T5, fontSize: 12, marginTop: 8 }}>by The Bishop · F3 Essex</div>
 
-      {/* Share toggle */}
+      {/* Share toggle — hidden in edit mode */}
+      {!editData ? (
       <div onClick={() => { if (!shareLib) { if (confirm("Share to community? This can't be undone.")) setShareLib(true); } else { setShareLib(false); } }} style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14, padding: "10px 14px", background: shareLib ? G + "10" : CD, border: "1px solid " + (shareLib ? G + "25" : BD), borderRadius: 10, cursor: "pointer" }}>
         <div style={{ width: 18, height: 18, borderRadius: 4, border: "2px solid " + (shareLib ? G : T5), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: BG, background: shareLib ? G : "transparent" }}>{shareLib ? "✓" : ""}</div>
         <span style={{ fontSize: 13, color: shareLib ? G : T4 }}>Share to community library</span>
       </div>
+      ) : null}
 
       {/* Beatdown details */}
       <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -299,11 +309,16 @@ export default function BuilderScreen({ onClose, onSave }: BuilderScreenProps) {
 
       {/* Save */}
       <div style={{ marginTop: 32 }}>
+        {editData?.isPublic ? <div style={{ fontFamily: F, fontSize: 12, color: A, textAlign: "center", marginBottom: 10 }}>This beatdown is shared. Edits will be visible to everyone.</div> : null}
         <button onClick={() => {
           const nm = bT.trim() || "Untitled";
           const tgs = [bDur, (DIFFS.find(x => x.id === bDiff) || { l: "" }).l, ...bSites.map(s => (SITES.find(x => x.id === s) || { l: "" }).l), ...bEq.filter(e => e !== "none").map(e => (EQUIP.find(x => x.id === e) || { l: "" }).l)].filter((v): v is string => Boolean(v));
-          onSave({ nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib });
-        }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save to locker</button>
+          if (editData && onUpdate) {
+            onUpdate(editData.id, { nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, dur: bDur, sites: bSites, eq: bEq });
+          } else {
+            onSave({ nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib });
+          }
+        }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>{editData ? "Save changes" : "Save to locker"}</button>
       </div>
     </div>
   );

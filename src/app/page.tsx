@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
-import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, addVote, removeVote, loadUserVotes, addBookmark, removeBookmark, loadMyBookmarks, stealBeatdown, stealExercise, updateExercise } from "@/lib/db";
+import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, addVote, removeVote, loadUserVotes, addBookmark, removeBookmark, loadMyBookmarks, stealBeatdown, stealExercise, updateExercise, updateBeatdown } from "@/lib/db";
 import type { User } from "@supabase/supabase-js";
 import type { Section } from "@/lib/exercises";
 import AuthScreen from "@/components/AuthScreen";
@@ -146,6 +146,7 @@ function dbToExercise(row: Record<string, unknown>): LockerExercise {
 export default function App() {
   const [tab, setTab] = useState<"home" | "library" | "locker" | "profile">("home");
   const [vw, setVw] = useState<string | null>(null);
+  const [editingBd, setEditingBd] = useState<LockerBeatdown | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
   const [profile, setProfile] = useState<{ f3_name: string; ao: string; state: string; region: string } | null>(null);
@@ -369,6 +370,26 @@ export default function App() {
     }
   };
 
+  const handleEditBeatdown = (bd: LockerBeatdown) => {
+    setEditingBd(bd);
+    setVw("edit-bd");
+  };
+
+  const handleUpdateBeatdown = async (id: string, data: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; dur: string | null; sites: string[]; eq: string[] }) => {
+    const durNum = data.dur ? parseInt(data.dur) : null;
+    const success = await updateBeatdown(id, { nm: data.nm, desc: data.desc, d: data.d, dur: durNum, siteFeatures: data.sites, equipment: data.eq, tags: data.tg, sections: data.secs });
+    if (success) {
+      await loadLocker();
+      await loadLibrary();
+      fl("Beatdown saved!");
+    } else {
+      fl("Error saving");
+    }
+    setVw(null);
+    setEditingBd(null);
+    setTab("locker");
+  };
+
   const handleToggleVote = async (itemId: string, itemType: "beatdown" | "exercise" = "beatdown") => {
     const isVoted = userVotes.has(itemId);
     // Optimistic update
@@ -437,12 +458,29 @@ export default function App() {
   };
 
   // ════ FULL-SCREEN VIEWS ════
-  if (vw === "gen" || vw === "build" || vw === "create-ex") {
+  if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd") {
     return (
       <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: 20, paddingBottom: 100, position: "relative" }}>
         {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} />}
         {vw === "build" && <BuilderScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} />}
         {vw === "create-ex" && <CreateExerciseScreen onClose={() => setVw(null)} onSave={handleSaveExercise} />}
+        {vw === "edit-bd" && editingBd && <BuilderScreen
+          onClose={() => { setVw(null); setEditingBd(null); }}
+          onSave={handleSaveBeatdown}
+          editData={{
+            id: editingBd.id,
+            nm: editingBd.nm,
+            desc: editingBd.desc,
+            d: editingBd.d,
+            secs: editingBd.secs,
+            tg: editingBd.tg,
+            dur: null,
+            sites: [],
+            eq: [],
+            isPublic: editingBd.isPublic,
+          }}
+          onUpdate={handleUpdateBeatdown}
+        />}
         {toastEl}
       </div>
     );
@@ -476,6 +514,7 @@ export default function App() {
           onRemoveBookmark={handleBookmark}
           onSteal={handleSteal}
           onUpdateExercise={handleUpdateExercise}
+          onEditBeatdown={handleEditBeatdown}
         />
       )}
       {tab === "profile" && <ProfileScreen onProfileSaved={checkUser} />}

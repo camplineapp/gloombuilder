@@ -538,3 +538,37 @@ export async function updateComment(commentId: string, text: string) {
   }
   return true;
 }
+
+// ════ UPDATE BEATDOWN ════
+
+export async function updateBeatdown(id: string, data: {
+  nm: string;
+  desc: string;
+  d: string;
+  dur: number | null;
+  siteFeatures: string[];
+  equipment: string[];
+  tags: string[];
+  sections: unknown;
+}) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("beatdowns")
+    .update({
+      name: data.nm,
+      description: data.desc,
+      difficulty: data.d,
+      duration: data.dur,
+      site_features: data.siteFeatures,
+      equipment: data.equipment,
+      tags: data.tags,
+      sections: data.sections,
+    })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Update beatdown error:", error);
+    return false;
+  }
+  return true;
+}
