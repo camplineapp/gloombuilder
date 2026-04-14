@@ -71,7 +71,6 @@ export const SITES = [
 ];
 export const EQUIP = [
   { id: "none", l: "Bodyweight only" }, { id: "coupon", l: "Coupon (block)" },
-  { id: "sandbag", l: "Sandbag" }, { id: "ruck", l: "Ruck" },
 ];
 
 export interface GenConfig {
@@ -159,11 +158,17 @@ export function mapSupabaseExercise(row: Record<string, unknown>): ExerciseData 
   // Deduplicate
   const uniqueTags = [...new Set(tags)];
 
-  // Build site requirements from Supabase site_type array
+  // Build site requirements from BOTH site_type AND equipment
   const sites: string[] = [];
   siteType.forEach(st => {
     if (st !== "any" && SITE_MAP[st]) sites.push(SITE_MAP[st]);
   });
+  // Equipment that implies a site requirement
+  const EQUIP_SITE: Record<string, string> = { bench: "benches", wall: "walls", pull_up_bar: "pullup" };
+  if (EQUIP_SITE[equipment]) {
+    const mapped = EQUIP_SITE[equipment];
+    if (!sites.includes(mapped)) sites.push(mapped);
+  }
 
   return {
     n: name,
@@ -211,16 +216,40 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   }));
 
   // When coupon selected, guarantee 2-3 coupon exercises in The Thang
+  // When specific sites selected, guarantee site-specific exercises
   let thangPicks: ExerciseData[];
-  if (cfg.eq.includes("coupon")) {
-    const couponPool = mP.filter(e => e.t.includes("Coupon"));
-    const nonCouponPool = mP.filter(e => !e.t.includes("Coupon"));
-    const couponCount = Math.min(Math.ceil(tC / 3), couponPool.length);
-    const nonCouponCount = tC - couponCount;
-    thangPicks = [...pk(couponPool, couponCount), ...pk(nonCouponPool, nonCouponCount)];
-  } else {
-    thangPicks = pk(mP, tC);
+  const sitePool = mP.filter(e => e.s.length > 0 && e.s.some(s => cfg.sites.includes(s)));
+  const generalPool = mP.filter(e => e.s.length === 0);
+  const couponPool = mP.filter(e => e.t.includes("Coupon"));
+  const nonCouponGeneral = generalPool.filter(e => !e.t.includes("Coupon"));
+
+  let picks: ExerciseData[] = [];
+  let remaining = tC;
+
+  // 1. Site-specific exercises (guarantee ~30% of Thang)
+  if (sitePool.length > 0) {
+    const siteCount = Math.min(Math.ceil(tC * 0.3), sitePool.length);
+    picks.push(...pk(sitePool, siteCount));
+    remaining -= picks.length;
   }
+
+  // 2. Coupon exercises (guarantee 2-3 when coupon selected)
+  if (cfg.eq.includes("coupon") && remaining > 0) {
+    const unusedCoupon = couponPool.filter(e => !picks.some(p => p.n === e.n));
+    const couponCount = Math.min(Math.ceil(tC / 3), unusedCoupon.length, remaining);
+    picks.push(...pk(unusedCoupon, couponCount));
+    remaining -= couponCount;
+  }
+
+  // 3. Fill rest with general exercises
+  if (remaining > 0) {
+    const fillPool = cfg.eq.includes("coupon") ? generalPool : nonCouponGeneral;
+    const unused = fillPool.filter(e => !picks.some(p => p.n === e.n));
+    picks.push(...pk(unused, remaining));
+  }
+
+  // Shuffle final order
+  thangPicks = picks.sort(() => Math.random() - 0.5);
 
   const t = thangPicks.map(e => {
     const iS = e.t.includes("Static");

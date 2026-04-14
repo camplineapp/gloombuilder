@@ -289,16 +289,18 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
               const mT = dbTag === "All" || e.t.includes(dbTag);
               return mS && mT;
             });
-            // Sort: name matches first, then alias, then description
+            // Sort: exact name → starts with → name contains → description contains
             if (dbSearch.trim()) {
               const q = dbSearch.toLowerCase();
               filtered.sort((a, b) => {
-                const aName = a.n.toLowerCase().includes(q) ? 0 : 1;
-                const bName = b.n.toLowerCase().includes(q) ? 0 : 1;
-                if (aName !== bName) return aName - bName;
-                const aAlias = a.f.toLowerCase().includes(q) ? 0 : 1;
-                const bAlias = b.f.toLowerCase().includes(q) ? 0 : 1;
-                return aAlias - bAlias;
+                const scoreOf = (e: typeof a) => {
+                  if (e.n.toLowerCase() === q) return 0; // exact match
+                  if (e.n.toLowerCase().startsWith(q)) return 1; // starts with
+                  if (e.n.toLowerCase().includes(q)) return 2; // name contains
+                  if (e.f.toLowerCase().includes(q)) return 3; // alias contains
+                  return 4; // description contains
+                };
+                return scoreOf(a) - scoreOf(b);
               });
             }
             const shown = filtered.slice(0, 50);

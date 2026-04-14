@@ -125,10 +125,23 @@ export default function GeneratorScreen({ onClose, onSave }: GeneratorScreenProp
     const sec = gr[pkI];
     if (!sec) return null;
     const fi = allEx.filter(e => {
-      const ms = !pS || e.n.toLowerCase().includes(pS.toLowerCase()) || e.f.toLowerCase().includes(pS.toLowerCase());
+      const ms = !pS || e.n.toLowerCase().includes(pS.toLowerCase()) || e.f.toLowerCase().includes(pS.toLowerCase()) || (e.d || "").toLowerCase().includes(pS.toLowerCase());
       const mt = !pTg || e.t.includes(pTg);
       return ms && mt;
     });
+    if (pS.trim()) {
+      const q = pS.toLowerCase();
+      fi.sort((a, b) => {
+        const scoreOf = (e: typeof a) => {
+          if (e.n.toLowerCase() === q) return 0;
+          if (e.n.toLowerCase().startsWith(q)) return 1;
+          if (e.n.toLowerCase().includes(q)) return 2;
+          if (e.f.toLowerCase().includes(q)) return 3;
+          return 4;
+        };
+        return scoreOf(a) - scoreOf(b);
+      });
+    }
     return (
       <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.95)", zIndex: 150, display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "20px 24px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
