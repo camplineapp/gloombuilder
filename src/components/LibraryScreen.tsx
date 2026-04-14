@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { loadSeedExercises, addComment, loadComments } from "@/lib/db";
+import { loadSeedExercises, addComment, loadComments, deleteComment, updateComment } from "@/lib/db";
 import { mapSupabaseExercise } from "@/lib/exercises";
 import type { ExerciseData } from "@/lib/exercises";
 
@@ -81,8 +81,10 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
   const [showAllCmt, setShowAllCmt] = useState(false);
   const [cmtText, setCmtText] = useState("");
   const [toast, setToast] = useState("");
-  const [dbComments, setDbComments] = useState<{ au: string; ao: string; txt: string; dt: string }[]>([]);
+  const [dbComments, setDbComments] = useState<{ id: string; au: string; ao: string; txt: string; dt: string }[]>([]);
   const [cmtLoading, setCmtLoading] = useState(false);
+  const [editCmtId, setEditCmtId] = useState<string | null>(null);
+  const [editCmtText, setEditCmtText] = useState("");
   const [saveSheet, setSaveSheet] = useState<FeedItem | null>(null);
   const [exMode, setExMode] = useState<"shared" | "database">("shared");
   const [seedEx, setSeedEx] = useState<ExerciseData[]>([]);
@@ -117,6 +119,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
         const mapped = rows.map((r: Record<string, unknown>) => {
           const p = r.profiles as Record<string, unknown> | null;
           return {
+            id: (r.id as string) || "",
             au: (p?.f3_name as string) || "Unknown",
             ao: ((p?.ao as string) || "") + ((p?.state as string) ? ", " + (p?.state as string) : ""),
             txt: (r.text as string) || "",
@@ -234,12 +237,45 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
             {comments.length > 3 ? <button onClick={() => setShowAllCmt(!showAllCmt)} style={{ fontFamily: F, background: "none", border: "none", color: G, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>{showAllCmt ? "Show less" : "View all"}</button> : null}
           </div>
           {shownComments.map((c, i) => (
-            <div key={i} style={{ background: CD, border: "1px solid " + BD, borderRadius: 12, padding: "14px 16px", marginBottom: 8 }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <div><span style={{ fontSize: 14, fontWeight: 700, color: T2 }}>{c.au}</span>{c.ao ? <span style={{ fontSize: 13, color: T4, marginLeft: 6 }}>· {c.ao}</span> : null}</div>
-                <span style={{ fontSize: 12, color: T5 }}>{c.dt}</span>
-              </div>
-              <div style={{ fontSize: 15, color: T3, marginTop: 6, lineHeight: 1.55 }}>{c.txt}</div>
+            <div key={c.id || i} style={{ background: CD, border: "1px solid " + BD, borderRadius: 12, padding: "14px 16px", marginBottom: 8 }}>
+              {editCmtId === c.id ? (
+                <div>
+                  <textarea value={editCmtText} onChange={e => setEditCmtText(e.target.value)} rows={2} style={{ ...ist, resize: "vertical" as const, marginBottom: 8 }} />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={async () => {
+                      const success = await updateComment(c.id, editCmtText);
+                      if (success) {
+                        setDbComments(dbComments.map(cm => cm.id === c.id ? { ...cm, txt: editCmtText } : cm));
+                        setEditCmtId(null);
+                        fl("Comment updated!");
+                      }
+                    }} style={{ fontFamily: F, background: G, color: BG, border: "none", padding: "8px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Save</button>
+                    <button onClick={() => setEditCmtId(null)} style={{ fontFamily: F, background: "rgba(255,255,255,0.04)", color: T4, border: "1px solid " + BD, padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <div><span style={{ fontSize: 14, fontWeight: 700, color: T2 }}>{c.au}</span>{c.ao ? <span style={{ fontSize: 13, color: T4, marginLeft: 6 }}>· {c.ao}</span> : null}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 12, color: T5 }}>{c.dt}</span>
+                      {c.au === profName ? (
+                        <>
+                          <span onClick={() => { setEditCmtId(c.id); setEditCmtText(c.txt); }} style={{ fontSize: 11, color: T4, cursor: "pointer" }}>Edit</span>
+                          <span onClick={async () => {
+                            const success = await deleteComment(c.id);
+                            if (success) {
+                              setDbComments(dbComments.filter(cm => cm.id !== c.id));
+                              fl("Comment deleted");
+                            }
+                          }} style={{ fontSize: 11, color: R, cursor: "pointer" }}>Delete</span>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 15, color: T3, marginTop: 6, lineHeight: 1.55, wordBreak: "break-word", overflowWrap: "break-word" }}>{c.txt}</div>
+                </>
+              )}
             </div>
           ))}
           {cmtLoading ? <div style={{ textAlign: "center", color: T5, padding: 16, fontSize: 13 }}>Loading comments...</div> : null}
@@ -253,6 +289,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
               if (result) {
                 const p = result.profiles as Record<string, unknown> | null;
                 setDbComments([{
+                  id: (result.id as string) || "",
                   au: (p?.f3_name as string) || "You",
                   ao: ((p?.ao as string) || "") + ((p?.state as string) ? ", " + (p?.state as string) : ""),
                   txt: (result.text as string) || cmtText,
@@ -436,6 +473,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
             <div style={{ display: "flex", gap: 14, fontSize: 14, color: T4 }}>
               {bd.tp === "beatdown" ? <span onClick={e => { e.stopPropagation(); onToggleVote?.(String(bd.id), "beatdown"); }} style={{ color: userVotes.has(String(bd.id)) ? G : T4, fontWeight: 600, cursor: "pointer" }}>▲ {bd.v}</span> : <span onClick={e => { e.stopPropagation(); onToggleVote?.(String(bd.id), "exercise"); }} style={{ color: userVotes.has(String(bd.id)) ? G : T4, fontWeight: 600, cursor: "pointer" }}>▲ {bd.v}</span>}
               <span>Stolen {bd.u}x</span>
+              {bd.cm > 0 ? <span>{bd.cm} comments</span> : null}
             </div>
             <span onClick={e => { e.stopPropagation(); setSaveSheet(bd); }} style={{ fontSize: 14, color: G, cursor: "pointer", padding: "4px 8px", fontWeight: 600 }}>Save</span>
           </div>

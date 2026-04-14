@@ -510,3 +510,31 @@ export async function loadComments(itemId: string) {
   }
   return data || [];
 }
+
+export async function deleteComment(commentId: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("comments")
+    .delete()
+    .eq("id", commentId);
+
+  if (error) {
+    console.error("Delete comment error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function updateComment(commentId: string, text: string) {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("comments")
+    .update({ text })
+    .eq("id", commentId);
+
+  if (error) {
+    console.error("Update comment error:", error);
+    return false;
+  }
+  return true;
+}
