@@ -250,7 +250,7 @@ export default function App() {
   const handleDeleteBeatdown = async (id: string) => {
     const success = await deleteBeatdown(id);
     if (success) {
-      setLk(lk.filter(b => b.id !== id));
+      setLk(lk.filter(b => b.id !== id)); await loadLibrary();
       fl("Deleted");
     } else {
       fl("Error deleting");
@@ -260,7 +260,7 @@ export default function App() {
   const handleDeleteExercise = async (id: string) => {
     const success = await deleteExercise(id);
     if (success) {
-      setLkEx(lkEx.filter(e => e.id !== id));
+      setLkEx(lkEx.filter(e => e.id !== id)); await loadLibrary();
       fl("Deleted");
     } else {
       fl("Error deleting");

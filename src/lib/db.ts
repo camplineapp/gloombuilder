@@ -1,8 +1,6 @@
 import { createClient } from "@/lib/supabase";
 import type { Section } from "@/lib/exercises";
 
-const supabase = createClient();
-
 // ════ BEATDOWNS ════
 
 export async function saveBeatdown(data: {
@@ -17,6 +15,7 @@ export async function saveBeatdown(data: {
   eq: string[];
   isPublic: boolean;
 }) {
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
@@ -46,6 +45,7 @@ export async function saveBeatdown(data: {
 }
 
 export async function loadMyBeatdowns() {
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
@@ -63,6 +63,7 @@ export async function loadMyBeatdowns() {
 }
 
 export async function loadPublicBeatdowns() {
+  const supabase = createClient();
   const { data, error } = await supabase
     .from("beatdowns")
     .select("*, profiles:created_by(f3_name, ao, state, region)")
@@ -77,6 +78,7 @@ export async function loadPublicBeatdowns() {
 }
 
 export async function deleteBeatdown(id: string) {
+  const supabase = createClient();
   const { error } = await supabase
     .from("beatdowns")
     .delete()
@@ -97,6 +99,7 @@ export async function saveExercise(data: {
   tags: string[];
   isPublic: boolean;
 }) {
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
@@ -129,6 +132,7 @@ export async function saveExercise(data: {
 }
 
 export async function loadMyExercises() {
+  const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
@@ -146,6 +150,7 @@ export async function loadMyExercises() {
 }
 
 export async function deleteExercise(id: string) {
+  const supabase = createClient();
   const { error } = await supabase
     .from("exercises")
     .delete()
@@ -159,11 +164,16 @@ export async function deleteExercise(id: string) {
 }
 
 export async function loadPublicExercises() {
+  const supabase = createClient();
   const { data, error } = await supabase
-    .from('exercises')
-    .select('*, profiles:created_by(f3_name, ao, state, region)')
-    .eq('source', 'community')
-    .order('created_at', { ascending: false });
-  if (error) { console.error('Load public exercises error:', error); return []; }
+    .from("exercises")
+    .select("*, profiles:created_by(f3_name, ao, state, region)")
+    .eq("source", "community")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Load public exercises error:", error);
+    return [];
+  }
   return data || [];
 }
