@@ -6,6 +6,7 @@ export interface ExerciseData {
   s: string[]; // site requirements
   h: string; // how-to
   d?: string; // short description
+  df?: number; // difficulty level 1-3
 }
 
 // Local fallback exercises (45) — used if Supabase load fails
@@ -177,6 +178,7 @@ export function mapSupabaseExercise(row: Record<string, unknown>): ExerciseData 
     s: sites,
     h: howTo,
     d: description,
+    df: difficulty,
   };
 }
 
@@ -202,10 +204,21 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   const pool = exList.filter(e => e.s.length === 0 || e.s.some(s => cfg.sites.includes(s)));
   const wP = pool.filter(e => e.t.includes("Warm-Up"));
   let mP = pool.filter(e => !e.t.includes("Warm-Up") && !e.t.includes("Mary"));
-  const yP = pool.filter(e => e.t.includes("Mary"));
+  let yP = pool.filter(e => e.t.includes("Mary"));
 
   if (!cfg.eq.includes("coupon")) {
     mP = mP.filter(e => !e.t.includes("Coupon"));
+  }
+
+  // Filter by exercise difficulty to match beatdown difficulty
+  // Easy/Medium → common exercises only (difficulty 1-2), no exotic
+  // Hard → all exercises
+  // Beast → intermediate+ (difficulty 2-3), no beginner
+  if (cfg.diff === "easy" || cfg.diff === "medium") {
+    mP = mP.filter(e => !e.df || e.df <= 2);
+    yP = yP.filter(e => !e.df || e.df <= 2);
+  } else if (cfg.diff === "beast") {
+    mP = mP.filter(e => !e.df || e.df >= 2);
   }
 
   const tC = cfg.dur === "30 min" ? 5 : cfg.dur === "60 min" ? 10 : 7;
