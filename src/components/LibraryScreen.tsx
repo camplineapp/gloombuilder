@@ -63,9 +63,10 @@ interface LibraryScreenProps {
   userBookmarks?: Set<string>;
   onBookmark?: (id: string, itemType: "beatdown" | "exercise") => void;
   onSteal?: (id: string, itemType: "beatdown" | "exercise") => void;
+  onRefresh?: () => void;
 }
 
-export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote, userBookmarks = new Set(), onBookmark, onSteal }: LibraryScreenProps) {
+export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote, userBookmarks = new Set(), onBookmark, onSteal, onRefresh }: LibraryScreenProps) {
   const [libDet, setLibDet] = useState<FeedItem | null>(null);
   const [libSearch, setLibSearch] = useState("");
   const [libT, setLibT] = useState("beatdowns");
@@ -267,6 +268,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
                             if (success) {
                               setDbComments(dbComments.filter(cm => cm.id !== c.id));
                               fl("Comment deleted");
+                              onRefresh?.();
                             }
                           }} style={{ fontSize: 11, color: R, cursor: "pointer" }}>Delete</span>
                         </>
@@ -297,6 +299,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
                 }, ...dbComments]);
                 setCmtText("");
                 fl("Comment posted!");
+                onRefresh?.();
               } else {
                 fl("Comment failed");
               }

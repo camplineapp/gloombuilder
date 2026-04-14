@@ -459,7 +459,7 @@ export default function App() {
           onCreateEx={() => setVw("create-ex")}
         />
       )}
-      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} userBookmarks={lkBm} onBookmark={handleBookmark} onSteal={handleSteal} />}
+      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} userBookmarks={lkBm} onBookmark={handleBookmark} onSteal={handleSteal} onRefresh={loadLibrary} />}
       {tab === "locker" && (
         <LockerScreen
           lk={lk}
