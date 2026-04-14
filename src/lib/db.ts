@@ -104,19 +104,29 @@ export async function saveExercise(data: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // Map tags to database fields
+  const bodyParts: string[] = [];
+  if (data.tags.includes("Core")) bodyParts.push("core");
+  if (data.tags.includes("Chest")) bodyParts.push("chest");
+  if (data.tags.includes("Arms")) bodyParts.push("arms");
+  if (data.tags.includes("Shoulders")) bodyParts.push("shoulders");
+  if (data.tags.includes("Legs")) bodyParts.push("legs");
+  if (data.tags.includes("Full Body")) bodyParts.push("full_body");
+
   const { data: result, error } = await supabase
     .from("exercises")
     .insert({
       name: data.nm,
       description: data.desc || data.how,
       how_to: data.how,
-      body_part: data.tags.filter(t => ["Core", "Chest", "Arms", "Shoulders", "Legs"].includes(t)).map(t => t.toLowerCase()),
-      exercise_type: "strength",
+      body_part: bodyParts,
+      exercise_type: data.tags.includes("Cardio") ? "cardio" : "strength",
+      equipment: data.tags.includes("Coupon") ? "coupon" : "none",
+      movement_type: data.tags.includes("Static") ? "static_hold" : "dynamic",
+      intensity: data.tags.includes("Warm-Up") ? "low" : "medium",
+      difficulty: data.tags.includes("Warm-Up") ? 1 : 2,
       site_type: ["any"],
       cadence: "either",
-      difficulty: 2,
-      intensity: "medium",
-      movement_type: "dynamic",
       is_mary: data.tags.includes("Mary"),
       is_transport: data.tags.includes("Transport"),
       source: data.isPublic ? "community" : "private",
@@ -435,12 +445,25 @@ export async function updateExercise(id: string, data: {
   tags: string[];
 }) {
   const supabase = createClient();
+
+  const bodyParts: string[] = [];
+  if (data.tags.includes("Core")) bodyParts.push("core");
+  if (data.tags.includes("Chest")) bodyParts.push("chest");
+  if (data.tags.includes("Arms")) bodyParts.push("arms");
+  if (data.tags.includes("Shoulders")) bodyParts.push("shoulders");
+  if (data.tags.includes("Legs")) bodyParts.push("legs");
+  if (data.tags.includes("Full Body")) bodyParts.push("full_body");
+
   const { error } = await supabase
     .from("exercises")
     .update({
       name: data.nm,
       how_to: data.how,
-      body_part: data.tags.filter(t => ["Core", "Chest", "Arms", "Shoulders", "Legs"].includes(t)).map(t => t.toLowerCase()),
+      body_part: bodyParts,
+      exercise_type: data.tags.includes("Cardio") ? "cardio" : "strength",
+      equipment: data.tags.includes("Coupon") ? "coupon" : "none",
+      movement_type: data.tags.includes("Static") ? "static_hold" : "dynamic",
+      intensity: data.tags.includes("Warm-Up") ? "low" : "medium",
       is_mary: data.tags.includes("Mary"),
       is_transport: data.tags.includes("Transport"),
     })

@@ -108,22 +108,24 @@ function dbToShared(row: Record<string, unknown>): SharedItem {
 }
 
 // Map raw body_part values to display tags
-function mapBodyPartTags(bodyPart: string[], isMary?: boolean, isTransport?: boolean): string[] {
+function mapBodyPartTags(row: Record<string, unknown>): string[] {
+  const bodyPart = (row.body_part as string[]) || [];
   const MAP: Record<string, string> = {
-    // Seed exercises use these
     upper: "Chest", lower: "Legs", core: "Core", full_body: "Full Body",
-    // User-created exercises save lowercase display names
     chest: "Chest", arms: "Arms", shoulders: "Shoulders", legs: "Legs",
-    cardio: "Cardio",
   };
   const tags: string[] = [];
-  (bodyPart || []).forEach(bp => {
+  bodyPart.forEach(bp => {
     const mapped = MAP[bp.toLowerCase()];
     if (mapped) tags.push(mapped);
   });
-  if (isMary) tags.push("Mary");
-  if (isTransport) tags.push("Transport");
-  return [...new Set(tags)]; // deduplicate
+  if (row.is_mary) tags.push("Mary");
+  if (row.is_transport) tags.push("Transport");
+  if ((row.exercise_type as string) === "cardio") tags.push("Cardio");
+  if ((row.equipment as string) === "coupon") tags.push("Coupon");
+  if ((row.movement_type as string) === "static_hold") tags.push("Static");
+  if ((row.intensity as string) === "low") tags.push("Warm-Up");
+  return [...new Set(tags)];
 }
 
 // Convert Supabase exercise row to LockerExercise
@@ -133,11 +135,7 @@ function dbToExercise(row: Record<string, unknown>): LockerExercise {
   return {
     id: row.id as string,
     nm: (row.name as string) || "",
-    tags: mapBodyPartTags(
-      (row.body_part as string[]) || [],
-      row.is_mary as boolean,
-      row.is_transport as boolean
-    ),
+    tags: mapBodyPartTags(row),
     how: (row.how_to as string) || (row.description as string) || "",
     src: hasInspiredBy ? "Stolen" : (row.source as string) || "community",
     shared: (row.source as string) === "community",
@@ -212,11 +210,7 @@ export default function App() {
         dt: new Date(row.created_at as string).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
         src: "Hand Built",
         tp: "exercise",
-        et: mapBodyPartTags(
-          (row.body_part as string[]) || [],
-          row.is_mary as boolean,
-          row.is_transport as boolean
-        ),
+        et: mapBodyPartTags(row as Record<string, unknown>),
         inspiredBy: ip ? (ip.f3_name as string) || undefined : undefined,
         comments: [],
         secs: [],
