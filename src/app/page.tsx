@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
-import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise } from "@/lib/db";
+import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, addVote, removeVote, loadUserVotes } from "@/lib/db";
 import type { User } from "@supabase/supabase-js";
 import type { Section } from "@/lib/exercises";
 import AuthScreen from "@/components/AuthScreen";
@@ -127,6 +127,7 @@ export default function App() {
 
   // Library shared items — loaded from Supabase
   const [sharedItems, setSharedItems] = useState<SharedItem[]>([]);
+  const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
 
   const supabase = createClient();
 
@@ -199,6 +200,7 @@ export default function App() {
     if (user) {
       loadLocker();
       loadLibrary();
+      loadUserVotes().then(ids => setUserVotes(new Set(ids)));
     }
   }, [user, loadLocker, loadLibrary]);
 
@@ -319,6 +321,29 @@ export default function App() {
     }
   };
 
+  const handleToggleVote = async (beatdownId: string) => {
+    const isVoted = userVotes.has(beatdownId);
+    // Optimistic update
+    const newVotes = new Set(userVotes);
+    if (isVoted) {
+      newVotes.delete(beatdownId);
+    } else {
+      newVotes.add(beatdownId);
+    }
+    setUserVotes(newVotes);
+
+    // Update server
+    const success = isVoted ? await removeVote(beatdownId) : await addVote(beatdownId);
+    if (success) {
+      // Reload library to get updated vote_count from trigger
+      await loadLibrary();
+    } else {
+      // Revert on failure
+      setUserVotes(userVotes);
+      fl("Vote failed — try again");
+    }
+  };
+
   // ════ FULL-SCREEN VIEWS ════
   if (vw === "gen" || vw === "build" || vw === "create-ex") {
     return (
@@ -342,7 +367,7 @@ export default function App() {
           onCreateEx={() => setVw("create-ex")}
         />
       )}
-      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} />}
+      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} />}
       {tab === "locker" && (
         <LockerScreen
           lk={lk}

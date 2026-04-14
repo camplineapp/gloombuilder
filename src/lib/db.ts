@@ -224,3 +224,56 @@ export async function loadSeedExercises() {
   }
   return data || [];
 }
+
+// ════ VOTES ════
+
+export async function addVote(beatdownId: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase
+    .from("votes")
+    .insert({ user_id: user.id, beatdown_id: beatdownId });
+
+  if (error) {
+    console.error("Add vote error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function removeVote(beatdownId: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase
+    .from("votes")
+    .delete()
+    .eq("user_id", user.id)
+    .eq("beatdown_id", beatdownId);
+
+  if (error) {
+    console.error("Remove vote error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function loadUserVotes() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from("votes")
+    .select("beatdown_id")
+    .eq("user_id", user.id);
+
+  if (error) {
+    console.error("Load votes error:", error);
+    return [];
+  }
+  return (data || []).map(v => v.beatdown_id as string);
+}

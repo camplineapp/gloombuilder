@@ -58,9 +58,11 @@ function srcBadge(s: string) {
 interface LibraryScreenProps {
   sharedItems?: FeedItem[];
   profName?: string;
+  userVotes?: Set<string>;
+  onToggleVote?: (id: string) => void;
 }
 
-export default function LibraryScreen({ sharedItems = [], profName = "" }: LibraryScreenProps) {
+export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote }: LibraryScreenProps) {
   const [libDet, setLibDet] = useState<FeedItem | null>(null);
   const [libSearch, setLibSearch] = useState("");
   const [libT, setLibT] = useState("beatdowns");
@@ -75,7 +77,6 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
   const [fExR, setFExR] = useState("All");
   const [showAllCmt, setShowAllCmt] = useState(false);
   const [cmtText, setCmtText] = useState("");
-  const [votes, setVotes] = useState<Record<string | number, boolean>>({});
   const [toast, setToast] = useState("");
   const [exMode, setExMode] = useState<"shared" | "database">("shared");
   const [seedEx, setSeedEx] = useState<ExerciseData[]>([]);
@@ -94,8 +95,15 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
     }
   }, [seedEx.length]);
 
+  // Sync detail view when sharedItems updates (e.g., after voting)
+  useEffect(() => {
+    if (libDet) {
+      const updated = sharedItems.find(item => item.id === libDet.id);
+      if (updated) setLibDet(updated);
+    }
+  }, [sharedItems]);
+
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
-  const toggleVote = (id: number | string) => { setVotes({ ...votes, [id]: !votes[id] }); };
 
   const toastEl = toast ? (
     <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: G, color: BG, padding: "10px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: F, zIndex: 100 }}>{toast}</div>
@@ -124,7 +132,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
   // ════ DETAIL VIEW ════
   if (libDet) {
     const bd = libDet;
-    const voted = votes[bd.id];
+    const voted = userVotes.has(String(bd.id));
     const comments = (bd.comments || []).slice().reverse();
     const shownComments = showAllCmt ? comments : comments.slice(0, 3);
 
@@ -144,7 +152,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "" }: Libra
         <div style={{ fontSize: 16, color: T3, marginTop: 16, lineHeight: 1.7 }}>{bd.ds}</div>
         {(bd.tg || bd.et) ? <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>{(bd.tg || bd.et || []).map(t => <span key={t} style={{ background: "rgba(255,255,255,0.05)", color: T4, fontSize: 12, padding: "3px 10px", borderRadius: 6, fontFamily: F }}>{t}</span>)}</div> : null}
         <div style={{ display: "flex", gap: 14, marginTop: 20, alignItems: "center" }}>
-          <button onClick={() => toggleVote(bd.id)} style={{ fontFamily: F, background: voted ? G + "15" : "rgba(255,255,255,0.04)", color: voted ? G : T4, border: "1px solid " + (voted ? G + "30" : BD), padding: "8px 16px", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 600 }}>▲ {bd.v + (voted ? 1 : 0)}</button>
+          <button onClick={() => onToggleVote?.(String(bd.id))} style={{ fontFamily: F, background: voted ? G + "15" : "rgba(255,255,255,0.04)", color: voted ? G : T4, border: "1px solid " + (voted ? G + "30" : BD), padding: "8px 16px", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 600 }}>▲ {bd.v}</button>
           <span style={{ fontSize: 13, color: T5 }}>Stolen {bd.u}x</span>
         </div>
         {bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? <div style={{ marginTop: 24 }}>{bd.secs.map((sec, si) => (
