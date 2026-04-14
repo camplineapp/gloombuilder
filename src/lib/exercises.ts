@@ -201,67 +201,99 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   else if (cfg.diff === "hard") { rL = 15; rH = 20; }
   else { rL = 20; rH = 30; }
 
+  // Core exercises = the 45 hand-curated classics every PAX knows
+  const CORE_NAMES = new Set(EX.map(e => e.n.toLowerCase()));
+  const isCore = (e: ExerciseData) => CORE_NAMES.has(e.n.toLowerCase());
+
   const pool = exList.filter(e => e.s.length === 0 || e.s.some(s => cfg.sites.includes(s)));
   const wP = pool.filter(e => e.t.includes("Warm-Up"));
   let mP = pool.filter(e => !e.t.includes("Warm-Up") && !e.t.includes("Mary"));
-  let yP = pool.filter(e => e.t.includes("Mary"));
+  const yP = pool.filter(e => e.t.includes("Mary"));
 
   if (!cfg.eq.includes("coupon")) {
     mP = mP.filter(e => !e.t.includes("Coupon"));
   }
 
-  // Filter by exercise difficulty to match beatdown difficulty
-  // Easy/Medium → common exercises only (difficulty 1-2), no exotic
-  // Hard → all exercises
-  // Beast → intermediate+ (difficulty 2-3), no beginner
-  if (cfg.diff === "easy" || cfg.diff === "medium") {
-    mP = mP.filter(e => !e.df || e.df <= 2);
-    yP = yP.filter(e => !e.df || e.df <= 2);
-  } else if (cfg.diff === "beast") {
-    mP = mP.filter(e => !e.df || e.df >= 2);
-  }
+  // Split main pool into core (classics) and wider (variety)
+  const mCore = mP.filter(isCore);
+  const mWider = mP.filter(e => !isCore(e) && (!e.df || e.df <= 2));
+  const mAll = mP;
 
   const tC = cfg.dur === "30 min" ? 5 : cfg.dur === "60 min" ? 10 : 7;
   const mC = cfg.diff === "easy" ? 2 : 4;
 
-  const w = pk(wP, 3).map(e => ({
+  // Warmup: always core exercises when possible (the classics)
+  const wCore = wP.filter(isCore);
+  const w = pk(wCore.length >= 3 ? wCore : wP, 3).map(e => ({
     n: e.n, r: String(rn(rL, rH)), c: "IC", nt: "",
   }));
 
-  // When coupon selected, guarantee 2-3 coupon exercises in The Thang
-  // When specific sites selected, guarantee site-specific exercises
+  // Mary: prefer core for easy/medium
+  const yCore = yP.filter(isCore);
+  const maryPool = (cfg.diff === "easy" || cfg.diff === "medium") && yCore.length >= mC ? yCore : yP;
+
+  // ════ THANG EXERCISE SELECTION ════
+  // Core-priority: Easy=100% core, Medium=60% core, Hard=30% core, Beast=all wider
   let thangPicks: ExerciseData[];
   const sitePool = mP.filter(e => e.s.length > 0 && e.s.some(s => cfg.sites.includes(s)));
-  const generalPool = mP.filter(e => e.s.length === 0);
   const couponPool = mP.filter(e => e.t.includes("Coupon"));
-  const nonCouponGeneral = generalPool.filter(e => !e.t.includes("Coupon"));
 
   let picks: ExerciseData[] = [];
   let remaining = tC;
 
-  // 1. Site-specific exercises (guarantee ~30% of Thang)
+  // 1. Site-specific exercises (guarantee ~30% of Thang when sites selected)
   if (sitePool.length > 0) {
-    const siteCount = Math.min(Math.ceil(tC * 0.3), sitePool.length);
-    picks.push(...pk(sitePool, siteCount));
-    remaining -= picks.length;
+    const sitePicks = cfg.diff === "easy" ? sitePool.filter(isCore) : sitePool;
+    const siteCount = Math.min(Math.ceil(tC * 0.3), sitePicks.length);
+    if (siteCount > 0) {
+      picks.push(...pk(sitePicks, siteCount));
+      remaining -= picks.length;
+    }
   }
 
   // 2. Coupon exercises (guarantee 2-3 when coupon selected)
   if (cfg.eq.includes("coupon") && remaining > 0) {
     const unusedCoupon = couponPool.filter(e => !picks.some(p => p.n === e.n));
     const couponCount = Math.min(Math.ceil(tC / 3), unusedCoupon.length, remaining);
-    picks.push(...pk(unusedCoupon, couponCount));
-    remaining -= couponCount;
+    if (couponCount > 0) {
+      picks.push(...pk(unusedCoupon, couponCount));
+      remaining = tC - picks.length;
+    }
   }
 
-  // 3. Fill rest with general exercises
+  // 3. Fill remaining slots based on beatdown difficulty
   if (remaining > 0) {
-    const fillPool = cfg.eq.includes("coupon") ? generalPool : nonCouponGeneral;
-    const unused = fillPool.filter(e => !picks.some(p => p.n === e.n));
-    picks.push(...pk(unused, remaining));
+    const unused = (e: ExerciseData) => !picks.some(p => p.n === e.n) && !e.t.includes("Coupon");
+    let fillPicks: ExerciseData[] = [];
+
+    if (cfg.diff === "easy") {
+      // 100% core exercises
+      fillPicks = pk(mCore.filter(unused), remaining);
+    } else if (cfg.diff === "medium") {
+      // ~60% core, ~40% wider variety (difficulty 1-2)
+      const coreCount = Math.ceil(remaining * 0.6);
+      const widerCount = remaining - coreCount;
+      fillPicks = [
+        ...pk(mCore.filter(unused), coreCount),
+        ...pk(mWider.filter(unused), widerCount),
+      ];
+    } else if (cfg.diff === "hard") {
+      // ~30% core, ~70% full pool
+      const coreCount = Math.ceil(remaining * 0.3);
+      const restCount = remaining - coreCount;
+      fillPicks = [
+        ...pk(mCore.filter(unused), coreCount),
+        ...pk(mAll.filter(e => unused(e) && !isCore(e)), restCount),
+      ];
+    } else {
+      // Beast: full 904 pool, no restriction
+      fillPicks = pk(mAll.filter(unused), remaining);
+    }
+
+    picks.push(...fillPicks);
   }
 
-  // Shuffle final order
+  // Shuffle final order for natural feel
   thangPicks = picks.sort(() => Math.random() - 0.5);
 
   const t = thangPicks.map(e => {
@@ -278,7 +310,7 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
     return { n: e.n, r, c: iS ? "OYO" : (Math.random() > 0.5 ? "IC" : "OYO"), nt };
   });
 
-  const m = pk(yP, mC).map(e => ({
+  const m = pk(maryPool, mC).map(e => ({
     n: e.n, r: String(rn(rL, rH)), c: "IC", nt: "",
   }));
 
