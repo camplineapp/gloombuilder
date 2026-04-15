@@ -28,6 +28,7 @@ export default function CreateExerciseScreen({ onClose, onSave }: CreateExercise
   const [cxH, setCxH] = useState("");
   const [cxT, setCxT] = useState<string[]>([]);
   const [cxShare, setCxShare] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
@@ -79,10 +80,12 @@ export default function CreateExerciseScreen({ onClose, onSave }: CreateExercise
       </div>
 
       {/* Save */}
-      <button onClick={() => {
+      <button disabled={saving} onClick={() => {
+        if (saving) return;
         if (!cxN.trim()) { fl("Name required"); return; }
+        setSaving(true);
         onSave({ nm: cxN, tags: cxT, how: cxH, desc: cxDesc, share: cxShare });
-      }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save exercise to locker</button>
+      }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving..." : "Save exercise to locker"}</button>
     </div>
   );
 }

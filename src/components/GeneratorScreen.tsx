@@ -46,6 +46,7 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis }: Generato
   const [grD, setGrD] = useState("");
   const [ld, setLd] = useState(false);
   const [shareLib, setShareLib] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
 
@@ -390,12 +391,15 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis }: Generato
         </div>
         {/* Save */}
         <div style={{ marginTop: 32 }}>
-          <button onClick={() => {
+          <button disabled={saving} onClick={() => {
+            if (saving) return;
+            setSaving(true);
             const nm = grT.trim() || "Generated Beatdown";
             const tgs = [gc.dur, (DIFFS.find(x => x.id === gc.diff) || { l: "" }).l, ...gc.sites.map(s => (SITES.find(x => x.id === s) || { l: "" }).l), ...gc.eq.filter(e => e !== "none").map(e => (EQUIP.find(x => x.id === e) || { l: "" }).l)].filter((v): v is string => Boolean(v));
             onSave({ nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib });
-          }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save to locker</button>
-          {onRunThis && <button onClick={() => {
+          }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving..." : "Save to locker"}</button>
+          {onRunThis && !saving && <button onClick={() => {
+            setSaving(true);
             const nm = grT.trim() || "Generated Beatdown";
             const tgs = [gc.dur, (DIFFS.find(x => x.id === gc.diff) || { l: "" }).l, ...gc.sites.map(s => (SITES.find(x => x.id === s) || { l: "" }).l), ...gc.eq.filter(e => e !== "none").map(e => (EQUIP.find(x => x.id === e) || { l: "" }).l)].filter((v): v is string => Boolean(v));
             const saveData = { nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib };

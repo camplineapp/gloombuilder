@@ -59,6 +59,7 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
     { label: "Mary", color: P, exercises: [], note: "" },
   ]);
   const [shareLib, setShareLib] = useState(editData?.isPublic || false);
+  const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
 
@@ -416,7 +417,9 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
       {/* Save */}
       <div style={{ marginTop: 32 }}>
         {editData?.isPublic ? <div style={{ fontFamily: F, fontSize: 12, color: A, textAlign: "center", marginBottom: 10 }}>This beatdown is shared. Edits will be visible to everyone.</div> : null}
-        <button onClick={() => {
+        <button disabled={saving} onClick={() => {
+          if (saving) return;
+          setSaving(true);
           const nm = bT.trim() || "Untitled";
           const tgs = [bDur, (DIFFS.find(x => x.id === bDiff) || { l: "" }).l, ...bSites.map(s => (SITES.find(x => x.id === s) || { l: "" }).l), ...bEq.filter(e => e !== "none").map(e => (EQUIP.find(x => x.id === e) || { l: "" }).l)].filter((v): v is string => Boolean(v));
           if (editData && onUpdate) {
@@ -424,8 +427,9 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
           } else {
             onSave({ nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib });
           }
-        }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>{editData ? "Save changes" : "Save to locker"}</button>
-        {!editData && onRunThis && <button onClick={() => {
+        }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving..." : (editData ? "Save changes" : "Save to locker")}</button>
+        {!editData && onRunThis && !saving && <button onClick={() => {
+          setSaving(true);
           const nm = bT.trim() || "Untitled";
           const tgs = [bDur, (DIFFS.find(x => x.id === bDiff) || { l: "" }).l, ...bSites.map(s => (SITES.find(x => x.id === s) || { l: "" }).l), ...bEq.filter(e => e !== "none").map(e => (EQUIP.find(x => x.id === e) || { l: "" }).l)].filter((v): v is string => Boolean(v));
           const saveData = { nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib };
