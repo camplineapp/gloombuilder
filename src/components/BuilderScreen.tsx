@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { EX, TAGS, DIFFS, SITES, EQUIP, mapSupabaseExercise } from "@/lib/exercises";
 import type { Section, SectionExercise, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
@@ -76,6 +76,49 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate }: B
   const [pTg, setPTg] = useState<string | null>(null);
   const [exD, setExD] = useState<ExerciseData | null>(null);
   const [copyModal, setCopyModal] = useState(false);
+  // Quick-add inline autocomplete
+  const [qaQ, setQaQ] = useState("");
+  const [qaSec, setQaSec] = useState<number | null>(null);
+  const qaRef = useRef<HTMLInputElement>(null);
+  // Transition
+  const [trSec, setTrSec] = useState<number | null>(null);
+  const [trText, setTrText] = useState("");
+  const trRef = useRef<HTMLInputElement>(null);
+
+  const qaSearch = (q: string) => {
+    if (q.length < 2) return [];
+    const ql = q.toLowerCase();
+    const scored = allEx.map(e => {
+      const nl = e.n.toLowerCase();
+      const fl = e.f.toLowerCase();
+      if (nl === ql) return { ...e, score: 0 };
+      if (nl.startsWith(ql)) return { ...e, score: 1 };
+      if (nl.includes(ql)) return { ...e, score: 2 };
+      if (fl.includes(ql)) return { ...e, score: 3 };
+      if ((e.d || "").toLowerCase().includes(ql)) return { ...e, score: 4 };
+      return null;
+    }).filter(Boolean) as (ExerciseData & { score: number })[];
+    scored.sort((a, b) => a.score - b.score);
+    return scored.slice(0, 5);
+  };
+  const qaResults = qaSearch(qaQ);
+
+  const addFromQA = (name: string, si: number, isCustom: boolean) => {
+    const add: SectionExercise = { n: name, r: "10", c: "IC", nt: "" };
+    setSecs(secs.map((s, i) => i !== si ? s : { ...s, exercises: [...s.exercises, add] }));
+    setQaQ("");
+    fl(name + (isCustom ? " added as custom" : " added"));
+    setTimeout(() => qaRef.current?.focus(), 100);
+  };
+
+  const addTransition = (si: number) => {
+    if (!trText.trim()) return;
+    const add: SectionExercise = { n: trText.trim(), r: "", c: "", nt: "", type: "transition" } as SectionExercise;
+    setSecs(secs.map((s, i) => i !== si ? s : { ...s, exercises: [...s.exercises, add] }));
+    setTrText("");
+    setTrSec(null);
+    fl("Transition added");
+  };
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
   const sC = [G, "#3b82f6", A, R, P, "#ec4899", "#06b6d4"];
@@ -117,7 +160,7 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate }: B
         <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>{exD.t.map(t => <span key={t} style={{ background: A + "12", color: A, fontSize: 10, padding: "3px 9px", borderRadius: 5, fontFamily: F, textTransform: "uppercase" }}>{t}</span>)}</div>
         {exD.d ? <><div style={{ fontFamily: F, marginTop: 20, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>Description</div><div style={{ fontFamily: F, color: T3, fontSize: 15, lineHeight: 1.7, marginTop: 8 }}>{exD.d}</div></> : null}
         <div style={{ fontFamily: F, marginTop: 20, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>How to execute</div>
-        <div style={{ fontFamily: F, color: T3, fontSize: 15, lineHeight: 1.8, marginTop: 8 }}>{exD.h}</div>
+        <div style={{ fontFamily: F, color: T3, fontSize: 15, lineHeight: 1.8, marginTop: 8 }}>{exD.h.split(/(?=\d+\.\s)/).filter(Boolean).map((step, i) => <div key={i} style={{ marginBottom: 4 }}>{step.trim()}</div>)}</div>
       </div>
     </div>
   ) : null;
@@ -242,18 +285,31 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate }: B
                 <button onClick={() => moveSec(si, 1)} disabled={si === secs.length - 1} style={{ background: "none", border: "none", color: si === secs.length - 1 ? T6 : T4, cursor: si === secs.length - 1 ? "default" : "pointer", fontSize: 10, padding: "1px 4px" }}>▼</button>
               </div>
               {eL === String(si) ? (
-                <input autoFocus value={sec.label} maxLength={25} onChange={e => setSecs(secs.map((s, i) => i !== si ? s : { ...s, label: e.target.value }))} onBlur={() => setEL(null)} onKeyDown={e => { if (e.key === "Enter") setEL(null); }} style={{ fontFamily: F, color: sec.color, fontSize: 13, textTransform: "uppercase", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "5px 12px", outline: "none", width: 150, fontWeight: 700 }} />
+                <input autoFocus value={sec.label} maxLength={60} onChange={e => setSecs(secs.map((s, i) => i !== si ? s : { ...s, label: e.target.value }))} onBlur={() => setEL(null)} onKeyDown={e => { if (e.key === "Enter") setEL(null); }} style={{ fontFamily: F, color: sec.color, fontSize: 13, textTransform: "uppercase", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, padding: "5px 12px", outline: "none", width: 200, fontWeight: 700 }} />
               ) : (
-                <div onClick={() => setEL(String(si))} style={{ color: sec.color, fontSize: 12, textTransform: "uppercase", letterSpacing: 2, cursor: "pointer", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 200 }}>{sec.label} ({sec.exercises.length})</div>
+                <div onClick={() => setEL(String(si))} style={{ color: sec.color, fontSize: 12, textTransform: "uppercase", letterSpacing: 2, cursor: "pointer", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>{sec.label} ({sec.exercises.length})</div>
               )}
             </div>
             <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => { setPk2(true); setPkI(si); setPS(""); setPTg(null); }} style={{ fontFamily: F, background: sec.color + "12", color: sec.color, border: "1px dashed " + sec.color + "40", padding: "6px 14px", borderRadius: 8, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>+ Add</button>
               {si > 0 ? <button onClick={() => setSecs(secs.filter((_, j) => j !== si))} style={{ fontFamily: F, background: "rgba(239,68,68,0.08)", color: R, border: "1px solid rgba(239,68,68,0.12)", padding: "6px 10px", borderRadius: 8, fontSize: 11, cursor: "pointer" }}>✕</button> : null}
             </div>
           </div>
-          {sec.exercises.length === 0 ? <div onClick={() => { setPk2(true); setPkI(si); setPS(""); setPTg(null); }} style={{ border: "1px dashed " + BD, borderRadius: 14, padding: 24, textAlign: "center", color: T6, fontSize: 13, cursor: "pointer" }}>Tap to add exercises</div> : null}
           {sec.exercises.map((ex, ei) => {
+            // ── Transition line ──
+            if (ex.type === "transition") {
+              return (
+                <div key={ei} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", marginBottom: 4, borderLeft: "3px solid " + sec.color + "15", borderRadius: "0 10px 10px 0", background: "rgba(255,255,255,0.015)" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 1, flexShrink: 0 }}>
+                    <button onClick={() => moveExFn(si, ei, -1)} disabled={ei === 0} style={{ background: "none", border: "none", color: ei === 0 ? T6 : T3, cursor: ei === 0 ? "default" : "pointer", fontSize: 11, padding: "1px 5px", lineHeight: 1 }}>▲</button>
+                    <button onClick={() => moveExFn(si, ei, 1)} disabled={ei === sec.exercises.length - 1} style={{ background: "none", border: "none", color: ei === sec.exercises.length - 1 ? T6 : T3, cursor: ei === sec.exercises.length - 1 ? "default" : "pointer", fontSize: 11, padding: "1px 5px", lineHeight: 1 }}>▼</button>
+                  </div>
+                  <span style={{ fontSize: 12, color: T4 }}>↗</span>
+                  <span style={{ fontFamily: F, fontSize: 14, color: T3, fontStyle: "italic", flex: 1 }}>{ex.n}</span>
+                  <button onClick={() => removeEx(si, ei)} style={{ fontFamily: F, background: "rgba(239,68,68,0.08)", color: R, border: "1px solid rgba(239,68,68,0.12)", padding: "4px 8px", borderRadius: 6, fontSize: 10, cursor: "pointer" }}>✕</button>
+                </div>
+              );
+            }
+            // ── Regular exercise ──
             const isOpen = editEx?.si === si && editEx?.ei === ei;
             if (!isOpen) {
               return (
@@ -265,6 +321,7 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate }: B
                         <button onClick={ev => { ev.stopPropagation(); moveExFn(si, ei, 1); }} disabled={ei === sec.exercises.length - 1} style={{ background: "none", border: "none", color: ei === sec.exercises.length - 1 ? T6 : T3, cursor: ei === sec.exercises.length - 1 ? "default" : "pointer", fontSize: 11, padding: "1px 5px", lineHeight: 1 }}>▼</button>
                       </div>
                       <span style={{ color: T2, fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ex.n}</span>
+                      {allEx.some(x => x.n.toLowerCase() === ex.n.toLowerCase()) ? <span style={{ fontSize: 11, color: T5 }}>ⓘ</span> : <span style={{ fontSize: 9, color: A, background: A + "15", padding: "2px 6px", borderRadius: 4, fontWeight: 700, textTransform: "uppercase" }}>Custom</span>}
                     </div>
                     <span style={{ color: sec.color, fontSize: 12, fontWeight: 600, flexShrink: 0, maxWidth: 120, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>x{ex.r} {ex.c}</span>
                   </div>
@@ -280,7 +337,7 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate }: B
                       <button onClick={() => moveExFn(si, ei, -1)} disabled={ei === 0} style={{ background: "none", border: "none", color: ei === 0 ? T6 : T3, cursor: ei === 0 ? "default" : "pointer", fontSize: 12, padding: "2px 6px", lineHeight: 1 }}>▲</button>
                       <button onClick={() => moveExFn(si, ei, 1)} disabled={ei === sec.exercises.length - 1} style={{ background: "none", border: "none", color: ei === sec.exercises.length - 1 ? T6 : T3, cursor: ei === sec.exercises.length - 1 ? "default" : "pointer", fontSize: 12, padding: "2px 6px", lineHeight: 1 }}>▼</button>
                     </div>
-                    <span onClick={() => { const i = allEx.find(x => x.n === ex.n); if (i) setExD(i); }} style={{ color: T1, fontSize: 15, fontWeight: 700, cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.2)" }}>{ex.n} <span style={{ fontSize: 10, color: T5 }}>ⓘ</span></span>
+                    <span onClick={() => { const i = allEx.find(x => x.n.toLowerCase() === ex.n.toLowerCase()); if (i) setExD(i); }} style={{ color: T1, fontSize: 15, fontWeight: 700, cursor: "pointer", borderBottom: "1px dashed rgba(255,255,255,0.2)" }}>{ex.n} <span style={{ fontSize: 10, color: T5 }}>ⓘ</span></span>
                   </div>
                   <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
                     <button onClick={() => setEditEx(null)} style={{ background: "none", border: "none", color: G, cursor: "pointer", fontSize: 12, fontFamily: F, fontWeight: 600 }}>Done</button>
@@ -297,13 +354,58 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate }: B
               </div>
             );
           })}
+          {/* ════ INLINE QUICK-ADD ════ */}
+          <div style={{ position: "relative", marginTop: sec.exercises.length > 0 ? 8 : 0 }}>
+            <input
+              ref={qaSec === si ? qaRef : null}
+              value={qaSec === si ? qaQ : ""}
+              onFocus={() => { setQaSec(si); setQaQ(""); }}
+              onChange={e => { setQaSec(si); setQaQ(e.target.value); }}
+              onKeyDown={e => { if (e.key === "Enter" && qaQ.trim().length >= 2 && qaSec === si) { addFromQA(qaQ.trim(), si, true); } }}
+              placeholder="Type exercise name..."
+              style={{ ...ist, borderColor: qaSec === si && qaQ.length >= 2 ? sec.color + "50" : BD }}
+            />
+            {qaSec === si && qaQ.length >= 2 && (
+              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50, background: "#1a1a1e", border: "1px solid " + sec.color + "30", borderRadius: 12, marginTop: 4, overflow: "hidden" }}>
+                {/* Custom always on top */}
+                <div onClick={() => addFromQA(qaQ.trim(), si, true)} style={{ padding: "11px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", background: A + "06", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div>
+                    <div style={{ fontFamily: F, fontSize: 14, color: A, fontWeight: 600 }}>Add &ldquo;{qaQ.trim()}&rdquo; as custom</div>
+                    <div style={{ fontFamily: F, fontSize: 11, color: T5, marginTop: 2 }}>Won&apos;t be linked to exercise database</div>
+                  </div>
+                  <span style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: A, background: A + "15", padding: "4px 10px", borderRadius: 6 }}>+ Add</span>
+                </div>
+                {/* Database matches */}
+                {qaResults.map((ex, i) => (
+                  <div key={i} onClick={() => addFromQA(ex.n, si, false)} style={{ padding: "11px 14px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: i < qaResults.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                    <div>
+                      <div style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: T1 }}>{ex.n}</div>
+                      {ex.f !== ex.n ? <div style={{ fontFamily: F, fontSize: 11, color: T5, marginTop: 2 }}>{ex.f}</div> : null}
+                    </div>
+                    <span style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: sec.color, background: sec.color + "15", padding: "4px 10px", borderRadius: 6 }}>+ Add</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          {/* Secondary actions */}
+          <div style={{ display: "flex", gap: 16, marginTop: 8, paddingLeft: 4 }}>
+            <span onClick={() => { setPk2(true); setPkI(si); setPS(""); setPTg(null); }} style={{ fontFamily: F, color: T5, fontSize: 12, cursor: "pointer", textDecoration: "underline", textDecorationColor: T5 + "40", textUnderlineOffset: "3px" }}>Browse all exercises</span>
+            <span onClick={() => { setTrSec(si); setTrText(""); setTimeout(() => trRef.current?.focus(), 100); }} style={{ fontFamily: F, color: T5, fontSize: 12, cursor: "pointer", textDecoration: "underline", textDecorationColor: T5 + "40", textUnderlineOffset: "3px" }}>+ Transition</span>
+          </div>
+          {trSec === si && (
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <input ref={trRef} value={trText} onChange={e => setTrText(e.target.value)} onKeyDown={e => { if (e.key === "Enter") addTransition(si); }} placeholder="e.g., Mosey to the bleachers" style={{ ...ist, flex: 1, fontStyle: "italic" }} />
+              <button onClick={() => addTransition(si)} style={{ fontFamily: F, background: sec.color + "15", color: sec.color, border: "1px solid " + sec.color + "30", padding: "10px 16px", borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>Add</button>
+            </div>
+          )}
           <textarea value={sec.note || ""} onChange={e => setSecs(secs.map((s, i) => i !== si ? s : { ...s, note: e.target.value }))} placeholder={"Q notes for " + sec.label + "..."} rows={2} style={{ ...ist, marginTop: 8, resize: "vertical", fontStyle: "italic", background: "rgba(255,255,255,0.03)" }} />
         </div>
       ))}
 
       {/* Add section */}
       <div style={{ marginTop: 28, display: "flex", gap: 8 }}>
-        <input value={aS} maxLength={25} onChange={e => setAS(e.target.value)} placeholder="New section name..." style={{ ...ist, flex: 1 }} />
+        <input value={aS} maxLength={60} onChange={e => setAS(e.target.value)} placeholder="New section name..." style={{ ...ist, flex: 1 }} />
         <button onClick={() => { if (!aS.trim()) return; setSecs([...secs, { label: aS.trim(), color: sC[secs.length % sC.length], exercises: [], note: "" }]); setAS(""); }} style={{ fontFamily: F, background: "rgba(255,255,255,0.04)", color: T3, border: "1px solid " + BD, padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>+ Section</button>
       </div>
 

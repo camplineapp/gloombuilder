@@ -84,6 +84,7 @@ export interface GenConfig {
 
 export interface SectionExercise {
   n: string; r: string; c: string; nt: string;
+  type?: "exercise" | "transition"; // default "exercise" if missing (backward compatible)
 }
 
 export interface Section {

@@ -152,7 +152,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
         {dbDetail.s.length > 0 ? <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>{dbDetail.s.map(s => <span key={s} style={{ background: A + "12", color: A, fontSize: 10, padding: "3px 9px", borderRadius: 5, fontFamily: F }}>{s}</span>)}</div> : null}
         {dbDetail.d ? <><div style={{ fontFamily: F, marginTop: 20, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>Description</div><div style={{ fontFamily: F, color: T3, fontSize: 15, lineHeight: 1.7, marginTop: 8 }}>{dbDetail.d}</div></> : null}
         <div style={{ fontFamily: F, marginTop: 20, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>How to execute</div>
-        <div style={{ fontFamily: F, color: T3, fontSize: 15, lineHeight: 1.8, marginTop: 8 }}>{dbDetail.h}</div>
+        <div style={{ fontFamily: F, color: T3, fontSize: 15, lineHeight: 1.8, marginTop: 8 }}>{dbDetail.h.split(/(?=\d+\.\s)/).filter(Boolean).map((step: string, i: number) => <div key={i} style={{ marginBottom: 4 }}>{step.trim()}</div>)}</div>
       </div>
     </div>
   ) : null;
