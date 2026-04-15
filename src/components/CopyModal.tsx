@@ -67,17 +67,20 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
     let qpText = "";
     if (beatdownName) qpText += beatdownName + "\n";
     if (beatdownDesc) qpText += beatdownDesc + "\n";
-    if (beatdownName || beatdownDesc) qpText += "Q: " + (qName || "The Bishop") + "\n\n";
+    if (beatdownName || beatdownDesc) qpText += "Q: " + (qName || "The Bishop") + "\n";
     secs.forEach(s => {
-      qpText += s.label + "\n";
+      qpText += "\n── " + s.label + " ──\n";
       s.exercises.forEach(e => {
-        qpText += e.r + " " + e.n + (e.c ? " " + e.c : "") + "\n";
-        if (e.nt) qpText += "  > " + e.nt + "\n";
+        if (e.type === "transition") {
+          qpText += "↗ " + e.n + "\n";
+        } else {
+          qpText += e.r + " " + e.n + (e.c ? " " + e.c : "") + "\n";
+          if (e.nt) qpText += "  > " + e.nt + "\n";
+        }
       });
       if (s.note) qpText += "> " + s.note + "\n";
-      qpText += "\n";
     });
-    qpText += "Built with GloomBuilder · gloombuilder.app";
+    qpText += "\nBuilt with GloomBuilder · gloombuilder.app";
 
     return (
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
@@ -106,10 +109,14 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
   if (bb.cnt) bbText += "*Total PAX:* " + bb.cnt + "\n";
   bbText += "\n*Workout:*\n";
   secs.forEach(s => {
-    bbText += "\n" + s.label + "\n";
+    bbText += "\n── " + s.label + " ──\n";
     s.exercises.forEach(e => {
-      bbText += e.r + " " + e.n + (e.c ? " " + e.c : "") + "\n";
-      if (e.nt) bbText += "  > " + e.nt + "\n";
+      if (e.type === "transition") {
+        bbText += "↗ " + e.n + "\n";
+      } else {
+        bbText += e.r + " " + e.n + (e.c ? " " + e.c : "") + "\n";
+        if (e.nt) bbText += "  > " + e.nt + "\n";
+      }
     });
     if (s.note) bbText += "> " + s.note + "\n";
   });
