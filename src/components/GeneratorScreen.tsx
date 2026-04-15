@@ -32,9 +32,13 @@ interface GeneratorScreenProps {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
   }) => void;
+  onRunThis?: (secs: Section[], title: string, dur: string, saveData: {
+    nm: string; desc: string; d: string; secs: Section[]; tg: string[];
+    src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
+  }) => void;
 }
 
-export default function GeneratorScreen({ onClose, onSave }: GeneratorScreenProps) {
+export default function GeneratorScreen({ onClose, onSave, onRunThis }: GeneratorScreenProps) {
   const [gs, setGs] = useState(0);
   const [gc, setGc] = useState<GenConfig>({ dur: null, diff: null, sites: [], eq: [] });
   const [gr, setGr] = useState<Section[] | null>(null);
@@ -391,6 +395,12 @@ export default function GeneratorScreen({ onClose, onSave }: GeneratorScreenProp
             const tgs = [gc.dur, (DIFFS.find(x => x.id === gc.diff) || { l: "" }).l, ...gc.sites.map(s => (SITES.find(x => x.id === s) || { l: "" }).l), ...gc.eq.filter(e => e !== "none").map(e => (EQUIP.find(x => x.id === e) || { l: "" }).l)].filter((v): v is string => Boolean(v));
             onSave({ nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib });
           }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save to locker</button>
+          {onRunThis && <button onClick={() => {
+            const nm = grT.trim() || "Generated Beatdown";
+            const tgs = [gc.dur, (DIFFS.find(x => x.id === gc.diff) || { l: "" }).l, ...gc.sites.map(s => (SITES.find(x => x.id === s) || { l: "" }).l), ...gc.eq.filter(e => e !== "none").map(e => (EQUIP.find(x => x.id === e) || { l: "" }).l)].filter((v): v is string => Boolean(v));
+            const saveData = { nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib };
+            onRunThis(JSON.parse(JSON.stringify(gr)), nm, gc.dur || "45 min", saveData);
+          }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G + "15", color: G, border: "1px solid " + G + "30", marginTop: 10 }}>Run This</button>}
         </div>
       </div>
     );

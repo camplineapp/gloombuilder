@@ -40,9 +40,13 @@ interface BuilderScreenProps {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     dur: string | null; sites: string[]; eq: string[];
   }) => void;
+  onRunThis?: (secs: Section[], title: string, dur: string, saveData: {
+    nm: string; desc: string; d: string; secs: Section[]; tg: string[];
+    src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
+  }) => void;
 }
 
-export default function BuilderScreen({ onClose, onSave, editData, onUpdate }: BuilderScreenProps) {
+export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onRunThis }: BuilderScreenProps) {
   const [bT, setBT] = useState(editData?.nm || "");
   const [bD, setBD] = useState(editData?.desc || "");
   const [bDur, setBDur] = useState<string | null>(editData?.dur || null);
@@ -421,6 +425,12 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate }: B
             onSave({ nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib });
           }
         }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>{editData ? "Save changes" : "Save to locker"}</button>
+        {!editData && onRunThis && <button onClick={() => {
+          const nm = bT.trim() || "Untitled";
+          const tgs = [bDur, (DIFFS.find(x => x.id === bDiff) || { l: "" }).l, ...bSites.map(s => (SITES.find(x => x.id === s) || { l: "" }).l), ...bEq.filter(e => e !== "none").map(e => (EQUIP.find(x => x.id === e) || { l: "" }).l)].filter((v): v is string => Boolean(v));
+          const saveData = { nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib };
+          onRunThis(JSON.parse(JSON.stringify(secs)), nm, bDur || "45 min", saveData);
+        }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G + "15", color: G, border: "1px solid " + G + "30", marginTop: 10 }}>Run This</button>}
       </div>
     </div>
   );

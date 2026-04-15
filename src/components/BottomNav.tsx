@@ -30,7 +30,8 @@ export default function BottomNav({ active, onTabChange }: BottomNavProps) {
         background: "#0E0E10",
         borderTop: "1px solid rgba(255,255,255,0.07)",
         zIndex: 50,
-        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        padding: "6px 0 12px",
+        paddingBottom: "calc(12px + env(safe-area-inset-bottom, 8px))",
       }}
     >
       {tabs.map((t) => (
@@ -45,7 +46,7 @@ export default function BottomNav({ active, onTabChange }: BottomNavProps) {
             cursor: "pointer",
             color: active === t.key ? "#22c55e" : "#928982",
             fontSize: 14,
-            padding: "10px 20px",
+            padding: "14px 20px",
           }}
         >
           {t.label}

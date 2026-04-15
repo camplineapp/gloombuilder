@@ -14,6 +14,7 @@ import ProfileScreen from "@/components/ProfileScreen";
 import GeneratorScreen from "@/components/GeneratorScreen";
 import BuilderScreen from "@/components/BuilderScreen";
 import CreateExerciseScreen from "@/components/CreateExerciseScreen";
+import LiveModeScreen from "@/components/LiveModeScreen";
 
 export interface LockerBeatdown {
   id: string;
@@ -147,6 +148,7 @@ export default function App() {
   const [tab, setTab] = useState<"home" | "library" | "locker" | "profile">("home");
   const [vw, setVw] = useState<string | null>(null);
   const [editingBd, setEditingBd] = useState<LockerBeatdown | null>(null);
+  const [liveBd, setLiveBd] = useState<LockerBeatdown | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
   const [profile, setProfile] = useState<{ f3_name: string; ao: string; state: string; region: string } | null>(null);
@@ -375,6 +377,11 @@ export default function App() {
     setVw("edit-bd");
   };
 
+  const handleRunBeatdown = (bd: LockerBeatdown) => {
+    setLiveBd(bd);
+    setVw("live");
+  };
+
   const handleUpdateBeatdown = async (id: string, data: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; dur: string | null; sites: string[]; eq: string[] }) => {
     const durNum = data.dur ? parseInt(data.dur) : null;
     const success = await updateBeatdown(id, { nm: data.nm, desc: data.desc, d: data.d, dur: durNum, siteFeatures: data.sites, equipment: data.eq, tags: data.tg, sections: data.secs });
@@ -458,11 +465,26 @@ export default function App() {
   };
 
   // ════ FULL-SCREEN VIEWS ════
-  if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd") {
+  if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "live") {
     return (
-      <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: 20, paddingBottom: 100, position: "relative" }}>
-        {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} />}
-        {vw === "build" && <BuilderScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} />}
+      <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: vw === "live" ? 0 : 20, paddingBottom: vw === "live" ? 0 : 100, position: "relative" }}>
+        {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} onRunThis={async (secs, title, dur, saveData) => {
+          // Save to locker WITHOUT resetting view
+          if (saveData) {
+            const result = await saveBeatdown({ nm: saveData.nm, desc: saveData.desc, d: saveData.d, secs: saveData.secs, tg: saveData.tg, src: saveData.src, dur: saveData.dur, sites: saveData.sites, eq: saveData.eq, isPublic: saveData.share || false });
+            if (result) { await loadLocker(); if (saveData.share) await loadLibrary(); fl("Saved to locker!"); }
+          }
+          setLiveBd({ id: "temp", nm: title, dt: "", src: "Generated", d: "medium", desc: "", secs, tg: [dur], isPublic: false });
+          setVw("live");
+        }} />}
+        {vw === "build" && <BuilderScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} onRunThis={async (secs, title, dur, saveData) => {
+          if (saveData) {
+            const result = await saveBeatdown({ nm: saveData.nm, desc: saveData.desc, d: saveData.d, secs: saveData.secs, tg: saveData.tg, src: saveData.src, dur: saveData.dur, sites: saveData.sites, eq: saveData.eq, isPublic: saveData.share || false });
+            if (result) { await loadLocker(); if (saveData.share) await loadLibrary(); fl("Saved to locker!"); }
+          }
+          setLiveBd({ id: "temp", nm: title, dt: "", src: "Manual", d: "medium", desc: "", secs, tg: [dur], isPublic: false });
+          setVw("live");
+        }} />}
         {vw === "create-ex" && <CreateExerciseScreen onClose={() => setVw(null)} onSave={handleSaveExercise} />}
         {vw === "edit-bd" && editingBd && <BuilderScreen
           onClose={() => { setVw(null); setEditingBd(null); }}
@@ -480,6 +502,14 @@ export default function App() {
             isPublic: editingBd.isPublic,
           }}
           onUpdate={handleUpdateBeatdown}
+        />}
+        {vw === "live" && liveBd && <LiveModeScreen
+          beatdownTitle={liveBd.nm}
+          qName={profName || "Q"}
+          ao={profAO || "F3"}
+          duration={liveBd.tg.find(t => t.includes("min")) || "45 min"}
+          sections={liveBd.secs}
+          onClose={() => { setVw(null); setLiveBd(null); }}
         />}
         {toastEl}
       </div>
@@ -515,6 +545,7 @@ export default function App() {
           onSteal={handleSteal}
           onUpdateExercise={handleUpdateExercise}
           onEditBeatdown={handleEditBeatdown}
+          onRunBeatdown={handleRunBeatdown}
         />
       )}
       {tab === "profile" && <ProfileScreen onProfileSaved={checkUser} />}
