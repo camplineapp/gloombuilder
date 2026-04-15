@@ -7,6 +7,7 @@ export interface ExerciseData {
   h: string; // how-to
   d?: string; // short description
   df?: number; // difficulty level 1-3
+  pt?: number; // popularity tier: 1=classic, 2=well-known, 3=exotic
 }
 
 // Local fallback exercises (45) — used if Supabase load fails
@@ -179,6 +180,7 @@ export function mapSupabaseExercise(row: Record<string, unknown>): ExerciseData 
     h: howTo,
     d: description,
     df: difficulty,
+    pt: (row.popularity_tier as number) || 3,
   };
 }
 
@@ -201,9 +203,11 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   else if (cfg.diff === "hard") { rL = 15; rH = 20; }
   else { rL = 20; rH = 30; }
 
-  // Core exercises = the 45 hand-curated classics every PAX knows
-  const CORE_NAMES = new Set(EX.map(e => e.n.toLowerCase()));
-  const isCore = (e: ExerciseData) => CORE_NAMES.has(e.n.toLowerCase());
+  // Popularity tiers: 1=classics (86), 2=well-known (135), 3=exotic (683)
+  // Local EX exercises (fallback) get tier 1 treatment
+  const tier = (e: ExerciseData) => e.pt || (EX.some(x => x.n.toLowerCase() === e.n.toLowerCase()) ? 1 : 3);
+  const isT1 = (e: ExerciseData) => tier(e) === 1;
+  const isT2 = (e: ExerciseData) => tier(e) <= 2;
 
   const pool = exList.filter(e => e.s.length === 0 || e.s.some(s => cfg.sites.includes(s)));
   const wP = pool.filter(e => e.t.includes("Warm-Up"));
@@ -214,26 +218,27 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
     mP = mP.filter(e => !e.t.includes("Coupon"));
   }
 
-  // Split main pool into core (classics) and wider (variety)
-  const mCore = mP.filter(isCore);
-  const mWider = mP.filter(e => !isCore(e) && (!e.df || e.df <= 2));
-  const mAll = mP;
+  // Split main pool by popularity tier
+  const mT1 = mP.filter(isT1);           // Classics every PAX knows
+  const mT2 = mP.filter(e => tier(e) === 2); // Well-known exercises
+  const mT1T2 = mP.filter(isT2);         // T1 + T2 combined
+  const mAll = mP;                        // Full 904 pool
 
   const tC = cfg.dur === "30 min" ? 5 : cfg.dur === "60 min" ? 10 : 7;
   const mC = cfg.diff === "easy" ? 2 : 4;
 
-  // Warmup: always core exercises when possible (the classics)
-  const wCore = wP.filter(isCore);
-  const w = pk(wCore.length >= 3 ? wCore : wP, 3).map(e => ({
+  // Warmup: prefer tier 1 classics
+  const wT1 = wP.filter(isT1);
+  const w = pk(wT1.length >= 3 ? wT1 : wP, 3).map(e => ({
     n: e.n, r: String(rn(rL, rH)), c: "IC", nt: "",
   }));
 
-  // Mary: prefer core for easy/medium
-  const yCore = yP.filter(isCore);
-  const maryPool = (cfg.diff === "easy" || cfg.diff === "medium") && yCore.length >= mC ? yCore : yP;
+  // Mary: prefer tier 1 for easy/medium
+  const yT1 = yP.filter(isT1);
+  const maryPool = (cfg.diff === "easy" || cfg.diff === "medium") && yT1.length >= mC ? yT1 : yP;
 
   // ════ THANG EXERCISE SELECTION ════
-  // Core-priority: Easy=100% core, Medium=60% core, Hard=30% core, Beast=all wider
+  // Tier-based: Easy=100% T1, Medium=60% T1 + 40% T2, Hard=30% T1+T2 + 70% all, Beast=full
   let thangPicks: ExerciseData[];
   const sitePool = mP.filter(e => e.s.length > 0 && e.s.some(s => cfg.sites.includes(s)));
   const couponPool = mP.filter(e => e.t.includes("Coupon"));
@@ -243,10 +248,12 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
 
   // 1. Site-specific exercises (guarantee ~30% of Thang when sites selected)
   if (sitePool.length > 0) {
-    const sitePicks = cfg.diff === "easy" ? sitePool.filter(isCore) : sitePool;
-    const siteCount = Math.min(Math.ceil(tC * 0.3), sitePicks.length);
+    // For easy, prefer tier 1 site exercises; otherwise any tier
+    const sitePicks = cfg.diff === "easy" ? sitePool.filter(isT1) : cfg.diff === "medium" ? sitePool.filter(isT2) : sitePool;
+    const fallbackSite = sitePicks.length > 0 ? sitePicks : sitePool;
+    const siteCount = Math.min(Math.ceil(tC * 0.3), fallbackSite.length);
     if (siteCount > 0) {
-      picks.push(...pk(sitePicks, siteCount));
+      picks.push(...pk(fallbackSite, siteCount));
       remaining -= picks.length;
     }
   }
@@ -261,29 +268,29 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
     }
   }
 
-  // 3. Fill remaining slots based on beatdown difficulty
+  // 3. Fill remaining slots based on beatdown difficulty + popularity tiers
   if (remaining > 0) {
     const unused = (e: ExerciseData) => !picks.some(p => p.n === e.n) && !e.t.includes("Coupon");
     let fillPicks: ExerciseData[] = [];
 
     if (cfg.diff === "easy") {
-      // 100% core exercises
-      fillPicks = pk(mCore.filter(unused), remaining);
+      // 100% tier 1 classics — the exercises every PAX knows
+      fillPicks = pk(mT1.filter(unused), remaining);
     } else if (cfg.diff === "medium") {
-      // ~60% core, ~40% wider variety (difficulty 1-2)
-      const coreCount = Math.ceil(remaining * 0.6);
-      const widerCount = remaining - coreCount;
+      // ~60% tier 1, ~40% tier 2
+      const t1Count = Math.ceil(remaining * 0.6);
+      const t2Count = remaining - t1Count;
       fillPicks = [
-        ...pk(mCore.filter(unused), coreCount),
-        ...pk(mWider.filter(unused), widerCount),
+        ...pk(mT1.filter(unused), t1Count),
+        ...pk(mT2.filter(unused), t2Count),
       ];
     } else if (cfg.diff === "hard") {
-      // ~30% core, ~70% full pool
-      const coreCount = Math.ceil(remaining * 0.3);
-      const restCount = remaining - coreCount;
+      // ~30% tier 1+2, ~70% full pool including tier 3
+      const knownCount = Math.ceil(remaining * 0.3);
+      const restCount = remaining - knownCount;
       fillPicks = [
-        ...pk(mCore.filter(unused), coreCount),
-        ...pk(mAll.filter(e => unused(e) && !isCore(e)), restCount),
+        ...pk(mT1T2.filter(unused), knownCount),
+        ...pk(mAll.filter(e => unused(e) && !isT2(e)), restCount),
       ];
     } else {
       // Beast: full 904 pool, no restriction

@@ -225,7 +225,7 @@ export async function loadSeedExercises() {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("exercises")
-    .select("name, aliases, description, how_to, body_part, exercise_type, equipment, site_type, cadence, difficulty, intensity, movement_type, is_mary, is_transport")
+    .select("name, aliases, description, how_to, body_part, exercise_type, equipment, site_type, cadence, difficulty, intensity, movement_type, is_mary, is_transport, popularity_tier")
     .eq("source", "seed");
 
   if (error) {
