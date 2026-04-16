@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { EX, DIFFS, SITES, EQUIP, mapSupabaseExercise, normalizeSection } from "@/lib/exercises";
 import type { Section, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
@@ -94,6 +94,44 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
     ...bEq.filter(e => e !== "none").map(e => (EQUIP.find(x => x.id === e) || { l: "" }).l),
   ].filter((v): v is string => Boolean(v));
 
+  // ── Duration Estimator ──────────────────────────────────────────────────────
+  const estimatedMin = useMemo(() => {
+    let totalSec = 0;
+    secs.forEach(section => {
+      section.exercises.forEach(ex => {
+        if (ex.type === "transition") { totalSec += 30; return; }
+        const mode = (ex as any).mode;
+        const value = (ex as any).value;
+        const unit = (ex as any).unit;
+        const cadence = ex.cadence || ex.c || "IC";
+        if (mode === "reps" || (!mode && ex.r && !ex.r.includes("sec") && !ex.r.includes("min"))) {
+          const reps = typeof value === "number" ? value : parseInt(ex.r || "0") || 0;
+          const pace = cadence === "IC" ? 3 : cadence === "OYO" ? 2 : 2.5;
+          totalSec += reps * pace;
+        } else if (mode === "time") {
+          totalSec += unit === "min" ? value * 60 : value;
+        } else if (mode === "distance") {
+          totalSec += unit === "laps" ? value * 90 : (value / 40) * 60;
+        } else if (ex.r) {
+          // Legacy: try to parse r field
+          const t = ex.r.toLowerCase();
+          const secM = t.match(/^(\d+)\s*sec/); if (secM) { totalSec += parseInt(secM[1]); return; }
+          const minM = t.match(/^(\d+)\s*min/); if (minM) { totalSec += parseInt(minM[1]) * 60; return; }
+          const repsNum = parseInt(ex.r);
+          if (!isNaN(repsNum)) { const pace = cadence === "IC" ? 3 : 2; totalSec += repsNum * pace; }
+        }
+      });
+      totalSec += 15; // section break buffer
+    });
+    totalSec *= 1.15; // mumblechatter buffer
+    const rounded = Math.round(totalSec / 60 / 5) * 5;
+    return rounded < 20 ? 0 : rounded; // don't show for tiny drafts
+  }, [secs]);
+
+  const selectedDurMin = bDur ? parseInt(bDur) : 0;
+  const estimateOffTarget = selectedDurMin > 0 && Math.abs(estimatedMin - selectedDurMin) > 5;
+  const estimateColor = !selectedDurMin ? "#928982" : estimateOffTarget ? "#f59e0b" : "#22c55e";
+
   const handleSave = () => {
     if (saving) return;
     setSaving(true);
@@ -173,7 +211,14 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
 
       {/* Beatdown details card */}
       <div style={{ background: CD, border: "1px solid " + BD, borderRadius: 14, padding: 14, marginBottom: 22 }}>
-        <div style={{ color: T2, fontSize: 13, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 12, fontFamily: F }}>Beatdown details</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+          <div style={{ color: T2, fontSize: 13, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: F }}>Beatdown details</div>
+          {estimatedMin >= 20 && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: estimateColor + "26", border: "1px solid " + estimateColor + "66", borderRadius: 8, padding: "6px 10px" }}>
+              <span style={{ color: estimateColor, fontSize: 13, fontWeight: 700, fontFamily: F }}>~{estimatedMin} min planned</span>
+            </div>
+          )}
+        </div>
 
         {/* Duration */}
         <div style={{ marginBottom: 10 }}>
