@@ -292,8 +292,21 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
         allEx={allEx}
       />
 
+      {/* Floating duration badge — always visible above save button */}
+      {estimatedMin >= 20 && (
+        <div style={{ marginTop: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: estimateColor + "18", border: "1px solid " + estimateColor + "50", borderRadius: 20, padding: "8px 18px" }}>
+            <span style={{ fontSize: 16 }}>{estimateOffTarget ? "⚡" : "✓"}</span>
+            <span style={{ color: estimateColor, fontSize: 15, fontWeight: 700, fontFamily: F }}>~{estimatedMin} min planned</span>
+            {selectedDurMin > 0 && estimateOffTarget && (
+              <span style={{ color: T4, fontSize: 13, fontFamily: F }}>· {selectedDurMin} min selected</span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Save + Run This */}
-      <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
+      <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
         <button
           disabled={saving}
           onClick={handleSave}
