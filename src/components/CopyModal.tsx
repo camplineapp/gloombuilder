@@ -39,6 +39,7 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
     fngs: "",
     pax: "",
     cnt: "",
+    cot: "",
     ann: "",
   });
 
@@ -120,7 +121,8 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
     });
     if (s.note) bbText += "> " + s.note + "\n";
   });
-  if (bb.ann) bbText += "\n*Announcements:* " + bb.ann + "\n";
+  if (bb.cot) bbText += "\n*COT:*\n" + bb.cot + "\n";
+  if (bb.ann) bbText += "\n*Announcements:*\n" + bb.ann + "\n";
   bbText += "\nBuilt with GloomBuilder · gloombuilder.app";
 
   return (
@@ -177,6 +179,11 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
             <input value={bb.cnt} onChange={e => setBb({ ...bb, cnt: e.target.value })} style={ist} />
           </div>
           <div style={{ flex: 1 }} />
+        </div>
+        {/* COT Message */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontFamily: F, color: T5, fontSize: 12, textTransform: "uppercase", letterSpacing: 1.5, display: "block", marginBottom: 4, fontWeight: 600 }}>COT Message</label>
+          <textarea value={bb.cot} onChange={e => setBb({ ...bb, cot: e.target.value })} rows={3} placeholder="Closing thought, prayer, or challenge for the PAX..." style={{ ...ist, resize: "vertical" as const }} />
         </div>
         {/* Announcements */}
         <div style={{ marginBottom: 14 }}>

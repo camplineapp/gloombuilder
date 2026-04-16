@@ -191,7 +191,8 @@ function pk(a: ExerciseData[], n: number) {
   return a.slice().sort(() => Math.random() - 0.5).slice(0, n);
 }
 function rn(lo: number, hi: number) {
-  return lo + Math.floor(Math.random() * (hi - lo + 1));
+  const steps = Math.floor((hi - lo) / 5);
+  return lo + Math.floor(Math.random() * (steps + 1)) * 5;
 }
 
 export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] {
@@ -199,9 +200,9 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   const exList = exercises && exercises.length > 0 ? exercises : EX;
 
   let rL: number, rH: number;
-  if (cfg.diff === "easy") { rL = 8; rH = 12; }
-  else if (cfg.diff === "medium") { rL = 10; rH = 15; }
-  else if (cfg.diff === "hard") { rL = 15; rH = 20; }
+  if (cfg.diff === "easy") { rL = 10; rH = 15; }
+  else if (cfg.diff === "medium") { rL = 10; rH = 20; }
+  else if (cfg.diff === "hard") { rL = 15; rH = 25; }
   else { rL = 20; rH = 30; }
 
   // Popularity tiers: 1=classics (86), 2=well-known (135), 3=exotic (683)
