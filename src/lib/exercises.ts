@@ -346,7 +346,7 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
     const iS = e.t.includes("Static");
     // Infer intensity: use stored ix, or detect high-intensity from tags for local fallback exercises
     const inferredIntensity = e.ix || (e.t.some(tag => ["Cardio", "Full Body"].includes(tag)) ? "high" : "medium");
-    const r = iS ? (cfg.diff === "beast" ? "90 sec" : "60 sec") : pickReps(cfg.diff, inferredIntensity);
+    const r = iS ? (cfg.diff === "beast" ? "90 sec" : "60 sec") : pickReps(cfg.diff || "medium", inferredIntensity);
     let nt = "";
     if (e.s.length > 0) {
       const m2 = e.s.filter(s => cfg.sites.includes(s));
@@ -359,7 +359,7 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   });
 
   const m = pk(maryPool, mC).map(e => ({
-    n: e.n, r: pickReps(cfg.diff, e.ix || "medium"), c: "IC", nt: "",
+    n: e.n, r: pickReps(cfg.diff || "medium", e.ix || "medium"), c: "IC", nt: "",
   }));
 
   if (cfg.diff === "hard" || cfg.diff === "beast") {
