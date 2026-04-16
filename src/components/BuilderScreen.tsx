@@ -249,9 +249,6 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
         onSectionsChange={setSecs}
         allEx={allEx}
       />
-          </div>
-        </div>
-      )}
 
       {/* Save + Run This */}
       <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
