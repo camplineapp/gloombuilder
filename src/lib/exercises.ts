@@ -84,12 +84,33 @@ export interface GenConfig {
 }
 
 export interface SectionExercise {
-  n: string; r: string; c: string; nt: string;
-  type?: "exercise" | "transition"; // default "exercise" if missing (backward compatible)
+  // Legacy fields (always present, filled by normalizeExercise for backward compat)
+  n: string;
+  r: string;
+  c: string;
+  nt: string;
+  type?: "exercise" | "transition";
+  // New fields (added for redesign — populated alongside legacy)
+  id?: string;
+  name?: string;
+  mode?: "reps" | "time" | "distance";
+  value?: number | string;
+  unit?: "sec" | "min" | "yds" | "laps";
+  cadence?: string;
+  note?: string;
+  exerciseId?: string;
 }
 
 export interface Section {
-  label: string; color: string; exercises: SectionExercise[]; note: string;
+  // Legacy fields (always present)
+  label: string;
+  color: string;
+  exercises: SectionExercise[];
+  note: string;
+  // New fields (added for redesign)
+  id?: string;
+  name?: string;
+  qNotes?: string;
 }
 
 // ════ MAP SUPABASE EXERCISE TO EXERCISEDATA ════
@@ -286,9 +307,10 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   // Warmup: always low reps (10 or 15) regardless of difficulty — these are just getting loose
   const wT1 = wP.filter(isT1);
   const wRepOpts = [10, 10, 15, 15, 15];
-  const w = pk(wT1.length >= 4 ? wT1 : wP, 4).map(e => ({
-    n: e.n, r: String(wRepOpts[Math.floor(Math.random() * wRepOpts.length)]), c: "IC", nt: "",
-  }));
+  const w = pk(wT1.length >= 4 ? wT1 : wP, 4).map(e => {
+    const wRep = String(wRepOpts[Math.floor(Math.random() * wRepOpts.length)]);
+    return { id: _genId(), type: "exercise" as const, name: e.n, mode: "reps" as const, value: parseInt(wRep), cadence: "IC", note: "", n: e.n, r: wRep, c: "IC", nt: "" };
+  });
 
   // Mary: prefer tier 1 for easy/medium
   const yT1 = yP.filter(isT1);
@@ -365,6 +387,7 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
     // Infer intensity: use stored ix, or detect high-intensity from tags for local fallback exercises
     const inferredIntensity = e.ix || (e.t.some(tag => ["Cardio", "Full Body"].includes(tag)) ? "high" : "medium");
     const r = iS ? (cfg.diff === "beast" ? "90 sec" : "60 sec") : pickReps(cfg.diff || "medium", inferredIntensity);
+    const _parsed = _parseLegacyAmount(r);
     let nt = "";
     if (e.s.length > 0) {
       const m2 = e.s.filter(s => cfg.sites.includes(s));
@@ -373,20 +396,180 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
         if (si) nt = "Use the " + si.l.toLowerCase();
       }
     }
-    return { n: e.n, r, c: iS ? "OYO" : (Math.random() > 0.5 ? "IC" : "OYO"), nt };
+    const _cad = iS ? "OYO" : (Math.random() > 0.5 ? "IC" : "OYO");
+    return { id: _genId(), type: "exercise" as const, name: e.n, mode: _parsed.mode, value: _parsed.value, unit: _parsed.unit, cadence: _cad, note: nt, n: e.n, r, c: _cad, nt };
   });
 
-  const m = pk(maryPool, mC).map(e => ({
-    n: e.n, r: pickReps(cfg.diff || "medium", e.ix || "medium"), c: "IC", nt: "",
-  }));
+  const m = pk(maryPool, mC).map(e => {
+    const mRep = pickReps(cfg.diff || "medium", e.ix || "medium");
+    const mParsed = _parseLegacyAmount(mRep);
+    return { id: _genId(), type: "exercise" as const, name: e.n, mode: mParsed.mode, value: mParsed.value, unit: mParsed.unit, cadence: "IC", note: "", n: e.n, r: mRep, c: "IC", nt: "" };
+  });
 
   if (cfg.diff === "hard" || cfg.diff === "beast") {
     m.push({ n: "Plank", r: cfg.diff === "beast" ? "90 sec" : "60 sec", c: "OYO", nt: "" });
   }
 
+  const _mkSec = (label: string, color: string, exercises: SectionExercise[]) => ({
+    id: _genId(), name: label, label, color, qNotes: "", note: "", exercises
+  });
   return [
-    { label: "Warmup", color: G, exercises: w, note: "" },
-    { label: "The Thang", color: A, exercises: t, note: "" },
-    { label: "Mary", color: P, exercises: m, note: "" },
+    _mkSec("Warmup", G, w),
+    _mkSec("The Thang", A, t),
+    _mkSec("Mary", P, m),
   ];
+}
+
+// ════ ID GENERATOR (browser + Node safe) ════
+function _genId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return Math.random().toString(36).slice(2, 11) + Date.now().toString(36);
+}
+
+// ════ EXPORTED ID GENERATOR ════
+export function generateId(): string {
+  return _genId();
+}
+
+// ════ SMART TEXT PARSER ════
+// Parses free-text like "20" → reps, "45 sec" → timer, "50 yds" → distance
+export function parseSmartText(input: string): { mode: "reps" | "time" | "distance"; value: number | string; unit?: "sec" | "min" | "yds" | "laps" } | null {
+  if (!input || !input.trim()) return null;
+  const t = input.trim().toLowerCase();
+  const secMatch = t.match(/^(\d+)\s*(?:sec(?:onds?)?|s)$/);
+  if (secMatch) return { mode: "time", value: parseInt(secMatch[1]), unit: "sec" };
+  const minMatch = t.match(/^(\d+)\s*(?:min(?:utes?)?|m)$/);
+  if (minMatch) return { mode: "time", value: parseInt(minMatch[1]), unit: "min" };
+  const colonMatch = t.match(/^(\d+):(\d{2})$/);
+  if (colonMatch) return { mode: "time", value: parseInt(colonMatch[1]) * 60 + parseInt(colonMatch[2]), unit: "sec" };
+  const ydsMatch = t.match(/^(\d+)\s*(?:y(?:d|ds|ards?)?)$/);
+  if (ydsMatch) return { mode: "distance", value: parseInt(ydsMatch[1]), unit: "yds" };
+  const lapsMatch = t.match(/^(\d+)\s*laps?$/);
+  if (lapsMatch) return { mode: "distance", value: parseInt(lapsMatch[1]), unit: "laps" };
+  const repsMatch = t.match(/^(\d+)$/);
+  if (repsMatch) return { mode: "reps", value: parseInt(repsMatch[1]) };
+  return { mode: "reps", value: input.trim() };
+}
+
+// ════ LEGACY AMOUNT PARSER (used internally in generate()) ════
+function _parseLegacyAmount(rStr: string): { mode: "reps" | "time" | "distance"; value: number | string; unit?: "sec" | "min" | "yds" | "laps" } {
+  const parsed = parseSmartText(rStr);
+  return parsed || { mode: "reps", value: rStr };
+}
+
+// ════ LEGACY REPS+CADENCE PARSER (handles old cadence-as-timer pattern) ════
+function _parseLegacyRepsAndCadence(rStr: string, cStr: string): {
+  mode: "reps" | "time" | "distance";
+  value: number | string;
+  unit?: "sec" | "min" | "yds" | "laps";
+  cadence: string;
+} {
+  const t = rStr.trim().toLowerCase();
+  const cl = cStr.trim().toLowerCase();
+
+  // Time in reps field
+  const secMatch = t.match(/^(\d+)\s*(?:sec(?:onds?)?|s)$/);
+  if (secMatch) return { mode: "time", value: parseInt(secMatch[1]), unit: "sec", cadence: "OYO" };
+  const minMatch = t.match(/^(\d+)\s*(?:min(?:utes?)?|m)$/);
+  if (minMatch) return { mode: "time", value: parseInt(minMatch[1]), unit: "min", cadence: "OYO" };
+  const colonMatch = t.match(/^(\d+):(\d{2})$/);
+  if (colonMatch) return { mode: "time", value: parseInt(colonMatch[1]) * 60 + parseInt(colonMatch[2]), unit: "sec", cadence: "OYO" };
+
+  // Distance in reps field
+  const ydsMatch = t.match(/^(\d+)\s*(?:y(?:d|ds|ards?)?)$/);
+  if (ydsMatch) return { mode: "distance", value: parseInt(ydsMatch[1]), unit: "yds", cadence: "OYO" };
+  const lapsMatch = t.match(/^(\d+)\s*laps?$/);
+  if (lapsMatch) return { mode: "distance", value: parseInt(lapsMatch[1]), unit: "laps", cadence: "OYO" };
+
+  // Legacy cadence-as-timer: reps is plain number + cadence says "sec"/"min"
+  const repsNum = parseInt(t);
+  if (!isNaN(repsNum) && String(repsNum) === t && /^(sec(onds?)?|s|min(utes?|s)?|m)$/i.test(cl)) {
+    const isMin = /^(min(utes?|s)?|m)$/i.test(cl);
+    return { mode: "time", value: repsNum, unit: isMin ? "min" : "sec", cadence: "OYO" };
+  }
+
+  // Plain number = reps
+  if (!isNaN(repsNum) && String(repsNum) === t) {
+    return { mode: "reps", value: repsNum, cadence: cStr || "IC" };
+  }
+
+  // Fallback
+  return { mode: "reps", value: rStr, cadence: cStr || "IC" };
+}
+
+// ════ NORMALIZE EXERCISE (raw Supabase JSONB or legacy SectionExercise → new format) ════
+// Fills BOTH old and new fields so all existing code continues to work
+export function normalizeExercise(raw: Record<string, unknown>): SectionExercise {
+  const id = (raw.id as string) || _genId();
+  const type: "exercise" | "transition" = (raw.type as string) === "transition" ? "transition" : "exercise";
+
+  if (type === "transition") {
+    const tName = (raw.name as string) || (raw.n as string) || "";
+    return { id, type, name: tName, n: tName, r: "", c: "", nt: "" };
+  }
+
+  const exName = (raw.name as string) || (raw.n as string) || "";
+  const exNote = (raw.note as string) || (raw.nt as string) || "";
+
+  let mode: "reps" | "time" | "distance" = "reps";
+  let value: number | string = "";
+  let unit: "sec" | "min" | "yds" | "laps" | undefined;
+  let cadence = "IC";
+
+  if (raw.mode) {
+    // Already new format
+    mode = raw.mode as "reps" | "time" | "distance";
+    value = raw.value as number | string;
+    unit = raw.unit as "sec" | "min" | "yds" | "laps" | undefined;
+    cadence = (raw.cadence as string) || "IC";
+  } else {
+    // Legacy format — parse r + c
+    const parsed = _parseLegacyRepsAndCadence((raw.r as string) || "", (raw.c as string) || "");
+    mode = parsed.mode;
+    value = parsed.value;
+    unit = parsed.unit;
+    cadence = parsed.cadence;
+  }
+
+  // Build legacy r string for backward compat (preserve original if it exists)
+  let rLegacy = (raw.r as string) || "";
+  if (!rLegacy) {
+    if (mode === "reps") rLegacy = String(value);
+    else if (mode === "time") rLegacy = `${value} ${unit}`;
+    else if (mode === "distance") rLegacy = `${value} ${unit}`;
+  }
+
+  return {
+    // New fields
+    id, type, name: exName, mode, value, unit, cadence, note: exNote,
+    // Legacy fields (backward compat — always populated)
+    n: exName, r: rLegacy, c: cadence, nt: exNote,
+  };
+}
+
+// ════ NORMALIZE SECTION (raw Supabase JSONB or legacy Section → new format) ════
+export function normalizeSection(raw: Record<string, unknown>): Section {
+  const sName = (raw.name as string) || (raw.label as string) || "Section";
+  const sNotes = (raw.qNotes as string) || (raw.note as string) || "";
+  const rawExercises = (raw.exercises as Record<string, unknown>[]) || [];
+  return {
+    // New fields
+    id: (raw.id as string) || _genId(),
+    name: sName,
+    qNotes: sNotes,
+    // Legacy fields (backward compat)
+    label: sName,
+    note: sNotes,
+    color: (raw.color as string) || "#22c55e",
+    exercises: rawExercises.map(normalizeExercise),
+  };
+}
+
+// ════ FORMAT EXERCISE AMOUNT FOR DISPLAY ════
+export function formatExerciseAmount(ex: SectionExercise): string {
+  if (ex.type === "transition") return ex.name || ex.n || "";
+  if (ex.mode === "time") return `${ex.value} ${ex.unit}`;
+  if (ex.mode === "distance") return `${ex.value} ${ex.unit}`;
+  if (ex.mode === "reps") return `${ex.value} reps`;
+  return ex.r || "";
 }

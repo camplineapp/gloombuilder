@@ -53,25 +53,49 @@ interface FlatExercise {
 function flattenBeatdown(sections: Section[]): FlatExercise[] {
   const flat: FlatExercise[] = [];
   sections.forEach((sec, si) => {
+    // Support both old (label/note) and new (name/qNotes) section fields
+    const secName = (sec as any).name || sec.label || "Section";
     sec.exercises.forEach((ex: SectionExercise, ei: number) => {
       const isTransition = ex.type === "transition";
-      let parsed = isTransition ? { isTimer: false, seconds: 0, display: "" } : parseReps(ex.r);
-      // Smart cadence detection: if reps is a plain number but cadence is time-related
-      if (!isTransition && !parsed.isTimer && ex.c) {
-        const cl = ex.c.trim().toLowerCase();
-        const repsNum = parseInt(ex.r);
+      // Support both old (n/r/c/nt) and new (name/mode/value/unit/cadence/note) fields
+      const exName = (ex as any).name || ex.n || "";
+      const exNote = (ex as any).note || ex.nt || "";
+      const exCad = (ex as any).cadence || ex.c || "";
+
+      // Build reps string from new format if available
+      let repsStr = ex.r || "";
+      const exMode = (ex as any).mode;
+      if (!repsStr && exMode === "time") repsStr = `${(ex as any).value} ${(ex as any).unit}`;
+      if (!repsStr && exMode === "distance") repsStr = `${(ex as any).value} ${(ex as any).unit}`;
+      if (!repsStr && exMode === "reps" && (ex as any).value !== undefined) repsStr = String((ex as any).value);
+
+      let parsed = isTransition ? { isTimer: false, seconds: 0, display: "" } : parseReps(repsStr);
+
+      // Handle new time mode directly
+      if (!isTransition && exMode === "time" && !parsed.isTimer) {
+        const val = (ex as any).value;
+        const unit = (ex as any).unit;
+        const seconds = unit === "min" ? val * 60 : val;
+        parsed = { isTimer: true, seconds, display: repsStr };
+      }
+
+      // Legacy cadence-as-timer fallback
+      if (!isTransition && !parsed.isTimer && exCad) {
+        const cl = exCad.trim().toLowerCase();
+        const repsNum = parseInt(repsStr);
         if (!isNaN(repsNum) && /^(sec(onds?)?|s|min(utes?|s)?|m)$/i.test(cl)) {
           const multiplier = /^(min(utes?|s)?|m)$/i.test(cl) ? 60 : 1;
-          parsed = { isTimer: true, seconds: repsNum * multiplier, display: `${ex.r} ${ex.c}` };
+          parsed = { isTimer: true, seconds: repsNum * multiplier, display: `${repsStr} ${exCad}` };
         }
       }
+
       flat.push({
-        name: ex.n,
-        reps: ex.r,
-        cadence: ex.c,
-        note: ex.nt || "",
+        name: exName,
+        reps: repsStr,
+        cadence: exCad,
+        note: exNote,
         ...parsed,
-        sectionName: sec.label,
+        sectionName: secName,
         sectionIndex: si,
         isFirstInSection: ei === 0,
         globalIndex: flat.length,

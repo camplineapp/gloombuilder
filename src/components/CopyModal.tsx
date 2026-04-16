@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { Section } from "@/lib/exercises";
+import type { Section, SectionExercise } from "@/lib/exercises";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -63,6 +63,25 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
     );
   }
 
+  // ── Helpers for dual-format (old: n/r/c/nt/label/note, new: name/value/cadence/note/name/qNotes)
+  const _sLabel = (s: Section) => (s as any).name || s.label || "Section";
+  const _sNotes = (s: Section) => (s as any).qNotes || s.note || "";
+  const _exName = (e: SectionExercise) => (e as any).name || e.n || "";
+  const _exNote = (e: SectionExercise) => (e as any).note || e.nt || "";
+  const _exReps = (e: SectionExercise): string => {
+    const ex = e as any;
+    if (ex.mode === "time") return ex.value + " " + ex.unit;
+    if (ex.mode === "distance") return ex.value + " " + ex.unit;
+    if (ex.mode === "reps" && ex.value !== undefined && ex.value !== "") return String(ex.value);
+    return e.r || "";
+  };
+  const _exCad = (e: SectionExercise): string => {
+    const ex = e as any;
+    const cad = ex.cadence || e.c || "";
+    if (ex.mode === "time" || ex.mode === "distance") return "";
+    return cad;
+  };
+
   // ════ QUICK PREVIEW ════
   if (step === "quickpreview") {
     let qpText = "";
@@ -70,16 +89,18 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
     if (beatdownDesc) qpText += beatdownDesc + "\n";
     if (beatdownName || beatdownDesc) qpText += "Q: " + (qName || "The Bishop") + "\n";
     secs.forEach(s => {
-      qpText += "\n── " + s.label + " ──\n";
+      qpText += "\n── " + _sLabel(s) + " ──\n";
       s.exercises.forEach(e => {
         if (e.type === "transition") {
-          qpText += "↗ " + e.n + "\n";
+          qpText += "↗ " + _exName(e) + "\n";
         } else {
-          qpText += e.r + " " + e.n + (e.c ? " " + e.c : "") + "\n";
-          if (e.nt) qpText += "  > " + e.nt + "\n";
+          const reps = _exReps(e);
+          const cad = _exCad(e);
+          qpText += (reps ? reps + " " : "") + _exName(e) + (cad ? " " + cad : "") + "\n";
+          if (_exNote(e)) qpText += "  > " + _exNote(e) + "\n";
         }
       });
-      if (s.note) qpText += "> " + s.note + "\n";
+      if (_sNotes(s)) qpText += "> " + _sNotes(s) + "\n";
     });
     qpText += "\nBuilt with GloomBuilder · gloombuilder.app";
 
@@ -110,16 +131,18 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
   if (bb.cnt) bbText += "*Total PAX:* " + bb.cnt + "\n";
   bbText += "\n*Workout:*\n";
   secs.forEach(s => {
-    bbText += "\n── " + s.label + " ──\n";
+    bbText += "\n── " + _sLabel(s) + " ──\n";
     s.exercises.forEach(e => {
       if (e.type === "transition") {
-        bbText += "↗ " + e.n + "\n";
+        bbText += "↗ " + _exName(e) + "\n";
       } else {
-        bbText += e.r + " " + e.n + (e.c ? " " + e.c : "") + "\n";
-        if (e.nt) bbText += "  > " + e.nt + "\n";
+        const reps = _exReps(e);
+        const cad = _exCad(e);
+        bbText += (reps ? reps + " " : "") + _exName(e) + (cad ? " " + cad : "") + "\n";
+        if (_exNote(e)) bbText += "  > " + _exNote(e) + "\n";
       }
     });
-    if (s.note) bbText += "> " + s.note + "\n";
+    if (_sNotes(s)) bbText += "> " + _sNotes(s) + "\n";
   });
   if (bb.cot) bbText += "\n*COT:*\n" + bb.cot + "\n";
   if (bb.ann) bbText += "\n*Announcements:*\n" + bb.ann + "\n";

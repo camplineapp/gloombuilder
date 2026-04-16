@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
 import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, addVote, removeVote, loadUserVotes, addBookmark, removeBookmark, loadMyBookmarks, stealBeatdown, stealExercise, updateExercise, updateBeatdown } from "@/lib/db";
 import type { User } from "@supabase/supabase-js";
+import { normalizeSection } from "@/lib/exercises";
 import type { Section } from "@/lib/exercises";
 import AuthScreen from "@/components/AuthScreen";
 import BottomNav from "@/components/BottomNav";
@@ -75,7 +76,7 @@ function dbToLocker(row: Record<string, unknown>): LockerBeatdown {
     src: hasInspiredBy ? "Stolen" : (row.generated as boolean) ? "Generated" : "Manual",
     d: (row.difficulty as string) || "medium",
     desc: (row.description as string) || "",
-    secs: (row.sections as Section[]) || [],
+    secs: ((row.sections as Record<string,unknown>[]) || []).map(normalizeSection),
     tg: (row.tags as string[]) || [],
     isPublic: (row.is_public as boolean) || false,
     inspiredBy: hasInspiredBy ? (inspiredProfile?.f3_name as string) || "a fellow PAX" : undefined,
@@ -105,7 +106,7 @@ function dbToShared(row: Record<string, unknown>): SharedItem {
     tg: (row.tags as string[]) || [],
     inspiredBy: inspiredProfile ? (inspiredProfile.f3_name as string) || undefined : undefined,
     comments: [],
-    secs: (row.sections as Section[]) || [],
+    secs: ((row.sections as Record<string,unknown>[]) || []).map(normalizeSection),
   };
 }
 
