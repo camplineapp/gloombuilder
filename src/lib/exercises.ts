@@ -407,7 +407,9 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   });
 
   if (cfg.diff === "hard" || cfg.diff === "beast") {
-    m.push({ n: "Plank", r: cfg.diff === "beast" ? "90 sec" : "60 sec", c: "OYO", nt: "" });
+    const plankSec = cfg.diff === "beast" ? 90 : 60;
+    const plankR = cfg.diff === "beast" ? "90 sec" : "60 sec";
+    m.push({ id: _genId(), type: "exercise" as const, name: "Plank", mode: "time" as const, value: plankSec, unit: "sec" as const, cadence: "OYO", note: "", n: "Plank", r: plankR, c: "OYO", nt: "" });
   }
 
   const _mkSec = (label: string, color: string, exercises: SectionExercise[]) => ({
