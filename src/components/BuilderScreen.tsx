@@ -62,7 +62,7 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
   const [bEq, setBEq] = useState<string[]>(editData?.eq || []);
   const [secs, setSecs] = useState<Section[]>(() => {
     if (editData?.secs && editData.secs.length > 0) {
-      return editData.secs.map(s => normalizeSection(s as Record<string, unknown>));
+      return editData.secs.map(s => normalizeSection(s as unknown as Record<string, unknown>));
     }
     return defaultSections();
   });

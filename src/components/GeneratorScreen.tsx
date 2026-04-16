@@ -92,7 +92,7 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis }: Generato
           <button onClick={() => { setGr(null); setGs(0); onClose(); }} style={{ fontFamily: F, color: T3, background: "none", border: "none", cursor: "pointer", fontSize: 17, fontWeight: 600, padding: "8px 0" }}>← Home</button>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, background: A + "26", border: "1px solid " + A + "4D", color: A, fontSize: 15, fontWeight: 700, padding: "10px 16px", borderRadius: 10, cursor: "pointer" }}>Copy for Slack</button>
-            <button onClick={() => { setGr(generate(gc, allEx).map(s => normalizeSection(s as Record<string,unknown>))); setGrT(""); setGrD(""); }} style={{ fontFamily: F, background: A + "15", color: A, border: "1px solid " + A + "30", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Reroll</button>
+            <button onClick={() => { setGr(generate(gc, allEx).map(s => normalizeSection(s as unknown as Record<string,unknown>))); setGrT(""); setGrD(""); }} style={{ fontFamily: F, background: A + "15", color: A, border: "1px solid " + A + "30", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Reroll</button>
           </div>
         </div>
 
@@ -216,7 +216,7 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis }: Generato
         })}
       </div>
       <div style={{ padding: "8px 24px 0" }}>
-        <button onClick={() => { setLd(true); setTimeout(() => { setGr(generate(gc, allEx).map(s => normalizeSection(s as Record<string,unknown>))); setGrT(""); setGrD(""); setLd(false); }, 1000); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Generate beatdown</button>
+        <button onClick={() => { setLd(true); setTimeout(() => { setGr(generate(gc, allEx).map(s => normalizeSection(s as unknown as Record<string,unknown>))); setGrT(""); setGrD(""); setLd(false); }, 1000); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Generate beatdown</button>
       </div>
     </div>
   );
