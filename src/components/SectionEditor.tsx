@@ -112,8 +112,8 @@ function ExerciseCard({ ex, sectionColor, onTap, dragListeners, isDragging, allE
   );
 }
 
-function SortableExerciseCard({ ex, sectionColor, onTap, allEx }: { ex: SectionExercise; sectionColor: string; onTap: () => void; allEx?: ExerciseData[] }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ex.id || ex.n || "x" });
+function SortableExerciseCard({ ex, exKey, sectionColor, onTap, allEx }: { ex: SectionExercise; exKey?: string; sectionColor: string; onTap: () => void; allEx?: ExerciseData[] }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exKey || ex.id || ex.n || "x" });
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} {...attributes}>
       <ExerciseCard ex={ex} sectionColor={sectionColor} onTap={onTap} dragListeners={listeners as Record<string, unknown>} isDragging={isDragging} allEx={allEx} />
@@ -273,7 +273,7 @@ function SortableSectionBlock({
 }) {
   const secId = sec.id || sec.label || String(si);
   const sColor = sec.color;
-  const exIds = sec.exercises.map(e => e.id || e.n || String(si * 1000 + sec.exercises.indexOf(e)));
+  const exIds = sec.exercises.map((e, idx) => e.id ? `${e.id}-${idx}` : (e.n ? `${e.n}-${idx}` : `ex-${si}-${idx}`));
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: secId });
 
@@ -311,8 +311,8 @@ function SortableSectionBlock({
       {/* Exercise cards */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onExDragEnd}>
         <SortableContext items={exIds} strategy={verticalListSortingStrategy}>
-          {sec.exercises.map(ex => (
-            <SortableExerciseCard key={ex.id || ex.n} ex={ex} sectionColor={sColor} allEx={allEx} onTap={() => onEditSheet({ sectionIdx: si, exercise: ex })} />
+          {sec.exercises.map((ex, exIdx) => (
+            <SortableExerciseCard key={ex.id ? `${ex.id}-${exIdx}` : `${ex.n}-${exIdx}`} exKey={ex.id ? `${ex.id}-${exIdx}` : `${ex.n}-${exIdx}`} ex={ex} sectionColor={sColor} allEx={allEx} onTap={() => onEditSheet({ sectionIdx: si, exercise: ex })} />
           ))}
         </SortableContext>
       </DndContext>
