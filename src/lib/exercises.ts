@@ -252,7 +252,25 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   const pool = exList.filter(e => e.s.length === 0 || e.s.some(s => cfg.sites.includes(s)));
   const wP = pool.filter(e => e.t.includes("Warm-Up"));
   // Exclude Transport from Thang — these are movement exercises (mosey, bear crawl) not rep exercises
-  let mP = pool.filter(e => !e.t.includes("Warm-Up") && !e.t.includes("Mary") && !e.t.includes("Transport"));
+  // Exclude known FORMAT exercises — these are full workout structures, not single rep movements
+  // (Long-term: replace with is_format column on Supabase. For now, name-based blocklist)
+  const FORMAT_EXERCISES = new Set([
+    "Dora", "Dora 1-2-3", "Triple Nickel", "11s", "7s", "5s",
+    "Ring of Fire", "Thunder", "Deck of Death", "Dice Roll",
+    "Indian Run", "Reverse Indian Run", "Indian Giver",
+    "Pain Train", "Route 66", "Catch Me If You Can",
+    "Jacob's Ladder", "Blackjack", "Wheel of Pain",
+    "Murph", "Cindy", "Mary Marathon", "Battle Buddy",
+    "Relay Race", "Wheel & Spoke", "EMOM", "Tabata",
+    "Stations", "Four Corners", "AMRAP", "BOMBS",
+    "Bear Crawl Bonanza", "VQ Special",
+  ]);
+  let mP = pool.filter(e =>
+    !e.t.includes("Warm-Up") &&
+    !e.t.includes("Mary") &&
+    !e.t.includes("Transport") &&
+    !FORMAT_EXERCISES.has(e.n)
+  );
   const yP = pool.filter(e => e.t.includes("Mary"));
 
   if (!cfg.eq.includes("coupon")) {
