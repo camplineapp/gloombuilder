@@ -100,32 +100,34 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
     secs.forEach(section => {
       section.exercises.forEach(ex => {
         if (ex.type === "transition") { totalSec += 30; return; }
-        const mode = (ex as any).mode;
-        const value = (ex as any).value;
-        const unit = (ex as any).unit;
-        const cadence = ex.cadence || ex.c || "IC";
-        if (mode === "reps" || (!mode && ex.r && !ex.r.includes("sec") && !ex.r.includes("min"))) {
-          const reps = typeof value === "number" ? value : parseInt(ex.r || "0") || 0;
-          const pace = cadence === "IC" ? 3 : cadence === "OYO" ? 2 : 2.5;
-          totalSec += reps * pace;
-        } else if (mode === "time") {
-          totalSec += unit === "min" ? value * 60 : value;
-        } else if (mode === "distance") {
-          totalSec += unit === "laps" ? value * 90 : (value / 40) * 60;
-        } else if (ex.r) {
-          // Legacy: try to parse r field
-          const t = ex.r.toLowerCase();
-          const secM = t.match(/^(\d+)\s*sec/); if (secM) { totalSec += parseInt(secM[1]); return; }
-          const minM = t.match(/^(\d+)\s*min/); if (minM) { totalSec += parseInt(minM[1]) * 60; return; }
-          const repsNum = parseInt(ex.r);
-          if (!isNaN(repsNum)) { const pace = cadence === "IC" ? 3 : 2; totalSec += repsNum * pace; }
+        const exAny = ex as any;
+        const cadence = exAny.cadence || ex.c || "IC";
+        const pace = cadence === "IC" ? 3 : cadence === "OYO" ? 2 : 2.5;
+        // New format: has mode field
+        if (exAny.mode === "time") {
+          const secs2 = exAny.unit === "min" ? exAny.value * 60 : Number(exAny.value) || 0;
+          totalSec += secs2;
+        } else if (exAny.mode === "distance") {
+          totalSec += exAny.unit === "laps" ? (Number(exAny.value) || 0) * 90 : ((Number(exAny.value) || 0) / 40) * 60;
+        } else if (exAny.mode === "reps") {
+          totalSec += (Number(exAny.value) || 0) * pace;
+        } else {
+          // Legacy format: parse r field
+          const r = ex.r || "";
+          const rl = r.toLowerCase();
+          const secM = rl.match(/^(\d+)\s*sec/);
+          if (secM) { totalSec += parseInt(secM[1]); return; }
+          const minM = rl.match(/^(\d+)\s*min/);
+          if (minM) { totalSec += parseInt(minM[1]) * 60; return; }
+          const repsNum = parseInt(r);
+          if (!isNaN(repsNum)) totalSec += repsNum * pace;
         }
       });
       totalSec += 15; // section break buffer
     });
     totalSec *= 1.15; // mumblechatter buffer
-    const rounded = Math.round(totalSec / 60 / 5) * 5;
-    return rounded < 20 ? 0 : rounded; // don't show for tiny drafts
+    const mins = Math.round(totalSec / 60);
+    return mins;
   }, [secs]);
 
   const selectedDurMin = bDur ? parseInt(bDur) : 0;
@@ -213,7 +215,7 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
       <div style={{ background: CD, border: "1px solid " + BD, borderRadius: 14, padding: 14, marginBottom: 22 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <div style={{ color: T2, fontSize: 13, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: F }}>Beatdown details</div>
-          {estimatedMin >= 20 && (
+          {estimatedMin >= 1 && (
             <div style={{ display: "flex", alignItems: "center", gap: 6, background: estimateColor + "26", border: "1px solid " + estimateColor + "66", borderRadius: 8, padding: "6px 10px" }}>
               <span style={{ color: estimateColor, fontSize: 13, fontWeight: 700, fontFamily: F }}>~{estimatedMin} min planned</span>
             </div>
@@ -293,7 +295,7 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
       />
 
       {/* Floating duration badge — always visible above save button */}
-      {estimatedMin >= 20 && (
+      {estimatedMin >= 1 && (
         <div style={{ marginTop: 24, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, background: estimateColor + "18", border: "1px solid " + estimateColor + "50", borderRadius: 20, padding: "8px 18px" }}>
             <span style={{ fontSize: 16 }}>{estimateOffTarget ? "⚡" : "✓"}</span>
