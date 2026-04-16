@@ -441,6 +441,7 @@ export async function stealExercise(originalId: string) {
 
 export async function updateExercise(id: string, data: {
   nm: string;
+  desc?: string;
   how: string;
   tags: string[];
 }) {
@@ -458,6 +459,7 @@ export async function updateExercise(id: string, data: {
     .from("exercises")
     .update({
       name: data.nm,
+      description: data.desc || "",
       how_to: data.how,
       body_part: bodyParts,
       exercise_type: data.tags.includes("Cardio") ? "cardio" : "strength",

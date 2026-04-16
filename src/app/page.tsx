@@ -32,6 +32,7 @@ export interface LockerBeatdown {
 export interface LockerExercise {
   id: string;
   nm: string;
+  desc: string;
   tags: string[];
   how: string;
   src: string;
@@ -136,8 +137,9 @@ function dbToExercise(row: Record<string, unknown>): LockerExercise {
   return {
     id: row.id as string,
     nm: (row.name as string) || "",
+    desc: (row.description as string) || "",
     tags: mapBodyPartTags(row),
-    how: (row.how_to as string) || (row.description as string) || "",
+    how: (row.how_to as string) || "",
     src: hasInspiredBy ? "Stolen" : (row.source as string) || "community",
     shared: (row.source as string) === "community",
     inspiredBy: hasInspiredBy ? (inspiredProfile?.f3_name as string) || "a fellow PAX" : undefined,
@@ -361,7 +363,7 @@ export default function App() {
     }
   };
 
-  const handleUpdateExercise = async (id: string, data: { nm: string; how: string; tags: string[] }) => {
+  const handleUpdateExercise = async (id: string, data: { nm: string; desc?: string; how: string; tags: string[] }) => {
     const success = await updateExercise(id, data);
     if (success) {
       await loadLocker();

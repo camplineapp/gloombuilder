@@ -39,7 +39,7 @@ interface LockerBeatdown {
 }
 
 interface LockerExercise {
-  id: string; nm: string; tags: string[]; how: string; src: string; inspiredBy?: string; shared?: boolean;
+  id: string; nm: string; desc: string; tags: string[]; how: string; src: string; inspiredBy?: string; shared?: boolean;
 }
 
 interface SharedItem {
@@ -61,7 +61,7 @@ interface LockerScreenProps {
   onShareExercise?: (id: string) => void;
   onRemoveBookmark?: (id: string, itemType: "beatdown" | "exercise") => void;
   onSteal?: (id: string, itemType: "beatdown" | "exercise") => void;
-  onUpdateExercise?: (id: string, data: { nm: string; how: string; tags: string[] }) => void;
+  onUpdateExercise?: (id: string, data: { nm: string; desc?: string; how: string; tags: string[] }) => void;
   onEditBeatdown?: (bd: LockerBeatdown) => void;
   onRunBeatdown?: (bd: LockerBeatdown) => void;
 }
@@ -92,6 +92,10 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedIte
           <input value={edLkExD.nm} maxLength={50} onChange={e => setEdLkExD({ ...edLkExD, nm: e.target.value })} style={ist} />
         </div>
         <div style={{ marginBottom: 14 }}>
+          <label style={{ fontFamily: F, color: T5, fontSize: 12, textTransform: "uppercase", letterSpacing: 1.5, display: "block", marginBottom: 4, fontWeight: 600 }}>Description</label>
+          <textarea value={edLkExD.desc || ""} maxLength={200} onChange={e => setEdLkExD({ ...edLkExD, desc: e.target.value })} rows={2} placeholder="Short description of what this exercise is..." style={{ ...ist, resize: "vertical" as const }} />
+        </div>
+        <div style={{ marginBottom: 14 }}>
           <label style={{ fontFamily: F, color: T5, fontSize: 12, textTransform: "uppercase", letterSpacing: 1.5, display: "block", marginBottom: 4, fontWeight: 600 }}>How-to</label>
           <textarea value={edLkExD.how || ""} maxLength={500} onChange={e => setEdLkExD({ ...edLkExD, how: e.target.value })} rows={4} style={{ ...ist, resize: "vertical" as const }} />
         </div>
@@ -105,7 +109,7 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedIte
           </div>
         </div>
         {edLkExD.inspiredBy ? <div style={{ fontSize: 12, color: A, marginBottom: 14, fontStyle: "italic" }}>Inspired by {edLkExD.inspiredBy}</div> : null}
-        <button onClick={() => { onUpdateExercise?.(edLkExD.id, { nm: edLkExD.nm, how: edLkExD.how, tags: edLkExD.tags }); setEdLkExI(null); setEdLkExD(null); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save exercise</button>
+        <button onClick={() => { onUpdateExercise?.(edLkExD.id, { nm: edLkExD.nm, desc: edLkExD.desc, how: edLkExD.how, tags: edLkExD.tags }); setEdLkExI(null); setEdLkExD(null); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save exercise</button>
         {toastEl}
       </div>
     );
@@ -177,7 +181,7 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedIte
               <div key={ex.id} style={{ background: CD, border: "1px solid " + BD, borderLeft: "3px solid " + P + "40", borderRadius: 14, padding: "16px 18px", marginBottom: 8 }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: T2 }}>{ex.nm}</div>
                 {ex.inspiredBy ? <div style={{ fontSize: 11, color: A, marginTop: 4 }}>Inspired by {ex.inspiredBy}</div> : null}
-                {ex.how ? <div style={{ fontSize: 12, color: T4, marginTop: 6, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{ex.how}</div> : null}
+                {ex.desc ? <div style={{ fontSize: 13, color: T3, marginTop: 6, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>{ex.desc}</div> : null}
                 {ex.tags && ex.tags.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" }}>{ex.tags.map(t => <span key={t} style={{ background: "rgba(255,255,255,0.04)", color: T4, fontSize: 10, padding: "2px 9px", borderRadius: 5, fontFamily: F }}>{t}</span>)}</div> : null}
                 <div style={{ display: "flex", gap: 8, marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
                   <button onClick={() => { setEdLkExI(i); setEdLkExD({ ...ex }); }} style={{ fontFamily: F, background: G + "12", color: G, border: "1px solid " + G + "20", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Edit</button>
@@ -223,3 +227,4 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedIte
     </div>
   );
 }
+
