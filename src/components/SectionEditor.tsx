@@ -76,8 +76,8 @@ function formatCadenceDisplay(ex: SectionExercise): string {
 }
 
 // ── EXERCISE CARD ─────────────────────────────────────────────────────────────
-function ExerciseCard({ ex, sectionColor, onTap, dragListeners, isDragging, allEx }: {
-  ex: SectionExercise; sectionColor: string; onTap: () => void;
+function ExerciseCard({ ex, sectionColor, onTap, onDelete, dragListeners, isDragging, allEx }: {
+  ex: SectionExercise; sectionColor: string; onTap: () => void; onDelete?: () => void;
   dragListeners?: Record<string, unknown>; isDragging?: boolean; allEx?: ExerciseData[];
 }) {
   const isTransition = ex.type === "transition";
@@ -85,38 +85,45 @@ function ExerciseCard({ ex, sectionColor, onTap, dragListeners, isDragging, allE
   const isCustom = allEx ? !allEx.some(x => x.n.toLowerCase() === exName.toLowerCase()) : false;
 
   return (
-    <div onClick={onTap} style={{ background: CD, border: `1px solid ${BD}`, borderLeft: `4px ${isTransition ? "dashed" : "solid"} ${sectionColor}`, borderRadius: "0 14px 14px 0", padding: "14px 14px 14px 10px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", userSelect: "none", opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s" }}>
+    <div style={{ background: CD, border: `1px solid ${BD}`, borderLeft: `4px ${isTransition ? "dashed" : "solid"} ${sectionColor}`, borderRadius: "0 14px 14px 0", padding: "14px 14px 14px 10px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, userSelect: "none", opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s" }}>
       <div {...dragListeners} onClick={e => e.stopPropagation()} style={{ color: sectionColor, fontSize: 22, flexShrink: 0, width: 28, textAlign: "center", opacity: 0.85, lineHeight: 1, cursor: "grab", touchAction: "none" }}>≡</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div onClick={onTap} style={{ flex: 1, minWidth: 0, cursor: "pointer", overflow: "hidden" }}>
         {isTransition ? (
           <>
             <div style={{ color: sectionColor, fontSize: 13, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6, fontFamily: F }}>↗ Transition</div>
-            <div style={{ color: T2, fontSize: 16, fontStyle: "italic", marginTop: 3, fontWeight: 500, fontFamily: F }}>{exName}</div>
+            <div style={{ color: T2, fontSize: 16, fontStyle: "italic", marginTop: 3, fontWeight: 500, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{exName}</div>
           </>
         ) : (
           <>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <span style={{ color: T1, fontSize: 19, fontWeight: 700, fontFamily: F, lineHeight: 1.2 }}>{exName}</span>
-              {isCustom && <span style={{ fontSize: 10, color: A, background: A + "15", padding: "2px 7px", borderRadius: 4, fontWeight: 700, textTransform: "uppercase", fontFamily: F }}>Custom</span>}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap", overflow: "hidden" }}>
+              <span style={{ color: T1, fontSize: 19, fontWeight: 700, fontFamily: F, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{exName}</span>
+              {isCustom && <span style={{ fontSize: 10, color: A, background: A + "15", padding: "2px 7px", borderRadius: 4, fontWeight: 700, textTransform: "uppercase", fontFamily: F, flexShrink: 0 }}>Custom</span>}
             </div>
-            <div style={{ color: T2, fontSize: 16, fontWeight: 600, marginTop: 4, display: "flex", alignItems: "center", gap: 6, fontFamily: F }}>
-              {ex.mode === "time" && <span style={{ color: A, fontSize: 14 }}>⏱</span>}
-              {ex.mode === "distance" && <span style={{ color: P, fontSize: 14 }}>📏</span>}
-              <span>{formatExerciseDisplay(ex)}{formatCadenceDisplay(ex) ? ` · ${formatCadenceDisplay(ex)}` : ""}</span>
+            <div style={{ color: T2, fontSize: 15, fontWeight: 600, marginTop: 4, display: "flex", alignItems: "center", gap: 6, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {ex.mode === "time" && <span style={{ color: A, fontSize: 14, flexShrink: 0 }}>⏱</span>}
+              {ex.mode === "distance" && <span style={{ color: P, fontSize: 14, flexShrink: 0 }}>📏</span>}
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formatExerciseDisplay(ex)}{formatCadenceDisplay(ex) ? ` · ${formatCadenceDisplay(ex)}` : ""}</span>
             </div>
-            {(ex.note || ex.nt) ? <div style={{ color: T3, fontSize: 15, fontStyle: "italic", marginTop: 3, fontWeight: 500, fontFamily: F }}>{ex.note || ex.nt}</div> : null}
+            {(ex.note || ex.nt) ? <div style={{ color: T3, fontSize: 13, fontStyle: "italic", marginTop: 3, fontWeight: 500, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ex.note || ex.nt}</div> : null}
           </>
         )}
       </div>
+      {/* Quick delete button */}
+      {onDelete && (
+        <button
+          onClick={e => { e.stopPropagation(); onDelete(); }}
+          style={{ flexShrink: 0, width: 32, height: 32, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, color: "#ef4444", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F }}
+        >✕</button>
+      )}
     </div>
   );
 }
 
-function SortableExerciseCard({ ex, exKey, sectionColor, onTap, allEx }: { ex: SectionExercise; exKey?: string; sectionColor: string; onTap: () => void; allEx?: ExerciseData[] }) {
+function SortableExerciseCard({ ex, exKey, sectionColor, onTap, onDelete, allEx }: { ex: SectionExercise; exKey?: string; sectionColor: string; onTap: () => void; onDelete?: () => void; allEx?: ExerciseData[] }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exKey || ex.id || ex.n || "x" });
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} {...attributes}>
-      <ExerciseCard ex={ex} sectionColor={sectionColor} onTap={onTap} dragListeners={listeners as Record<string, unknown>} isDragging={isDragging} allEx={allEx} />
+      <ExerciseCard ex={ex} sectionColor={sectionColor} onTap={onTap} onDelete={onDelete} dragListeners={listeners as Record<string, unknown>} isDragging={isDragging} allEx={allEx} />
     </div>
   );
 }
@@ -312,7 +319,7 @@ function SortableSectionBlock({
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onExDragEnd}>
         <SortableContext items={exIds} strategy={verticalListSortingStrategy}>
           {sec.exercises.map((ex, exIdx) => (
-            <SortableExerciseCard key={ex.id ? `${ex.id}-${exIdx}` : `${ex.n}-${exIdx}`} exKey={ex.id ? `${ex.id}-${exIdx}` : `${ex.n}-${exIdx}`} ex={ex} sectionColor={sColor} allEx={allEx} onTap={() => onEditSheet({ sectionIdx: si, exercise: ex })} />
+            <SortableExerciseCard key={ex.id ? `${ex.id}-${exIdx}` : `${ex.n}-${exIdx}`} exKey={ex.id ? `${ex.id}-${exIdx}` : `${ex.n}-${exIdx}`} ex={ex} sectionColor={sColor} allEx={allEx} onTap={() => onEditSheet({ sectionIdx: si, exercise: ex })} onDelete={() => { const exId = ex.id; const exName = ex.n || ""; onUpdate(sections.map((s, i) => i !== si ? s : { ...s, exercises: s.exercises.filter(e => exId ? e.id !== exId : e.n !== exName) })); }} />
           ))}
         </SortableContext>
       </DndContext>
