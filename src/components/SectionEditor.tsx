@@ -256,7 +256,7 @@ function SortableSectionBlock({
   sensors: ReturnType<typeof useSensors>;
   editLabel: number | null; qaQ: string; qaSec: number | null;
   trSec: number | null; trText: string;
-  qaRef: React.RefObject<HTMLInputElement>; trRef: React.RefObject<HTMLInputElement>;
+  qaRef: React.RefObject<HTMLInputElement | null>; trRef: React.RefObject<HTMLInputElement | null>;
   qaResults: (ExerciseData & { score: number })[];
   onEditSheet: (v: { sectionIdx: number; exercise: SectionExercise }) => void;
   onSetEditLabel: (v: number | null) => void;
