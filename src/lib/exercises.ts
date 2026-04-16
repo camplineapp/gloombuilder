@@ -8,6 +8,7 @@ export interface ExerciseData {
   d?: string; // short description
   df?: number; // difficulty level 1-3
   pt?: number; // popularity tier: 1=classic, 2=well-known, 3=exotic
+  ix?: string; // intensity: low, medium, high
 }
 
 // Local fallback exercises (45) — used if Supabase load fails
@@ -182,6 +183,7 @@ export function mapSupabaseExercise(row: Record<string, unknown>): ExerciseData 
     d: description,
     df: difficulty,
     pt: (row.popularity_tier as number) || 3,
+    ix: intensity,
   };
 }
 
@@ -199,12 +201,48 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   const G = "#22c55e", A = "#f59e0b", P = "#a78bfa";
   const exList = exercises && exercises.length > 0 ? exercises : EX;
 
-  let rL: number, rH: number;
-  if (cfg.diff === "easy") { rL = 10; rH = 15; }
-  else if (cfg.diff === "medium") { rL = 10; rH = 20; }
-  else if (cfg.diff === "hard") { rL = 15; rH = 25; }
-  else { rL = 20; rH = 30; }
+  // Variable rep picker — each exercise draws independently from a weighted pool
+  // so one exercise gets 15 reps, the next gets 30, creating natural variety within a beatdown
+  // Rep pools by difficulty × intensity
+  // High intensity (Burpees, Thrusters, Cardio) get fewer reps — they take much longer per rep
+  // Medium/low intensity (Merkins, Squats) get full reps from the difficulty pool
+  const repTable: Record<string, Record<string, number[]>> = {
+    easy:   { high: [10, 10, 10, 15], medium: [10, 10, 15, 15, 20], low: [15, 15, 20] },
+    medium: { high: [10, 15, 15, 20], medium: [15, 15, 20, 20, 25, 30], low: [20, 25, 30] },
+    hard:   { high: [15, 15, 20, 20], medium: [20, 20, 25, 25, 30, 30], low: [25, 30, 30] },
+    beast:  { high: [20, 20, 25, 25, 30], medium: [35, 40, 40, 45, 50], low: [40, 45, 50] },
+  };
+  const pickReps = (diff: string, intensity?: string) => {
+    const diffRow = repTable[diff] || repTable.medium;
+    // Infer high intensity from tags if ix not set (for local fallback EX exercises)
+    const ix = intensity || "medium";
+    const opts = diffRow[ix] || diffRow.medium;
+    return String(opts[Math.floor(Math.random() * opts.length)]);
+  };
 
+  // Exercise count matrix: difficulty x duration
+  // Easy/Medium 60 min = ~15-18 exercises (lower reps, more variety)
+  // Beast 60 min = ~12 exercises (fewer but each is brutal at 35-50 reps)
+  const dur = cfg.dur === "30 min" ? 30 : cfg.dur === "60 min" ? 60 : 45;
+  let tC: number, mC: number;
+  if (cfg.diff === "easy") {
+    if (dur === 30)      { tC = 7;  mC = 3; }
+    else if (dur === 45) { tC = 12; mC = 4; }
+    else                 { tC = 18; mC = 5; }
+  } else if (cfg.diff === "medium") {
+    if (dur === 30)      { tC = 7;  mC = 3; }
+    else if (dur === 45) { tC = 12; mC = 4; }
+    else                 { tC = 16; mC = 5; }
+  } else if (cfg.diff === "hard") {
+    if (dur === 30)      { tC = 6;  mC = 3; }
+    else if (dur === 45) { tC = 10; mC = 4; }
+    else                 { tC = 14; mC = 5; }
+  } else { // beast
+    if (dur === 30)      { tC = 5;  mC = 3; }
+    else if (dur === 45) { tC = 8;  mC = 4; }
+    else                 { tC = 12; mC = 5; }
+  }
+  const rL = 10, rH = 20;
   // Popularity tiers: 1=classics (86), 2=well-known (135), 3=exotic (683)
   // Local EX exercises (fallback) get tier 1 treatment
   const tier = (e: ExerciseData) => e.pt || (EX.some(x => x.n.toLowerCase() === e.n.toLowerCase()) ? 1 : 3);
@@ -213,7 +251,8 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
 
   const pool = exList.filter(e => e.s.length === 0 || e.s.some(s => cfg.sites.includes(s)));
   const wP = pool.filter(e => e.t.includes("Warm-Up"));
-  let mP = pool.filter(e => !e.t.includes("Warm-Up") && !e.t.includes("Mary"));
+  // Exclude Transport from Thang — these are movement exercises (mosey, bear crawl) not rep exercises
+  let mP = pool.filter(e => !e.t.includes("Warm-Up") && !e.t.includes("Mary") && !e.t.includes("Transport"));
   const yP = pool.filter(e => e.t.includes("Mary"));
 
   if (!cfg.eq.includes("coupon")) {
@@ -226,13 +265,11 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   const mT1T2 = mP.filter(isT2);         // T1 + T2 combined
   const mAll = mP;                        // Full 904 pool
 
-  const tC = cfg.dur === "30 min" ? 5 : cfg.dur === "60 min" ? 10 : 7;
-  const mC = cfg.diff === "easy" ? 2 : 4;
-
-  // Warmup: prefer tier 1 classics
+  // Warmup: always low reps (10 or 15) regardless of difficulty — these are just getting loose
   const wT1 = wP.filter(isT1);
-  const w = pk(wT1.length >= 3 ? wT1 : wP, 3).map(e => ({
-    n: e.n, r: String(rn(rL, rH)), c: "IC", nt: "",
+  const wRepOpts = [10, 10, 15, 15, 15];
+  const w = pk(wT1.length >= 4 ? wT1 : wP, 4).map(e => ({
+    n: e.n, r: String(wRepOpts[Math.floor(Math.random() * wRepOpts.length)]), c: "IC", nt: "",
   }));
 
   // Mary: prefer tier 1 for easy/medium
@@ -307,7 +344,9 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
 
   const t = thangPicks.map(e => {
     const iS = e.t.includes("Static");
-    const r = iS ? (cfg.diff === "beast" ? "90 sec" : "45 sec") : String(rn(rL, rH));
+    // Infer intensity: use stored ix, or detect high-intensity from tags for local fallback exercises
+    const inferredIntensity = e.ix || (e.t.some(tag => ["Cardio", "Full Body"].includes(tag)) ? "high" : "medium");
+    const r = iS ? (cfg.diff === "beast" ? "90 sec" : "60 sec") : pickReps(cfg.diff, inferredIntensity);
     let nt = "";
     if (e.s.length > 0) {
       const m2 = e.s.filter(s => cfg.sites.includes(s));
@@ -320,7 +359,7 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   });
 
   const m = pk(maryPool, mC).map(e => ({
-    n: e.n, r: String(rn(rL, rH)), c: "IC", nt: "",
+    n: e.n, r: pickReps(cfg.diff, e.ix || "medium"), c: "IC", nt: "",
   }));
 
   if (cfg.diff === "hard" || cfg.diff === "beast") {
