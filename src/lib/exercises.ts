@@ -266,30 +266,49 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
     else                 { tC = 12; mC = 5; }
   }
   const rL = 10, rH = 20;
-  // Core exercises: 60 curated exercises every PAX knows (curated by Ritz / The Bishop)
-  // Hardcoded Set for reliability — does not depend on is_core column being fetched correctly
-  const CORE_EXERCISES = new Set([
-    "Merkin", "Side Straddle Hop", "Burpee", "Coupon Military Press", "LBCs",
-    "Murder Bunny", "Block-Over Burpees", "Bonnie Blairs", "Jump Squat", "Lt. Dans",
-    "Mountain Climbers", "Mountain Climber Merkin", "Flutter kicks", "Elf on the Shelf",
-    "T-Bomb", "Alternating Shoulder Taps", "Hand-release Mike Tysons", "Plank Jacks",
-    "Alternating Side Squats", "Moroccan Nightclub", "Classic Sit-Up", "World War I Sit-up",
-    "Dolly", "Donkey Kicks", "Freddie Mercury", "Boat Canoe", "American Hammer",
-    "Bear Crawl", "Big Boy Sit-up-Ups (aka, Bissyous)", "Bobby Hurley", "Butterfly Sit-up",
-    "Bulgarian Split Squat", "Coupon Curl", "Peter Parker", "Windshield Wipers", "Rosalita",
-    "Dying Cockroach", "Balls to the Wall", "Balls to the Wall Crawl", "Merkin Jack",
-    "Suicides", "Crab Walk", "Crab Jacks", "Frankensteins", "Mountaineer Motivators",
-    "21s", "Al Gore", "Coupon Kettle Bell Swing", "Derkin", "Dips", "Duck Walk",
-    "Monkey Humpers", "Sumo Squat", "Suzanne Somers", "Smurf Jacks", "Squat Thrust",
-    "Single Arm Row", "Dive Bombers", "Crawl Bear", "Merkin Ladder",
+
+  // ════ CORE EXERCISE SETS — Section-locked (curated by Ritz / The Bishop) ════
+  // These exercises are locked to their designated section. Warmup-only exercises
+  // never appear in Thang or Mary. Mary-only exercises never appear in Warmup or Thang.
+  // Everything else is Thang-only (the main workout).
+
+  const CORE_WARMUP = new Set([
+    "Mountaineer Motivators", "Side Straddle Hop", "Frankensteins", "21s", "Bobby Hurley",
   ]);
-  const isCore = (e: ExerciseData) => CORE_EXERCISES.has(e.n);
+
+  const CORE_MARY = new Set([
+    "Freddie Mercury", "Rosalita", "LBCs", "Flutter kicks", "Classic Sit-Up",
+    "World War I Sit-up", "Dolly", "Boat Canoe", "American Hammer",
+    "Big Boy Sit-up-Ups (aka, Bissyous)", "Butterfly Sit-up", "Windshield Wipers",
+    "Dying Cockroach", "Reverse Crunch", "Superman",
+  ]);
+
+  const CORE_THANG = new Set([
+    "Merkin", "Burpee", "Coupon Military Press", "Murder Bunny", "Block-Over Burpees",
+    "Bonnie Blairs", "Jump Squat", "Lt. Dans", "Mountain Climbers", "Mountain Climber Merkin",
+    "Elf on the Shelf", "T-Bomb", "Alternating Shoulder Taps", "Hand-release Mike Tysons",
+    "Plank Jacks", "Alternating Side Squats", "Moroccan Nightclub", "Donkey Kicks",
+    "Bear Crawl", "Bulgarian Split Squat", "Coupon Curl", "Peter Parker",
+    "Balls to the Wall", "Balls to the Wall Crawl", "Merkin Jack", "Suicides",
+    "Crab Walk", "Crab Jacks", "Al Gore", "Coupon Kettle Bell Swing", "Derkin", "Dips",
+    "Duck Walk", "Monkey Humpers", "Sumo Squat", "Suzanne Somers", "Smurf Jacks",
+    "Squat Thrust", "Single Arm Row", "Dive Bombers", "Crawl Bear", "Merkin Ladder",
+    // New Thang exercises (added April 17 s15)
+    "Diamond Merkin", "Manmaker Merkin", "Manmaker", "Apolo Ohno",
+    "Double Merkin Burpee", "Elevens", "Fire Drill", "No Cheat Merkin",
+    "Pull-up Squats", "Prisoner's Squat", "Ranger Merkins",
+  ]);
+
+  // Combined set for general "is this core?" checks
+  const ALL_CORE = new Set([...CORE_WARMUP, ...CORE_MARY, ...CORE_THANG]);
+  const isCore = (e: ExerciseData) => ALL_CORE.has(e.n);
+
+  // Coupon exercises — must be excluded when "Bodyweight only" is selected
+  const noCoupon = !cfg.eq.includes("coupon");
 
   const pool = exList.filter(e => e.s.length === 0 || e.s.some(s => cfg.sites.includes(s)));
-  const wP = pool.filter(e => e.t.includes("Warm-Up"));
-  // Exclude Transport from Thang — these are movement exercises (mosey, bear crawl) not rep exercises
-  // Exclude known FORMAT exercises — these are full workout structures, not single rep movements
-  // (Long-term: replace with is_format column on Supabase. For now, name-based blocklist)
+
+  // Exclude Transport and Format from all pools
   const FORMAT_EXERCISES = new Set([
     "Dora", "Dora 1-2-3", "Triple Nickel", "11s", "7s", "5s",
     "Ring of Fire", "Thunder", "Deck of Death", "Dice Roll",
@@ -301,50 +320,58 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
     "Stations", "Four Corners", "AMRAP", "BOMBS",
     "Bear Crawl Bonanza", "VQ Special",
   ]);
-  let mP = pool.filter(e =>
-    !e.t.includes("Warm-Up") &&
-    !e.t.includes("Mary") &&
-    !e.t.includes("Transport") &&
-    !FORMAT_EXERCISES.has(e.n)
-  );
-  const yP = pool.filter(e => e.t.includes("Mary"));
 
-  if (!cfg.eq.includes("coupon")) {
-    mP = mP.filter(e => !e.t.includes("Coupon"));
-  }
+  // Base filter: no transport, no format exercises
+  const baseFilter = (e: ExerciseData) => !e.t.includes("Transport") && !FORMAT_EXERCISES.has(e.n);
+  // Coupon filter: applied when bodyweight-only is selected
+  const couponFilter = (e: ExerciseData) => !noCoupon || !e.t.includes("Coupon");
 
-  // Split main pool by core status
-  const mCore = mP.filter(isCore);           // 60 curated exercises every PAX knows
-  const mNonCore = mP.filter(e => !isCore(e)); // Full 904 pool minus core
-  const mAll = mP;                            // Everything combined
-  const useCore = cfg.diff === "easy" || cfg.diff === "medium"; // Easy/Medium = core only, no exceptions
+  // ════ WARMUP POOL ════
+  // Easy/Medium: use CORE_WARMUP set only
+  // Hard/Beast: use Warm-Up tagged exercises from database
+  const useCore = cfg.diff === "easy" || cfg.diff === "medium";
 
-  // Warmup: for Easy/Medium, pick from core exercises directly (ignore Warm-Up tag)
-  // Core exercises like SSH, Merkin, Bobby Hurley ARE warmup-appropriate
-  // For Hard/Beast, use the Warm-Up tagged pool as before
-  const wCore = pool.filter(e => isCore(e) && !e.t.includes("Mary") && !e.t.includes("Transport") && !FORMAT_EXERCISES.has(e.n));
-  const wTagged = pool.filter(e => e.t.includes("Warm-Up"));
-  const wPool = useCore ? (wCore.length >= 4 ? wCore : wTagged) : (wTagged.length >= 4 ? wTagged : wCore);
+  const wCorePool = pool.filter(e => CORE_WARMUP.has(e.n) && couponFilter(e));
+  const wTaggedPool = pool.filter(e => e.t.includes("Warm-Up") && couponFilter(e));
+  const wPool = useCore ? (wCorePool.length >= 4 ? wCorePool : wTaggedPool) : wTaggedPool;
   const wRepOpts = [10, 10, 15, 15, 15];
   const w = pk(wPool, 4).map(e => {
     const wRep = String(wRepOpts[Math.floor(Math.random() * wRepOpts.length)]);
     return { id: _genId(), type: "exercise" as const, name: e.n, mode: "reps" as const, value: parseInt(wRep), cadence: "IC", note: "", n: e.n, r: wRep, c: "IC", nt: "" };
   });
 
-  // Mary: for Easy/Medium use core mary exercises only
-  const yCore = yP.filter(isCore);
-  const maryPool = useCore && yCore.length >= mC ? yCore : yP;
+  // ════ MARY POOL ════
+  // Easy/Medium: use CORE_MARY set only
+  // Hard/Beast: use Mary tagged exercises from database
+  const yCorePool = pool.filter(e => CORE_MARY.has(e.n) && couponFilter(e));
+  const yTaggedPool = pool.filter(e => e.t.includes("Mary") && couponFilter(e));
+  const maryPool = useCore && yCorePool.length >= mC ? yCorePool : yTaggedPool;
+
+  // ════ THANG POOL ════
+  // Exclude warmup-only, mary-only, transport, format exercises from thang
+  let mP = pool.filter(e =>
+    baseFilter(e) &&
+    couponFilter(e) &&
+    !CORE_WARMUP.has(e.n) &&
+    !CORE_MARY.has(e.n) &&
+    !e.t.includes("Warm-Up") &&
+    !e.t.includes("Mary")
+  );
+
+  // Split thang pool by core status
+  const mCore = mP.filter(e => CORE_THANG.has(e.n));  // Thang-specific core exercises
+  const mNonCore = mP.filter(e => !isCore(e));          // Full pool minus all core
+  const mAll = mP;
 
   // ════ THANG EXERCISE SELECTION ════
   // Core-based selection:
-  //   Easy   = 100% core (exercises every PAX knows — NO exceptions, NO fallback to non-core)
-  //   Medium = 100% core (exercises every PAX knows — NO exceptions, NO fallback to non-core)
+  //   Easy   = 100% core thang (exercises every PAX knows — NO exceptions)
+  //   Medium = 100% core thang (exercises every PAX knows — NO exceptions)
   //   Hard   = 70% core + 30% full pool (introduces some new exercises)
   //   Beast  = 50% core + 50% full pool (veteran Qs want exotic exercises)
   let thangPicks: ExerciseData[];
 
-  // For Easy/Medium: ALL picks come from core. No site-specific or coupon exceptions.
-  // For Hard/Beast: site-specific and coupon picks can come from full pool.
+  // For Easy/Medium: ALL picks come from core thang. No site-specific or coupon exceptions.
   const thangSource = useCore ? mCore : mP;
   const sitePool = thangSource.filter(e => e.s.length > 0 && e.s.some(s => cfg.sites.includes(s)));
   const couponPool = thangSource.filter(e => e.t.includes("Coupon"));
@@ -361,7 +388,7 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
     }
   }
 
-  // 2. Coupon exercises (guarantee 2-3 when coupon selected)
+  // 2. Coupon exercises (guarantee 2-3 when coupon selected — only if coupon IS selected)
   if (cfg.eq.includes("coupon") && remaining > 0) {
     const unusedCoupon = couponPool.filter(e => !picks.some(p => p.n === e.n));
     const couponCount = Math.min(Math.ceil(tC / 3), unusedCoupon.length, remaining);
@@ -375,11 +402,11 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   if (remaining > 0) {
     // Exclude exercises already in warmup to prevent duplicates
     const warmupNames = new Set(w.map(e => e.n));
-    const unused = (e: ExerciseData) => !picks.some(p => p.n === e.n) && !e.t.includes("Coupon") && !warmupNames.has(e.n);
+    const unused = (e: ExerciseData) => !picks.some(p => p.n === e.n) && !warmupNames.has(e.n);
     let fillPicks: ExerciseData[] = [];
 
     if (useCore) {
-      // Easy/Medium: 100% core. Period. No fallback to non-core.
+      // Easy/Medium: 100% core thang. Period. No fallback to non-core.
       fillPicks = pk(mCore.filter(unused), remaining);
     } else if (cfg.diff === "hard") {
       // 70% core + 30% full pool
