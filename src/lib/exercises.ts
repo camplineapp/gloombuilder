@@ -327,25 +327,20 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   const couponFilter = (e: ExerciseData) => !noCoupon || !e.t.includes("Coupon");
 
   // ════ WARMUP POOL ════
-  // Easy/Medium: use CORE_WARMUP set only
-  // Hard/Beast: use Warm-Up tagged exercises from database
-  const useCore = cfg.diff === "easy" || cfg.diff === "medium";
+  // ALL difficulties use CORE_WARMUP — nobody wants exotic warmup exercises
+  // ALL difficulties use core exercises for ALL sections. No exotic exercises anywhere.
 
   const wCorePool = pool.filter(e => CORE_WARMUP.has(e.n) && couponFilter(e));
-  const wTaggedPool = pool.filter(e => e.t.includes("Warm-Up") && couponFilter(e));
-  const wPool = useCore ? (wCorePool.length >= 4 ? wCorePool : wTaggedPool) : wTaggedPool;
   const wRepOpts = [10, 10, 15, 15, 15];
-  const w = pk(wPool, 4).map(e => {
+  const w = pk(wCorePool, 2).map(e => {
     const wRep = String(wRepOpts[Math.floor(Math.random() * wRepOpts.length)]);
     return { id: _genId(), type: "exercise" as const, name: e.n, mode: "reps" as const, value: parseInt(wRep), cadence: "IC", note: "", n: e.n, r: wRep, c: "IC", nt: "" };
   });
 
   // ════ MARY POOL ════
-  // Easy/Medium: use CORE_MARY set only
-  // Hard/Beast: use Mary tagged exercises from database
+  // ALL difficulties use CORE_MARY — nobody wants exotic mary exercises
   const yCorePool = pool.filter(e => CORE_MARY.has(e.n) && couponFilter(e));
-  const yTaggedPool = pool.filter(e => e.t.includes("Mary") && couponFilter(e));
-  const maryPool = useCore && yCorePool.length >= mC ? yCorePool : yTaggedPool;
+  const maryPool = yCorePool;
 
   // ════ THANG POOL ════
   // Exclude warmup-only, mary-only, transport, format exercises from thang
@@ -360,21 +355,15 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
 
   // Split thang pool by core status
   const mCore = mP.filter(e => CORE_THANG.has(e.n));  // Thang-specific core exercises
-  const mNonCore = mP.filter(e => !isCore(e));          // Full pool minus all core
-  const mAll = mP;
 
   // ════ THANG EXERCISE SELECTION ════
-  // Core-based selection:
-  //   Easy   = 100% core thang (exercises every PAX knows — NO exceptions)
-  //   Medium = 100% core thang (exercises every PAX knows — NO exceptions)
-  //   Hard   = 70% core + 30% full pool (introduces some new exercises)
-  //   Beast  = 50% core + 50% full pool (veteran Qs want exotic exercises)
+  // ALL difficulties use 100% core thang exercises. No exceptions. No exotic exercises ever.
+  // The generator's promise is "exercises every PAX knows" — that applies to Easy through Beast.
+  // Beast difficulty = higher reps and harder exercises from the core list, NOT random exotic exercises.
   let thangPicks: ExerciseData[];
 
-  // For Easy/Medium: ALL picks come from core thang. No site-specific or coupon exceptions.
-  const thangSource = useCore ? mCore : mP;
-  const sitePool = thangSource.filter(e => e.s.length > 0 && e.s.some(s => cfg.sites.includes(s)));
-  const couponPool = thangSource.filter(e => e.t.includes("Coupon"));
+  const sitePool = mCore.filter(e => e.s.length > 0 && e.s.some(s => cfg.sites.includes(s)));
+  const couponPool = mCore.filter(e => e.t.includes("Coupon"));
 
   let picks: ExerciseData[] = [];
   let remaining = tC;
@@ -398,42 +387,12 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
     }
   }
 
-  // 3. Fill remaining slots
+  // 3. Fill remaining slots — 100% core for ALL difficulties
   if (remaining > 0) {
     // Exclude exercises already in warmup to prevent duplicates
     const warmupNames = new Set(w.map(e => e.n));
     const unused = (e: ExerciseData) => !picks.some(p => p.n === e.n) && !warmupNames.has(e.n);
-    let fillPicks: ExerciseData[] = [];
-
-    if (useCore) {
-      // Easy/Medium: 100% core thang. Period. No fallback to non-core.
-      fillPicks = pk(mCore.filter(unused), remaining);
-    } else if (cfg.diff === "hard") {
-      // 70% core + 30% full pool
-      const coreCount = Math.ceil(remaining * 0.7);
-      const adventureCount = remaining - coreCount;
-      const corePicks = pk(mCore.filter(unused), coreCount);
-      const adventurePicks = pk(mNonCore.filter(unused), adventureCount);
-      fillPicks = [...corePicks, ...adventurePicks];
-      if (fillPicks.length < remaining) {
-        const stillNeeded = remaining - fillPicks.length;
-        const fallback = mAll.filter(e => unused(e) && !fillPicks.some(p => p.n === e.n));
-        fillPicks.push(...pk(fallback, stillNeeded));
-      }
-    } else {
-      // Beast: 50% core + 50% full pool
-      const coreCount = Math.ceil(remaining * 0.5);
-      const adventureCount = remaining - coreCount;
-      const corePicks = pk(mCore.filter(unused), coreCount);
-      const adventurePicks = pk(mNonCore.filter(unused), adventureCount);
-      fillPicks = [...corePicks, ...adventurePicks];
-      if (fillPicks.length < remaining) {
-        const stillNeeded = remaining - fillPicks.length;
-        const fallback = mAll.filter(e => unused(e) && !fillPicks.some(p => p.n === e.n));
-        fillPicks.push(...pk(fallback, stillNeeded));
-      }
-    }
-
+    const fillPicks = pk(mCore.filter(unused), remaining);
     picks.push(...fillPicks);
   }
 
