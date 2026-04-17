@@ -71,6 +71,7 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
   const [toast, setToast] = useState("");
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
   const [copyModal, setCopyModal] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   useEffect(() => {
     loadSeedExercises().then(rows => {
@@ -172,75 +173,32 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
         ) : null
       )}
 
-      {/* Beatdown details card */}
-      <div style={{ background: CD, border: "1px solid " + BD, borderRadius: 14, padding: 14, marginBottom: 22 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-          <div style={{ color: T2, fontSize: 13, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: F }}>Beatdown details</div>
+      {/* Beatdown details card — collapsible, AO+Equipment always flat inside */}
+      <div style={{ background: "#141416", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, overflow: "hidden", marginBottom: 20 }}>
+        <div onClick={() => setDetailsOpen(!detailsOpen)} style={{ padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+          <span style={{ color: T2, fontSize: 13, fontWeight: 800, letterSpacing: "1px", textTransform: "uppercase", fontFamily: F }}>Beatdown Details</span>
+          <span style={{ color: T5, fontSize: 16, fontFamily: F }}>{detailsOpen ? "▾" : "▸"}</span>
         </div>
-
-        {/* Duration */}
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ color: T4, fontSize: 12, fontWeight: 600, marginBottom: 6, fontFamily: F }}>Duration</div>
-          <div style={{ display: "flex", gap: 6 }}>
-            {["30 min", "45 min", "60 min"].map(d => {
-              const sel = bDur === d;
-              return (
-                <button key={d} onClick={() => setBDur(sel ? null : d)} style={{ fontFamily: F, background: sel ? G + "26" : "rgba(255,255,255,0.04)", color: sel ? G : T2, border: "1px solid " + (sel ? G : "rgba(255,255,255,0.1)"), padding: "8px 14px", borderRadius: 10, fontSize: 14, cursor: "pointer", fontWeight: sel ? 700 : 600 }}>
-                  {d}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Difficulty */}
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ color: T4, fontSize: 12, fontWeight: 600, marginBottom: 6, fontFamily: F }}>Difficulty</div>
-          <div style={{ display: "flex", gap: 6 }}>
-            {DIFFS.map(d => {
-              const sel = bDiff === d.id;
-              return (
-                <button key={d.id} onClick={() => setBDiff(sel ? null : d.id)} style={{ fontFamily: F, background: sel ? d.c + "26" : "rgba(255,255,255,0.04)", color: sel ? d.c : T2, border: "1px solid " + (sel ? d.c : "rgba(255,255,255,0.1)"), padding: "8px 14px", borderRadius: 10, fontSize: 14, cursor: "pointer", fontWeight: sel ? 700 : 600 }}>
-                  {d.l}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* AO site + Equipment (collapsed style) */}
-        <details style={{ marginTop: 4 }}>
-          <summary style={{ color: T4, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: F, listStyle: "none", display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ color: G }}>+</span> AO site · Equipment
-            {(bSites.length > 0 || bEq.length > 0) && (
-              <span style={{ color: G, fontSize: 11, fontWeight: 700 }}>({bSites.length + bEq.length} selected)</span>
-            )}
-          </summary>
-          <div style={{ marginTop: 10 }}>
-            <div style={{ color: T5, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6, fontFamily: F }}>AO Site</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-              {SITES.map(sv => {
-                const sel = bSites.includes(sv.id);
-                return (
-                  <button key={sv.id} onClick={() => setBSites(sel ? bSites.filter(x => x !== sv.id) : [...bSites, sv.id])} style={{ fontFamily: F, background: sel ? G + "20" : "rgba(255,255,255,0.04)", color: sel ? G : T4, border: "1px solid " + (sel ? G + "30" : BD), padding: "6px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontWeight: sel ? 700 : 500 }}>
-                    {sv.l}
-                  </button>
-                );
-              })}
+        {detailsOpen && (
+          <div style={{ padding: "0 18px 16px", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+            <div style={{ color: T5, fontSize: 11, fontWeight: 600, margin: "12px 0 8px", fontFamily: F }}>Duration</div>
+            <div style={{ display: "flex", gap: 7, marginBottom: 14 }}>
+              {["30 min", "45 min", "60 min"].map(d => { const sel = bDur === d; return <button key={d} onClick={() => setBDur(sel ? null : d)} style={{ fontFamily: F, background: sel ? G + "20" : "rgba(255,255,255,0.04)", color: sel ? G : T2, border: sel ? "1.5px solid " + G : "1px solid rgba(255,255,255,0.1)", padding: "8px 14px", borderRadius: 10, fontSize: 14, cursor: "pointer", fontWeight: sel ? 700 : 600 }}>{d}</button>; })}
             </div>
-            <div style={{ color: T5, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6, fontFamily: F }}>Equipment</div>
+            <div style={{ color: T5, fontSize: 11, fontWeight: 600, marginBottom: 8, fontFamily: F }}>Difficulty</div>
+            <div style={{ display: "flex", gap: 7, flexWrap: "wrap", marginBottom: 14 }}>
+              {DIFFS.map(d => { const sel = bDiff === d.id; return <button key={d.id} onClick={() => setBDiff(sel ? null : d.id)} style={{ fontFamily: F, background: sel ? d.c + "20" : "rgba(255,255,255,0.04)", color: sel ? d.c : T2, border: sel ? "1.5px solid " + d.c : "1px solid rgba(255,255,255,0.1)", padding: "8px 14px", borderRadius: 10, fontSize: 14, cursor: "pointer", fontWeight: sel ? 700 : 600 }}>{d.l}</button>; })}
+            </div>
+            <div style={{ color: T5, fontSize: 11, fontWeight: 600, marginBottom: 8, fontFamily: F }}>AO Site</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+              {SITES.map(sv => { const sel = bSites.includes(sv.id); return <button key={sv.id} onClick={() => setBSites(sel ? bSites.filter(x => x !== sv.id) : [...bSites, sv.id])} style={{ fontFamily: F, background: sel ? G + "20" : "rgba(255,255,255,0.04)", color: sel ? G : T4, border: sel ? "1.5px solid rgba(34,197,94,0.5)" : "1px solid rgba(255,255,255,0.08)", padding: "6px 12px", borderRadius: 9, fontSize: 13, cursor: "pointer", fontWeight: sel ? 700 : 500 }}>{sv.l}</button>; })}
+            </div>
+            <div style={{ color: T5, fontSize: 11, fontWeight: 600, marginBottom: 8, fontFamily: F }}>Equipment</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {EQUIP.map(e => {
-                const sel = bEq.includes(e.id);
-                return (
-                  <button key={e.id} onClick={() => setBEq(sel ? bEq.filter(x => x !== e.id) : [...bEq, e.id])} style={{ fontFamily: F, background: sel ? P + "20" : "rgba(255,255,255,0.04)", color: sel ? P : T4, border: "1px solid " + (sel ? P + "30" : BD), padding: "6px 12px", borderRadius: 8, fontSize: 12, cursor: "pointer", fontWeight: sel ? 700 : 500 }}>
-                    {e.l}
-                  </button>
-                );
-              })}
+              {EQUIP.map(e => { const sel = bEq.includes(e.id); return <button key={e.id} onClick={() => setBEq(sel ? bEq.filter(x => x !== e.id) : [...bEq, e.id])} style={{ fontFamily: F, background: sel ? P + "20" : "rgba(255,255,255,0.04)", color: sel ? P : T4, border: sel ? "1.5px solid rgba(167,139,250,0.5)" : "1px solid rgba(255,255,255,0.08)", padding: "6px 12px", borderRadius: 9, fontSize: 13, cursor: "pointer", fontWeight: sel ? 700 : 500 }}>{e.l}</button>; })}
             </div>
           </div>
-        </details>
+        )}
       </div>
 
       {/* Section Editor — the new heart of the builder */}

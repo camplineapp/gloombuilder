@@ -1,26 +1,16 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import {
-  DndContext,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  closestCenter,
-  type DragEndEvent,
+  DndContext, PointerSensor, useSensor, useSensors, closestCenter, type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-  arrayMove,
+  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Section, SectionExercise, ExerciseData } from "@/lib/exercises";
 import { TAGS, parseSmartText, generateId } from "@/lib/exercises";
 
-const CD = "rgba(255,255,255,0.028)";
-const BD = "rgba(255,255,255,0.07)";
 const G = "#22c55e";
 const A = "#f59e0b";
 const R = "#ef4444";
@@ -34,6 +24,9 @@ const T5 = "#7A7268";
 const F = "'Outfit', system-ui, sans-serif";
 const sC = [G, A, P, R, "#3b82f6", "#ec4899", "#06b6d4"];
 
+const CARD_BG = "#111114";
+const EX_BG = "#1a1a1f";
+const BD = "rgba(255,255,255,0.07)";
 const ist: React.CSSProperties = {
   width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid " + BD,
   borderRadius: 10, color: T2, padding: "12px 14px", fontSize: 15,
@@ -59,7 +52,7 @@ function classifyInput(input: string): { icon: string; text: string; color: stri
   return { icon: "🔢", color: T3, text: `${parsed.value} reps` };
 }
 
-function formatExerciseDisplay(ex: SectionExercise): string {
+function fmtAmount(ex: SectionExercise): string {
   if (ex.mode === "time") return `${ex.value} ${ex.unit}`;
   if (ex.mode === "distance") return `${ex.value} ${ex.unit}`;
   if (ex.mode === "reps" && ex.value !== undefined && ex.value !== "") return `${ex.value} reps`;
@@ -67,12 +60,10 @@ function formatExerciseDisplay(ex: SectionExercise): string {
   return "";
 }
 
-function formatCadenceDisplay(ex: SectionExercise): string {
+function fmtCadence(ex: SectionExercise): string {
   const cad = ex.cadence || ex.c || "";
   if (ex.mode === "time" || ex.mode === "distance") return "";
-  if (cad === "IC") return "IC";
-  if (cad === "OYO") return "OYO";
-  return cad || "";
+  return cad;
 }
 
 // ── EXERCISE CARD ─────────────────────────────────────────────────────────────
@@ -83,43 +74,48 @@ function ExerciseCard({ ex, sectionColor, onTap, onDelete, dragListeners, isDrag
   const isTransition = ex.type === "transition";
   const exName = ex.name || ex.n || "";
   const isCustom = allEx ? !allEx.some(x => x.n.toLowerCase() === exName.toLowerCase()) : false;
+  const amountStr = fmtAmount(ex);
+  const cadStr = fmtCadence(ex);
 
-  return (
-    <div style={{ background: CD, border: `1px solid ${BD}`, borderLeft: `4px ${isTransition ? "dashed" : "solid"} ${sectionColor}`, borderRadius: "0 14px 14px 0", padding: "14px 14px 14px 10px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12, userSelect: "none", opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s" }}>
-      <div {...dragListeners} onClick={e => e.stopPropagation()} style={{ color: sectionColor, fontSize: 22, flexShrink: 0, width: 28, textAlign: "center", opacity: 0.85, lineHeight: 1, cursor: "grab", touchAction: "none" }}>≡</div>
-      <div onClick={onTap} style={{ flex: 1, minWidth: 0, cursor: "pointer", overflow: "hidden" }}>
-        {isTransition ? (
-          <>
-            <div style={{ color: sectionColor, fontSize: 13, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6, fontFamily: F }}>↗ Transition</div>
-            <div style={{ color: T2, fontSize: 16, fontStyle: "italic", marginTop: 3, fontWeight: 500, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{exName}</div>
-          </>
-        ) : (
-          <>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap", overflow: "hidden" }}>
-              <span style={{ color: T1, fontSize: 19, fontWeight: 700, fontFamily: F, lineHeight: 1.2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{exName}</span>
-              {isCustom && <span style={{ fontSize: 10, color: A, background: A + "15", padding: "2px 7px", borderRadius: 4, fontWeight: 700, textTransform: "uppercase", fontFamily: F, flexShrink: 0 }}>Custom</span>}
-            </div>
-            <div style={{ color: T2, fontSize: 15, fontWeight: 600, marginTop: 4, display: "flex", alignItems: "center", gap: 6, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {ex.mode === "time" && <span style={{ color: A, fontSize: 14, flexShrink: 0 }}>⏱</span>}
-              {ex.mode === "distance" && <span style={{ color: P, fontSize: 14, flexShrink: 0 }}>📏</span>}
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formatExerciseDisplay(ex)}{formatCadenceDisplay(ex) ? ` · ${formatCadenceDisplay(ex)}` : ""}</span>
-            </div>
-            {(ex.note || ex.nt) ? <div style={{ color: T3, fontSize: 13, fontStyle: "italic", marginTop: 3, fontWeight: 500, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ex.note || ex.nt}</div> : null}
-          </>
+  if (isTransition) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", marginBottom: 6, background: "rgba(255,255,255,0.03)", borderRadius: 10, opacity: isDragging ? 0.4 : 1 }}>
+        <div {...dragListeners} onClick={e => e.stopPropagation()} style={{ color: "rgba(255,255,255,0.2)", fontSize: 18, cursor: "grab", touchAction: "none", lineHeight: 1 }}>≡</div>
+        <span style={{ color: T4, fontSize: 15, flex: "0 0 auto" }}>↗</span>
+        <span style={{ color: T3, fontSize: 16, fontStyle: "italic", fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: F }}>{exName}</span>
+        {onDelete && (
+          <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ color: T5, background: "none", border: "none", cursor: "pointer", fontSize: 15, padding: "0 2px", flexShrink: 0, fontFamily: F }}>✕</button>
         )}
       </div>
-      {/* Quick delete button */}
+    );
+  }
+
+  return (
+    <div onClick={onTap} style={{ background: EX_BG, borderRadius: 14, padding: "13px 12px", marginBottom: 6, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none", opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s" }}>
+      <div {...dragListeners} onClick={e => e.stopPropagation()} style={{ color: sectionColor + "60", fontSize: 22, flexShrink: 0, lineHeight: 1, cursor: "grab", touchAction: "none" }}>≡</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap", overflow: "hidden" }}>
+          <span style={{ color: T1, fontSize: 18, fontWeight: 700, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{exName}</span>
+          {isCustom && <span style={{ fontSize: 10, color: A, background: A + "15", padding: "2px 6px", borderRadius: 4, fontWeight: 700, textTransform: "uppercase", flexShrink: 0, fontFamily: F }}>Custom</span>}
+        </div>
+        <div style={{ color: T4, fontSize: 14, fontWeight: 600, marginTop: 3, display: "flex", alignItems: "center", gap: 5, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {ex.mode === "time" && <span style={{ color: A, fontSize: 13 }}>⏱</span>}
+          {ex.mode === "distance" && <span style={{ color: P, fontSize: 13 }}>📏</span>}
+          <span>{amountStr}{cadStr ? ` · ${cadStr}` : ""}</span>
+        </div>
+        {(ex.note || ex.nt) ? <div style={{ color: T5, fontSize: 13, fontStyle: "italic", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: F }}>{ex.note || ex.nt}</div> : null}
+      </div>
       {onDelete && (
-        <button
-          onClick={e => { e.stopPropagation(); onDelete(); }}
-          style={{ flexShrink: 0, width: 32, height: 32, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, color: "#ef4444", fontSize: 14, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F }}
-        >✕</button>
+        <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(239,68,68,0.07)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: T5, fontSize: 13, fontFamily: F }}>✕</button>
       )}
     </div>
   );
 }
 
-function SortableExerciseCard({ ex, exKey, sectionColor, onTap, onDelete, allEx }: { ex: SectionExercise; exKey?: string; sectionColor: string; onTap: () => void; onDelete?: () => void; allEx?: ExerciseData[] }) {
+function SortableExerciseCard({ ex, exKey, sectionColor, onTap, onDelete, allEx }: {
+  ex: SectionExercise; exKey?: string; sectionColor: string;
+  onTap: () => void; onDelete?: () => void; allEx?: ExerciseData[];
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exKey || ex.id || ex.n || "x" });
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} {...attributes}>
@@ -128,54 +124,11 @@ function SortableExerciseCard({ ex, exKey, sectionColor, onTap, onDelete, allEx 
   );
 }
 
-// ── Q NOTES ───────────────────────────────────────────────────────────────────
-function QNotes({ section, onChange }: { section: Section; onChange: (text: string) => void }) {
-  const color = section.color;
-  const text = section.qNotes || section.note || "";
-  const hasNotes = text.trim().length > 0;
-  const [expanded, setExpanded] = useState(false);
-  const [draft, setDraft] = useState(text);
-  useEffect(() => { setDraft(text); }, [text]);
-
-  if (!hasNotes && !expanded) {
-    return (
-      <button onClick={() => setExpanded(true)} style={{ width: "100%", background: color + "06", border: "1px solid " + color + "30", borderRadius: 10, padding: "12px 14px", marginBottom: 10, display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontFamily: F, textAlign: "left" }}>
-        <span style={{ color, fontSize: 14 }}>✎</span>
-        <span style={{ color, fontSize: 14, fontWeight: 700 }}>Add Q notes for this section</span>
-        <span style={{ color, marginLeft: "auto", fontSize: 18, lineHeight: 1 }}>+</span>
-      </button>
-    );
-  }
-
-  if (hasNotes && !expanded) {
-    return (
-      <div style={{ background: color + "0D", border: "1px solid " + color + "40", borderLeft: "4px solid " + color, borderRadius: "0 12px 12px 0", padding: "12px 14px", marginBottom: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <span style={{ color, fontSize: 12, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", fontFamily: F }}>Q Notes</span>
-          <button onClick={() => setExpanded(true)} style={{ background: "none", border: "none", color, fontSize: 13, fontWeight: 700, cursor: "pointer", padding: 0, fontFamily: F, marginLeft: "auto" }}>Edit</button>
-        </div>
-        <div style={{ color: T2, fontSize: 15, fontStyle: "italic", lineHeight: 1.5, fontFamily: F, whiteSpace: "pre-wrap" }}>{text}</div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ color, fontSize: 12, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 6, fontFamily: F }}>Q Notes</div>
-      <textarea autoFocus value={draft} onChange={e => setDraft(e.target.value)} rows={3} placeholder="Instructions, focus areas, encouragement..." style={{ ...ist, resize: "vertical" as const, fontStyle: "italic", borderColor: color + "40", background: color + "06" }} />
-      <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-        <button onClick={() => { onChange(draft); setExpanded(false); }} style={{ fontFamily: F, background: color + "15", color, border: "1px solid " + color + "30", padding: "8px 16px", borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Save</button>
-        <button onClick={() => { setDraft(text); setExpanded(false); }} style={{ fontFamily: F, background: "none", color: T4, border: "1px solid " + BD, padding: "8px 16px", borderRadius: 8, fontSize: 13, cursor: "pointer" }}>Cancel</button>
-        {hasNotes && <button onClick={() => { onChange(""); setDraft(""); setExpanded(false); }} style={{ fontFamily: F, background: "none", color: R, border: "none", padding: "8px 0", fontSize: 13, cursor: "pointer", marginLeft: "auto" }}>Remove</button>}
-      </div>
-    </div>
-  );
-}
-
 // ── EXERCISE EDIT SHEET ───────────────────────────────────────────────────────
-function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, onClose }: {
+function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, onClose, onAddTransitionAfter }: {
   exercise: SectionExercise; sectionColor: string; allEx: ExerciseData[];
   onSave: (updated: SectionExercise) => void; onDelete: () => void; onClose: () => void;
+  onAddTransitionAfter?: (text: string) => void;
 }) {
   const exName = exercise.name || exercise.n || "";
   const [amountText, setAmountText] = useState(exerciseToAmountString(exercise));
@@ -185,6 +138,7 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
   const [customCadence, setCustomCadence] = useState(isInitCustom ? initCad : "");
   const [note, setNote] = useState(exercise.note || exercise.nt || "");
   const [showHowTo, setShowHowTo] = useState(false);
+  const [transitionText, setTransitionText] = useState("");
   const classification = classifyInput(amountText);
   const exData = allEx.find(x => x.n.toLowerCase() === exName.toLowerCase());
 
@@ -201,7 +155,7 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#111318", borderRadius: "24px 24px 0 0", width: "100%", maxWidth: 430, maxHeight: "92vh", overflowY: "auto", border: "1px solid " + BD, borderBottom: "none" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#111318", borderRadius: "24px 24px 0 0", width: "100%", maxWidth: 430, maxHeight: "92vh", overflowY: "auto", border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}>
         <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, margin: "12px auto 0" }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px 12px" }}>
           <button onClick={onClose} style={{ color: T3, background: "none", border: "none", fontSize: 16, fontWeight: 600, cursor: "pointer", fontFamily: F }}>Cancel</button>
@@ -209,24 +163,19 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
           <div style={{ width: 60 }} />
         </div>
         <div style={{ padding: "0 20px 40px" }}>
-          <div style={{ background: "rgba(255,255,255,0.04)", border: `1px solid ${sectionColor}30`, borderLeft: `4px solid ${sectionColor}`, borderRadius: "0 12px 12px 0", padding: "14px 16px", marginBottom: 24 }}>
+          <div style={{ background: EX_BG, borderRadius: 14, padding: "14px 16px", marginBottom: 24 }}>
             <div style={{ color: T1, fontSize: 19, fontWeight: 700, fontFamily: F }}>{exName}</div>
           </div>
           <div style={{ color: T2, fontSize: 12, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8, fontFamily: F }}>HOW MUCH?</div>
           <input value={amountText} onChange={e => setAmountText(e.target.value)} placeholder="20 · 45 sec · 50 yds..." autoFocus style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: `2px solid ${sectionColor}66`, borderRadius: 12, color: T1, padding: "16px 18px", fontSize: 17, fontWeight: 500, outline: "none", boxSizing: "border-box", fontFamily: F }} />
-          {classification && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}>
-              <span style={{ fontSize: 16 }}>{classification.icon}</span>
-              <span style={{ color: classification.color, fontSize: 14, fontWeight: 600, fontFamily: F }}>{classification.text}</span>
-            </div>
-          )}
-          <div style={{ color: T4, fontSize: 11, fontStyle: "italic", marginTop: 4, marginBottom: 22, fontFamily: F }}>Try: 20 · 45 sec · 50 yds · 3 laps</div>
+          {classification && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}><span style={{ fontSize: 16 }}>{classification.icon}</span><span style={{ color: classification.color, fontSize: 14, fontWeight: 600, fontFamily: F }}>{classification.text}</span></div>}
+          <div style={{ color: T5, fontSize: 11, fontStyle: "italic", marginTop: 4, marginBottom: 22, fontFamily: F }}>Try: 20 · 45 sec · 50 yds · 3 laps</div>
           <div style={{ color: T2, fontSize: 12, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8, fontFamily: F }}>CADENCE</div>
           <div style={{ display: "flex", gap: 8, marginBottom: cadence === "Custom" ? 10 : 22 }}>
             {["IC", "OYO", "Custom"].map(opt => {
-              const isSelected = cadence === opt;
-              const chipColor = opt === "IC" ? G : opt === "OYO" ? A : T3;
-              return <button key={opt} onClick={() => setCadence(opt)} style={{ flex: 1, height: 48, background: isSelected ? `${chipColor}20` : "rgba(255,255,255,0.04)", border: `${isSelected ? 2 : 1}px solid ${isSelected ? chipColor : BD}`, color: isSelected ? chipColor : T3, fontSize: 15, fontWeight: isSelected ? 700 : 500, borderRadius: 12, cursor: "pointer", fontFamily: F }}>{opt}</button>;
+              const sel = cadence === opt;
+              const cc = opt === "IC" ? G : opt === "OYO" ? A : T3;
+              return <button key={opt} onClick={() => setCadence(opt)} style={{ flex: 1, height: 48, background: sel ? `${cc}20` : "rgba(255,255,255,0.04)", border: `${sel ? 2 : 1}px solid ${sel ? cc : BD}`, color: sel ? cc : T3, fontSize: 15, fontWeight: sel ? 700 : 500, borderRadius: 12, cursor: "pointer", fontFamily: F }}>{opt}</button>;
             })}
           </div>
           {cadence === "Custom" && <input value={customCadence} onChange={e => setCustomCadence(e.target.value)} placeholder="e.g., 30-20-10 pyramid" autoFocus style={{ ...ist, marginBottom: 22 }} />}
@@ -242,6 +191,26 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
               {showHowTo && <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 16px", marginBottom: 22 }}>{exData.h.split(/(?=\d+\.\s)/).filter(Boolean).map((step, i) => <div key={i} style={{ color: T3, fontSize: 14, lineHeight: 1.7, marginBottom: 4, fontFamily: F }}>{step.trim()}</div>)}</div>}
             </>
           )}
+          {/* Transition after this exercise */}
+          {onAddTransitionAfter && (
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 20, marginBottom: 20 }}>
+              <div style={{ color: T2, fontSize: 13, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 10, fontFamily: F }}>TRANSITION AFTER THIS</div>
+              <div style={{ background: "rgba(255,255,255,0.04)", border: "1.5px dashed rgba(255,255,255,0.15)", borderRadius: 12, display: "flex", alignItems: "center", overflow: "hidden" }}>
+                <span style={{ color: T5, fontSize: 17, padding: "0 12px", flexShrink: 0 }}>↗</span>
+                <input
+                  value={transitionText}
+                  onChange={e => setTransitionText(e.target.value)}
+                  placeholder="e.g. Mosey to the bleachers"
+                  onKeyDown={e => { if (e.key === "Enter" && transitionText.trim()) { onAddTransitionAfter(transitionText.trim()); setTransitionText(""); onClose(); } }}
+                  style={{ flex: 1, background: "none", border: "none", outline: "none", color: T2, fontSize: 16, fontStyle: "italic", fontFamily: F, padding: "16px 0" }}
+                />
+                {transitionText.trim() && (
+                  <button onClick={() => { onAddTransitionAfter(transitionText.trim()); setTransitionText(""); onClose(); }} style={{ background: sectionColor, border: "none", color: BG, fontSize: 14, fontWeight: 800, padding: "0 16px", height: 54, cursor: "pointer", fontFamily: F, flexShrink: 0 }}>Add</button>
+                )}
+              </div>
+              <div style={{ color: T5, fontSize: 13, marginTop: 6, fontFamily: F }}>Inserts a mosey line after {exName} in the beatdown</div>
+            </div>
+          )}
           <button onClick={handleSave} style={{ width: "100%", padding: "20px 0", background: G, border: "none", color: BG, fontSize: 18, fontWeight: 800, borderRadius: 14, cursor: "pointer", fontFamily: F, marginBottom: 10 }}>Save changes</button>
           <button onClick={onDelete} style={{ width: "100%", padding: "18px 0", background: "transparent", border: `2px solid ${R}`, color: R, fontSize: 16, fontWeight: 700, borderRadius: 14, cursor: "pointer", fontFamily: F }}>Delete exercise</button>
         </div>
@@ -250,14 +219,14 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
   );
 }
 
-// ── SORTABLE SECTION (separate component so useSortable works per-section) ────
+// ── SORTABLE SECTION BLOCK ─────────────────────────────────────────────────────
 function SortableSectionBlock({
   sec, si, sections, allEx, sensors,
   editLabel, qaQ, qaSec, trSec, trText,
   qaRef, trRef, qaResults,
   onEditSheet, onSetEditLabel, onSetQaSec, onSetQaQ, onSetTrSec, onSetTrText,
-  onDeleteSec, onAddExercise, onAddTransition, onQNotesChange,
-  onOpenPicker, onExDragEnd, onAddSection, onUpdate,
+  onUpdate, onDeleteSec, onAddExercise, onAddTransition,
+  onOpenPicker, onExDragEnd, onAddSection, onQNotesChange,
 }: {
   sec: Section; si: number; sections: Section[]; allEx: ExerciseData[];
   sensors: ReturnType<typeof useSensors>;
@@ -269,121 +238,203 @@ function SortableSectionBlock({
   onSetEditLabel: (v: number | null) => void;
   onSetQaSec: (v: number | null) => void; onSetQaQ: (v: string) => void;
   onSetTrSec: (v: number | null) => void; onSetTrText: (v: string) => void;
+  onUpdate: (secs: Section[]) => void;
   onDeleteSec: () => void;
   onAddExercise: (name: string, isCustom: boolean) => void;
   onAddTransition: () => void;
-  onQNotesChange: (text: string) => void;
   onOpenPicker: () => void;
   onExDragEnd: (event: DragEndEvent) => void;
   onAddSection: () => void;
-  onUpdate: (secs: Section[]) => void;
+  onQNotesChange: (text: string) => void;
 }) {
   const secId = sec.id || sec.label || String(si);
   const sColor = sec.color;
+  const secLabel = sec.name || sec.label || "Section";
+  const exCount = sec.exercises.filter(e => e.type !== "transition").length;
   const exIds = sec.exercises.map((e, idx) => e.id ? `${e.id}-${idx}` : (e.n ? `${e.n}-${idx}` : `ex-${si}-${idx}`));
+  const isRenaming = editLabel === si;
+  const [qNotesOpen, setQNotesOpen] = useState(false);
+  const [qNotesDraft, setQNotesDraft] = useState(sec.qNotes || sec.note || "");
+  const hasQNotes = (sec.qNotes || sec.note || "").trim().length > 0;
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: secId });
 
+  const handleDelete = () => {
+    if (sec.exercises.length > 0) {
+      if (!confirm(`Delete "${secLabel}"? This will remove all ${sec.exercises.length} exercise${sec.exercises.length === 1 ? "" : "s"} in this section.`)) return;
+    }
+    onDeleteSec();
+  };
+
   return (
-    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1, marginTop: 20 }} {...attributes}>
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, marginBottom: 6 }} {...attributes}>
 
-      {/* Section Header Card */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, background: sColor + "14", borderLeft: `4px solid ${sColor}`, borderRadius: "0 12px 12px 0", padding: "12px 12px 12px 10px", marginBottom: 10 }}>
-        {/* Drag handle — only this triggers section drag */}
-        <div {...listeners} style={{ color: sColor, fontSize: 22, flexShrink: 0, width: 24, textAlign: "center", opacity: 0.9, lineHeight: 1, cursor: "grab", touchAction: "none" }}>≡</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          {editLabel === si ? (
-            <input
-              autoFocus
-              value={sec.name || sec.label || ""}
-              maxLength={60}
-              onChange={e => onUpdate(sections.map((s, i) => i !== si ? s : { ...s, name: e.target.value, label: e.target.value }))}
-              onBlur={() => onSetEditLabel(null)}
-              onKeyDown={e => { if (e.key === "Enter") onSetEditLabel(null); }}
-              style={{ fontFamily: F, color: sColor, fontSize: 17, fontWeight: 800, textTransform: "uppercase", letterSpacing: "1.5px", background: "rgba(255,255,255,0.06)", border: "1px solid " + sColor + "40", borderRadius: 8, padding: "5px 10px", outline: "none", width: "100%", boxSizing: "border-box" }}
-            />
-          ) : (
-            <div style={{ color: sColor, fontSize: 20, fontWeight: 800, letterSpacing: "2px", textTransform: "uppercase", fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {sec.name || sec.label}
-            </div>
-          )}
-        </div>
-        <button onClick={() => onSetEditLabel(si)} style={{ width: 36, height: 36, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 8, color: T2, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: F }}>✎</button>
-        <button onClick={onDeleteSec} style={{ width: 36, height: 36, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 8, color: R, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: F }}>✕</button>
-      </div>
+      {/* ── Section Card — overflow:visible so dropdown can escape ── */}
+      <div style={{
+        background: CARD_BG,
+        borderRadius: 22,
+        boxShadow: `0 0 0 1px ${sColor}40, 0 4px 24px ${sColor}0D`,
+        opacity: isDragging ? 0.3 : 1,
+        transition: "opacity 0.15s",
+      }}>
+        {/* Header area — overflow:hidden only here for stripe corner clipping */}
+        <div style={{ borderRadius: "22px 22px 0 0", overflow: "hidden" }}>
+          <div style={{ height: 3, background: sColor }} />
 
-      {/* Q Notes — TOP of section */}
-      <QNotes section={sec} onChange={onQNotesChange} />
-
-      {/* Exercise cards */}
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onExDragEnd}>
-        <SortableContext items={exIds} strategy={verticalListSortingStrategy}>
-          {sec.exercises.map((ex, exIdx) => (
-            <SortableExerciseCard key={ex.id ? `${ex.id}-${exIdx}` : `${ex.n}-${exIdx}`} exKey={ex.id ? `${ex.id}-${exIdx}` : `${ex.n}-${exIdx}`} ex={ex} sectionColor={sColor} allEx={allEx} onTap={() => onEditSheet({ sectionIdx: si, exercise: ex })} onDelete={() => { const exId = ex.id; const exName = ex.n || ""; onUpdate(sections.map((s, i) => i !== si ? s : { ...s, exercises: s.exercises.filter(e => exId ? e.id !== exId : e.n !== exName) })); }} />
-          ))}
-        </SortableContext>
-      </DndContext>
-
-      {/* Quick-add input */}
-      <div style={{ position: "relative", marginTop: sec.exercises.length > 0 ? 8 : 0 }}>
-        <input
-          ref={qaSec === si ? qaRef : null}
-          value={qaSec === si ? qaQ : ""}
-          onFocus={() => { onSetQaSec(si); onSetQaQ(""); }}
-          onChange={e => { onSetQaSec(si); onSetQaQ(e.target.value); }}
-          onKeyDown={e => { if (e.key === "Enter" && qaQ.trim().length >= 2 && qaSec === si) onAddExercise(qaQ.trim(), true); }}
-          placeholder="Type exercise name..."
-          style={{ width: "100%", background: `${sColor}04`, border: `2px solid ${qaSec === si && qaQ.length >= 2 ? sColor + "66" : BD}`, borderRadius: 12, color: T2, padding: "16px 18px", fontSize: 17, outline: "none", boxSizing: "border-box", fontFamily: F }}
-        />
-        {qaSec === si && qaQ.length >= 2 && (
-          <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 50, background: "#1a1a1e", border: "1px solid " + sColor + "30", borderRadius: 12, marginTop: 4, overflow: "hidden" }}>
-            <div onClick={() => onAddExercise(qaQ.trim(), true)} style={{ padding: "12px 16px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", background: A + "06", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-              <div>
-                <div style={{ fontFamily: F, fontSize: 14, color: A, fontWeight: 600 }}>Add &ldquo;{qaQ.trim()}&rdquo; as custom</div>
-                <div style={{ fontFamily: F, fontSize: 11, color: T5, marginTop: 2 }}>Won&apos;t be linked to exercise database</div>
+          <div style={{ padding: "14px 18px 12px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            {/* Left: drag handle + section name (tap name to rename) */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flex: 1, minWidth: 0 }}>
+              {/* Section drag handle */}
+              <div {...listeners} style={{ color: sColor, fontSize: 28, lineHeight: 1, cursor: "grab", touchAction: "none", marginTop: 1, flexShrink: 0, opacity: 0.7 }}>≡</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {isRenaming ? (
+                  <input
+                    autoFocus
+                    value={secLabel}
+                    maxLength={60}
+                    onChange={e => onUpdate(sections.map((s, i) => i !== si ? s : { ...s, name: e.target.value, label: e.target.value }))}
+                    onBlur={() => onSetEditLabel(null)}
+                    onKeyDown={e => { if (e.key === "Enter") onSetEditLabel(null); }}
+                    style={{ background: "rgba(255,255,255,0.08)", border: `1.5px solid ${sColor}60`, borderRadius: 8, color: T1, fontSize: 20, fontWeight: 800, padding: "5px 12px", outline: "none", width: "100%", boxSizing: "border-box", fontFamily: F }}
+                  />
+                ) : (
+                  <div
+                    onClick={() => onSetEditLabel(si)}
+                    title="Tap to rename"
+                    style={{ color: T1, fontSize: 21, fontWeight: 800, letterSpacing: "-0.5px", fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "text" }}
+                  >
+                    {secLabel}
+                  </div>
+                )}
+                <div style={{ color: T5, fontSize: 12, marginTop: 3, fontFamily: F }}>{exCount} {exCount === 1 ? "exercise" : "exercises"}</div>
               </div>
-              <span style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: A, background: A + "15", padding: "5px 12px", borderRadius: 6 }}>+ Add</span>
             </div>
-            {qaResults.map((ex, i) => (
-              <div key={i} onClick={() => onAddExercise(ex.n, false)} style={{ padding: "12px 16px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: i < qaResults.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
-                <div>
-                  <div style={{ fontFamily: F, fontSize: 14, fontWeight: 600, color: T1 }}>{ex.n}</div>
-                  {ex.f !== ex.n && <div style={{ fontFamily: F, fontSize: 11, color: T5, marginTop: 2 }}>{ex.f}</div>}
-                </div>
-                <span style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: sColor, background: sColor + "15", padding: "5px 12px", borderRadius: 6 }}>+ Add</span>
-              </div>
-            ))}
+            {/* Right: delete button — always visible */}
+            <button
+              onClick={handleDelete}
+              style={{ width: 34, height: 34, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 9, color: R, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: F, marginTop: 1 }}
+            >✕</button>
           </div>
-        )}
-      </div>
-
-      {/* Browse library | Transition */}
-      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-        <button onClick={onOpenPicker} style={{ flex: 1, height: 44, background: CD, border: "1px solid " + BD, color: T2, fontSize: 14, fontWeight: 700, borderRadius: 10, cursor: "pointer", fontFamily: F, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          <span style={{ color: sColor }}>⌕</span> Browse library
-        </button>
-        <button onClick={() => { onSetTrSec(si); onSetTrText(""); setTimeout(() => trRef.current?.focus(), 100); }} style={{ flex: 1, height: 44, background: sColor + "08", border: "1px solid " + sColor + "30", color: sColor, fontSize: 14, fontWeight: 700, borderRadius: 10, cursor: "pointer", fontFamily: F, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-          <span>↗</span> Transition
-        </button>
-      </div>
-
-      {/* Transition input */}
-      {trSec === si && (
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <input ref={trRef} value={trText} onChange={e => onSetTrText(e.target.value)} onKeyDown={e => { if (e.key === "Enter") onAddTransition(); }} placeholder="e.g., Mosey to the bleachers" style={{ ...ist, flex: 1, fontStyle: "italic", borderColor: sColor + "40" }} />
-          <button onClick={onAddTransition} style={{ fontFamily: F, background: sColor + "15", color: sColor, border: "1px solid " + sColor + "30", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>Add</button>
         </div>
-      )}
 
-      {/* + Add Section — after EVERY section */}
-      <button onClick={onAddSection} style={{ width: "100%", marginTop: 16, background: "rgba(255,255,255,0.028)", border: "2px dashed rgba(255,255,255,0.18)", borderRadius: 12, padding: "14px 0", color: T3, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+        {/* Body — overflow:visible so autocomplete dropdown can escape */}
+        <div style={{ padding: "0 12px 14px" }}>
+
+          {/* Q Notes */}
+          {hasQNotes && !qNotesOpen ? (
+            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "12px 14px", marginBottom: 10, display: "flex", alignItems: "flex-start", gap: 10 }}>
+              <span style={{ color: T4, fontSize: 16, flexShrink: 0, marginTop: 1 }}>✎</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: T5, fontSize: 11, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", fontFamily: F, marginBottom: 4 }}>Q Notes</div>
+                <div style={{ color: T2, fontSize: 16, fontStyle: "italic", lineHeight: 1.5, fontFamily: F, wordBreak: "break-word", overflowWrap: "break-word", whiteSpace: "pre-wrap" }}>{sec.qNotes || sec.note}</div>
+              </div>
+              <button onClick={() => { setQNotesDraft(sec.qNotes || sec.note || ""); setQNotesOpen(true); }} style={{ color: sColor, background: "none", border: "none", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F, flexShrink: 0 }}>Edit</button>
+            </div>
+          ) : qNotesOpen ? (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ color: T2, fontSize: 13, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", fontFamily: F, marginBottom: 8 }}>Q Notes</div>
+              <textarea
+                autoFocus
+                value={qNotesDraft}
+                onChange={e => setQNotesDraft(e.target.value)}
+                rows={3}
+                placeholder="Instructions, cues, encouragement for the PAX..."
+                style={{ width: "100%", background: "rgba(255,255,255,0.04)", border: `1.5px solid ${sColor}40`, borderRadius: 12, color: T2, padding: "14px 16px", fontSize: 16, outline: "none", boxSizing: "border-box", fontFamily: F, fontStyle: "italic", resize: "vertical" as const, marginBottom: 10 }}
+              />
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => { onQNotesChange(qNotesDraft); setQNotesOpen(false); }} style={{ fontFamily: F, background: sColor, color: BG, border: "none", padding: "12px 22px", borderRadius: 10, fontSize: 16, fontWeight: 700, cursor: "pointer" }}>Save</button>
+                <button onClick={() => { setQNotesDraft(sec.qNotes || sec.note || ""); setQNotesOpen(false); }} style={{ fontFamily: F, background: "rgba(255,255,255,0.05)", color: T3, border: "1px solid rgba(255,255,255,0.1)", padding: "12px 22px", borderRadius: 10, fontSize: 16, cursor: "pointer" }}>Cancel</button>
+                {hasQNotes && <button onClick={() => { onQNotesChange(""); setQNotesDraft(""); setQNotesOpen(false); }} style={{ fontFamily: F, background: "none", color: R, border: "none", padding: "12px 0", fontSize: 15, cursor: "pointer", marginLeft: "auto" }}>Remove</button>}
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => { setQNotesDraft(""); setQNotesOpen(true); }} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.12)", borderRadius: 12, padding: "14px 16px", color: T4, fontSize: 16, fontWeight: 600, fontFamily: F, cursor: "pointer", textAlign: "left" as const, marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 17 }}>✎</span> Add Q notes for this section
+            </button>
+          )}
+
+          {/* Exercises */}
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onExDragEnd}>
+            <SortableContext items={exIds} strategy={verticalListSortingStrategy}>
+              {sec.exercises.map((ex, exIdx) => (
+                <SortableExerciseCard
+                  key={ex.id ? `${ex.id}-${exIdx}` : `${ex.n}-${exIdx}`}
+                  exKey={ex.id ? `${ex.id}-${exIdx}` : `${ex.n}-${exIdx}`}
+                  ex={ex} sectionColor={sColor} allEx={allEx}
+                  onTap={() => onEditSheet({ sectionIdx: si, exercise: ex })}
+                  onDelete={() => {
+                    const exId = ex.id; const exName = ex.n || "";
+                    onUpdate(sections.map((s, i) => i !== si ? s : { ...s, exercises: s.exercises.filter(e => exId ? e.id !== exId : e.n !== exName) }));
+                  }}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+
+          {/* ADD EXERCISE — hero input. position:relative here so dropdown positions relative to this */}
+          <div style={{ position: "relative", marginTop: sec.exercises.length > 0 ? 8 : 0 }}>
+            <div style={{
+              background: CARD_BG,
+              border: `2px solid ${sColor}55`,
+              borderRadius: 15,
+              display: "flex",
+              alignItems: "stretch",
+              overflow: "visible",
+              boxShadow: `0 0 14px ${sColor}12`,
+            }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "14px 0 14px 16px" }}>
+                <div style={{ color: sColor, fontSize: 11, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 5, fontFamily: F, pointerEvents: "none" }}>Add Exercise</div>
+                <input
+                  ref={qaSec === si ? qaRef : null}
+                  value={qaSec === si ? qaQ : ""}
+                  onFocus={() => { onSetQaSec(si); onSetQaQ(""); }}
+                  onChange={e => { onSetQaSec(si); onSetQaQ(e.target.value); }}
+                  onKeyDown={e => { if (e.key === "Enter" && qaQ.trim().length >= 2 && qaSec === si) onAddExercise(qaQ.trim(), true); }}
+                  placeholder="Start typing..."
+                  style={{ background: "none", border: "none", outline: "none", color: T2, fontSize: 16, fontFamily: F, fontWeight: 500, padding: 0, width: "100%" }}
+                />
+              </div>
+              <button onClick={onOpenPicker} style={{ padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "center", borderLeft: `1px solid ${sColor}33`, background: "none", border: "none", borderLeft: `1px solid ${sColor}33`, cursor: "pointer", flexShrink: 0 }}>
+                <span style={{ color: sColor, fontSize: 28, lineHeight: 1 }}>⌕</span>
+              </button>
+            </div>
+
+            {/* Autocomplete dropdown — z-index 9999 so it floats above card */}
+            {qaSec === si && qaQ.length >= 2 && (
+              <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 9999, background: "#1c1c20", border: `1px solid ${sColor}40`, borderRadius: 14, marginTop: 4, overflow: "hidden", boxShadow: `0 8px 32px rgba(0,0,0,0.6)` }}>
+                <div onClick={() => onAddExercise(qaQ.trim(), true)} style={{ padding: "14px 16px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", background: A + "08", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                  <div>
+                    <div style={{ fontFamily: F, fontSize: 15, color: A, fontWeight: 700 }}>Add &ldquo;{qaQ.trim()}&rdquo; as custom</div>
+                    <div style={{ fontFamily: F, fontSize: 12, color: T5, marginTop: 2 }}>Won&apos;t be linked to exercise database</div>
+                  </div>
+                  <span style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: A, background: A + "15", padding: "6px 14px", borderRadius: 8 }}>+ Add</span>
+                </div>
+                {qaResults.map((ex, i) => (
+                  <div key={i} onClick={() => onAddExercise(ex.n, false)} style={{ padding: "14px 16px", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: i < qaResults.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+                    <div>
+                      <div style={{ fontFamily: F, fontSize: 15, fontWeight: 600, color: T1 }}>{ex.n}</div>
+                      {ex.f !== ex.n && <div style={{ fontFamily: F, fontSize: 12, color: T5, marginTop: 2 }}>{ex.f}</div>}
+                    </div>
+                    <span style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: sColor, background: sColor + "15", padding: "6px 14px", borderRadius: 8 }}>+ Add</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Transitions are added via the exercise edit sheet — tap any exercise card */}
+        </div>
+      </div>
+
+      {/* + Add Section — outside the card */}
+      <button onClick={onAddSection} style={{ width: "100%", marginTop: 8, background: "none", border: "1.5px dashed rgba(255,255,255,0.15)", borderRadius: 13, padding: "13px 0", color: T3, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F }}>
         + Add Section
       </button>
     </div>
   );
 }
 
-// ── SECTION EDITOR (MAIN) ─────────────────────────────────────────────────────
+// ── MAIN EXPORT ───────────────────────────────────────────────────────────────
 export interface SectionEditorProps {
   sections: Section[];
   onSectionsChange: (sections: Section[]) => void;
@@ -395,10 +446,10 @@ export default function SectionEditor({ sections, onSectionsChange, allEx }: Sec
   const [editLabel, setEditLabel] = useState<number | null>(null);
   const [qaQ, setQaQ] = useState("");
   const [qaSec, setQaSec] = useState<number | null>(null);
-  const qaRef = useRef<HTMLInputElement>(null);
+  const qaRef = useRef<HTMLInputElement | null>(null);
   const [trSec, setTrSec] = useState<number | null>(null);
   const [trText, setTrText] = useState("");
-  const trRef = useRef<HTMLInputElement>(null);
+  const trRef = useRef<HTMLInputElement | null>(null);
   const [pk2, setPk2] = useState(false);
   const [pkI, setPkI] = useState(0);
   const [pS, setPS] = useState("");
@@ -407,7 +458,6 @@ export default function SectionEditor({ sections, onSectionsChange, allEx }: Sec
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
   const update = (s: Section[]) => onSectionsChange(s);
-
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 5 } }));
 
   const handleSecDragEnd = (event: DragEndEvent) => {
@@ -430,8 +480,7 @@ export default function SectionEditor({ sections, onSectionsChange, allEx }: Sec
   };
 
   const handleDeleteSec = (si: number) => {
-    const sec = sections[si];
-    if (sec.exercises.length > 0 && !confirm(`Delete "${sec.name || sec.label}" and all its exercises?`)) return;
+    if (sections[si].exercises.length > 0 && !confirm(`Delete "${sections[si].name || sections[si].label}" and all its exercises?`)) return;
     update(sections.filter((_, j) => j !== si));
   };
 
@@ -452,7 +501,7 @@ export default function SectionEditor({ sections, onSectionsChange, allEx }: Sec
   };
 
   const handleAddSection = (afterIdx: number) => {
-    const color = sC[(afterIdx + 1) % sC.length];
+    const color = sC[sections.length % sC.length];
     const id = generateId();
     const newSec: Section = { id, name: "New Section", label: "New Section", color, qNotes: "", note: "", exercises: [] };
     const next = [...sections];
@@ -514,7 +563,7 @@ export default function SectionEditor({ sections, onSectionsChange, allEx }: Sec
       </div>
       <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 24px" }}>
         {pickerFi.map(e => (
-          <div key={e.n} style={{ padding: "14px 16px", background: CD, border: "1px solid " + BD, borderRadius: 14, marginBottom: 6, display: "flex", alignItems: "center" }}>
+          <div key={e.n} style={{ padding: "14px 16px", background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, marginBottom: 6, display: "flex", alignItems: "center" }}>
             <div style={{ flex: 1 }}><div style={{ color: T1, fontWeight: 700, fontSize: 16, fontFamily: F }}>{e.n}</div><div style={{ color: T4, fontSize: 12, marginTop: 3, fontFamily: F }}>{e.d || e.f}</div></div>
             <button onClick={() => { const id = generateId(); const add: SectionExercise = { id, type: "exercise", name: e.n, n: e.n, mode: "reps", value: 10, cadence: "IC", r: "10", c: "IC", note: "", nt: "" }; update(sections.map((s, i) => i !== pkI ? s : { ...s, exercises: [...s.exercises, add] })); setPk2(false); fl(e.n + " added"); }} style={{ fontFamily: F, background: G, color: BG, border: "none", padding: "12px 20px", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: "pointer", flexShrink: 0, marginLeft: 12 }}>+ Add</button>
           </div>
@@ -541,15 +590,14 @@ export default function SectionEditor({ sections, onSectionsChange, allEx }: Sec
               onDeleteSec={() => handleDeleteSec(si)}
               onAddExercise={(name, isCustom) => handleAddExercise(si, name, isCustom)}
               onAddTransition={() => handleAddTransition(si)}
-              onQNotesChange={(text) => update(sections.map((s, i) => i !== si ? s : { ...s, qNotes: text, note: text }))}
               onOpenPicker={() => { setPk2(true); setPkI(si); setPS(""); setPTg(null); }}
               onExDragEnd={handleExDragEnd(si)}
               onAddSection={() => handleAddSection(si)}
+              onQNotesChange={(text) => update(sections.map((s, i) => i !== si ? s : { ...s, qNotes: text, note: text }))}
             />
           ))}
         </SortableContext>
       </DndContext>
-
       {editSheet && (
         <ExerciseEditSheet
           exercise={editSheet.exercise}
@@ -558,6 +606,19 @@ export default function SectionEditor({ sections, onSectionsChange, allEx }: Sec
           onSave={updated => handleSaveExercise(editSheet.sectionIdx, updated)}
           onDelete={() => handleDeleteExercise(editSheet.sectionIdx, editSheet.exercise.id, editSheet.exercise.n)}
           onClose={() => setEditSheet(null)}
+          onAddTransitionAfter={(text) => {
+            const si = editSheet.sectionIdx;
+            const sec = sections[si];
+            const exIdx = sec.exercises.findIndex(e => e.id === editSheet.exercise.id || e.n === editSheet.exercise.n);
+            if (exIdx === -1) return;
+            const id = generateId();
+            const tr = { id, type: "transition" as const, name: text, n: text, r: "", c: "", nt: "", note: "" };
+            const newExercises = [...sec.exercises];
+            newExercises.splice(exIdx + 1, 0, tr);
+            update(sections.map((s, i) => i !== si ? s : { ...s, exercises: newExercises }));
+            setEditSheet(null);
+            fl("Transition added");
+          }}
         />
       )}
       {pickerModal}

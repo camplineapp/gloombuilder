@@ -48,6 +48,7 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis }: Generato
   const [ld, setLd] = useState(false);
   const [shareLib, setShareLib] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [grDetailsOpen, setGrDetailsOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
 
@@ -105,9 +106,35 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis }: Generato
         </div>
 
         {/* Share toggle */}
-        <div onClick={() => { if (!shareLib) { if (confirm("Share to community? This can't be undone.")) setShareLib(true); } else { setShareLib(false); } }} style={{ background: shareLib ? G + "10" : CD, border: "1px solid " + (shareLib ? G + "25" : BD), borderRadius: 12, padding: "14px 16px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+        <div onClick={() => { if (!shareLib) { if (confirm("Share to community? This can't be undone.")) setShareLib(true); } else { setShareLib(false); } }} style={{ background: shareLib ? G + "10" : CD, border: "1px solid " + (shareLib ? G + "25" : BD), borderRadius: 12, padding: "14px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
           <div style={{ width: 24, height: 24, borderRadius: 6, border: "2px solid " + (shareLib ? G : T4), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: BG, background: shareLib ? G : "transparent", fontWeight: 800 }}>{shareLib ? "✓" : ""}</div>
           <span style={{ fontSize: 16, color: shareLib ? G : T4, fontWeight: 600, fontFamily: F }}>Share to community library</span>
+        </div>
+
+        {/* Beatdown Details — collapsed by default, shows summary from wizard picks */}
+        <div style={{ background: "#141416", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, overflow: "hidden", marginBottom: 16 }}>
+          <div onClick={() => setGrDetailsOpen(!grDetailsOpen)} style={{ padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer" }}>
+            <div>
+              <span style={{ color: T2, fontSize: 13, fontWeight: 800, letterSpacing: "1px", textTransform: "uppercase", fontFamily: F }}>Beatdown Details</span>
+              {!grDetailsOpen && (
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                  {gc.dur && <span style={{ fontFamily: F, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: G, fontSize: 14, fontWeight: 700, padding: "5px 12px", borderRadius: 8 }}>{gc.dur}</span>}
+                  {gc.diff && <span style={{ fontFamily: F, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", color: A, fontSize: 14, fontWeight: 700, padding: "5px 12px", borderRadius: 8, textTransform: "capitalize" as const }}>{gc.diff}</span>}
+                  {(gc.sites || []).map(s => <span key={s} style={{ fontFamily: F, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: T3, fontSize: 14, fontWeight: 600, padding: "5px 12px", borderRadius: 8, textTransform: "capitalize" as const }}>{s}</span>)}
+                </div>
+              )}
+            </div>
+            <span style={{ color: T5, fontSize: 16, fontFamily: F }}>{grDetailsOpen ? "▾" : "▸"}</span>
+          </div>
+          {grDetailsOpen && (
+            <div style={{ padding: "12px 18px 16px", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+              {gc.dur && <span style={{ fontFamily: F, background: "rgba(34,197,94,0.15)", border: "1.5px solid rgba(34,197,94,0.4)", color: G, fontSize: 15, fontWeight: 700, padding: "8px 16px", borderRadius: 10 }}>{gc.dur}</span>}
+              {gc.diff && <span style={{ fontFamily: F, background: "rgba(245,158,11,0.15)", border: "1.5px solid rgba(245,158,11,0.4)", color: A, fontSize: 15, fontWeight: 700, padding: "8px 16px", borderRadius: 10, textTransform: "capitalize" as const }}>{gc.diff}</span>}
+              {(gc.sites || []).map(s => <span key={s} style={{ fontFamily: F, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: T2, fontSize: 15, fontWeight: 600, padding: "8px 16px", borderRadius: 10, textTransform: "capitalize" as const }}>{s}</span>)}
+              {(gc.eq || []).map(e => <span key={e} style={{ fontFamily: F, background: "rgba(167,139,250,0.12)", border: "1.5px solid rgba(167,139,250,0.35)", color: P, fontSize: 15, fontWeight: 600, padding: "8px 16px", borderRadius: 10, textTransform: "capitalize" as const }}>{e}</span>)}
+              <div style={{ width: "100%", marginTop: 4 }}><span style={{ fontFamily: F, color: T5, fontSize: 13 }}>Generated with these settings. To change, start a new generation.</span></div>
+            </div>
+          )}
         </div>
 
         {/* Section Editor */}
