@@ -175,39 +175,45 @@ function ExerciseCard({ ex, sectionColor, onTap, onDelete, onInfo, dragListeners
 
   if (isTransition) {
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", marginBottom: 6, background: "rgba(255,255,255,0.03)", borderRadius: 10, opacity: isDragging ? 0.4 : 1 }}>
-        <div {...dragListeners} onClick={e => e.stopPropagation()} style={{ ...dragHandleStyle, color: "rgba(255,255,255,0.2)", fontSize: 18 }}>≡</div>
-        <span style={{ color: T4, fontSize: 15, flex: "0 0 auto" }}>↗</span>
-        <span style={{ color: T3, fontSize: 16, fontStyle: "italic", fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: F }}>{exName}</span>
-        {onDelete && (
-          <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ color: T5, background: "none", border: "none", cursor: "pointer", fontSize: 15, padding: "0 2px", flexShrink: 0, fontFamily: F }}>✕</button>
-        )}
+      <div style={{ display: "flex", alignItems: "stretch", marginBottom: 6, background: "rgba(255,255,255,0.03)", borderRadius: 10, opacity: isDragging ? 0.4 : 1, overflow: "hidden" }}>
+        {/* Wide drag strip — full left edge, 44px */}
+        <div {...dragListeners} onClick={e => e.stopPropagation()} style={{ ...dragHandleStyle, width: 44, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.2)", fontSize: 18, borderRight: "1px solid rgba(255,255,255,0.04)" }}>≡</div>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "9px 12px 9px 8px", minWidth: 0 }}>
+          <span style={{ color: T4, fontSize: 15, flex: "0 0 auto" }}>↗</span>
+          <span style={{ color: T3, fontSize: 16, fontStyle: "italic", fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: F }}>{exName}</span>
+          {onDelete && (
+            <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ color: T5, background: "none", border: "none", cursor: "pointer", fontSize: 15, padding: "0 2px", flexShrink: 0, fontFamily: F }}>✕</button>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
-    <div onClick={onTap} style={{ background: EX_BG, borderRadius: 14, padding: "13px 12px", marginBottom: 6, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none", opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s" }}>
-      <div {...dragListeners} onClick={e => e.stopPropagation()} style={{ ...dragHandleStyle, color: sectionColor + "60", fontSize: 22, flexShrink: 0 }}>≡</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap", overflow: "hidden" }}>
-          <span style={{ color: T1, fontSize: 18, fontWeight: 700, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{exName}</span>
-          {isCustom && <span style={{ fontSize: 10, color: A, background: A + "15", padding: "2px 6px", borderRadius: 4, fontWeight: 700, textTransform: "uppercase", flexShrink: 0, fontFamily: F }}>Custom</span>}
+    <div onClick={onTap} style={{ background: EX_BG, borderRadius: 14, marginBottom: 6, display: "flex", alignItems: "stretch", cursor: "pointer", userSelect: "none", opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s", overflow: "hidden" }}>
+      {/* Wide drag strip — 44px left edge, full height of the card */}
+      <div {...dragListeners} onClick={e => e.stopPropagation()} style={{ ...dragHandleStyle, width: 44, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: sectionColor + "50", fontSize: 22, borderRight: "1px solid rgba(255,255,255,0.04)" }}>≡</div>
+      <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, padding: "13px 12px 13px 10px", minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap", overflow: "hidden" }}>
+            <span style={{ color: T1, fontSize: 18, fontWeight: 700, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{exName}</span>
+            {isCustom && <span style={{ fontSize: 10, color: A, background: A + "15", padding: "2px 6px", borderRadius: 4, fontWeight: 700, textTransform: "uppercase", flexShrink: 0, fontFamily: F }}>Custom</span>}
+          </div>
+          <div style={{ color: T4, fontSize: 14, fontWeight: 600, marginTop: 3, display: "flex", alignItems: "center", gap: 5, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {ex.mode === "time" && <span style={{ color: A, fontSize: 13 }}>⏱</span>}
+            {ex.mode === "distance" && <span style={{ color: P, fontSize: 13 }}>📏</span>}
+            <span>{amountStr}{cadStr ? ` · ${cadStr}` : ""}</span>
+          </div>
+          {(ex.note || ex.nt) ? <div style={{ color: T5, fontSize: 13, fontStyle: "italic", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: F }}>{ex.note || ex.nt}</div> : null}
         </div>
-        <div style={{ color: T4, fontSize: 14, fontWeight: 600, marginTop: 3, display: "flex", alignItems: "center", gap: 5, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-          {ex.mode === "time" && <span style={{ color: A, fontSize: 13 }}>⏱</span>}
-          {ex.mode === "distance" && <span style={{ color: P, fontSize: 13 }}>📏</span>}
-          <span>{amountStr}{cadStr ? ` · ${cadStr}` : ""}</span>
-        </div>
-        {(ex.note || ex.nt) ? <div style={{ color: T5, fontSize: 13, fontStyle: "italic", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: F }}>{ex.note || ex.nt}</div> : null}
+        {/* Info button — only for database exercises, not custom */}
+        {hasInfo && onInfo && (
+          <button onClick={e => { e.stopPropagation(); onInfo(); }} style={{ width: 28, height: 28, borderRadius: 8, background: P + "15", border: "1px solid " + P + "30", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: P, fontSize: 14, fontWeight: 700, fontFamily: F }}>?</button>
+        )}
+        {onDelete && (
+          <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(239,68,68,0.07)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: T5, fontSize: 13, fontFamily: F }}>✕</button>
+        )}
       </div>
-      {/* Info button — only for database exercises, not custom */}
-      {hasInfo && onInfo && (
-        <button onClick={e => { e.stopPropagation(); onInfo(); }} style={{ width: 28, height: 28, borderRadius: 8, background: P + "15", border: "1px solid " + P + "30", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: P, fontSize: 14, fontWeight: 700, fontFamily: F }}>?</button>
-      )}
-      {onDelete && (
-        <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(239,68,68,0.07)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: T5, fontSize: 13, fontFamily: F }}>✕</button>
-      )}
     </div>
   );
 }
@@ -455,15 +461,14 @@ function SortableSectionBlock({
         {/* Body — overflow:visible so autocomplete dropdown can escape */}
         <div style={{ padding: "0 12px 14px" }}>
 
-          {/* Q Notes */}
+          {/* Q Notes — Option A: subtle inline text link when empty, compact display when has content */}
           {hasQNotes && !qNotesOpen ? (
-            <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "12px 14px", marginBottom: 10, display: "flex", alignItems: "flex-start", gap: 10 }}>
-              <span style={{ color: T4, fontSize: 16, flexShrink: 0, marginTop: 1 }}>✎</span>
+            <div style={{ padding: "0 4px 10px", display: "flex", alignItems: "flex-start", gap: 8 }}>
+              <span style={{ color: T4, fontSize: 14, flexShrink: 0, marginTop: 1 }}>✎</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ color: T5, fontSize: 11, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", fontFamily: F, marginBottom: 4 }}>Q Notes</div>
-                <div style={{ color: T2, fontSize: 16, fontStyle: "italic", lineHeight: 1.5, fontFamily: F, wordBreak: "break-word", overflowWrap: "break-word", whiteSpace: "pre-wrap" }}>{sec.qNotes || sec.note}</div>
+                <div style={{ color: T2, fontSize: 14, fontStyle: "italic", lineHeight: 1.5, fontFamily: F, wordBreak: "break-word", overflowWrap: "break-word", whiteSpace: "pre-wrap" }}>{sec.qNotes || sec.note}</div>
               </div>
-              <button onClick={() => { setQNotesDraft(sec.qNotes || sec.note || ""); setQNotesOpen(true); }} style={{ color: sColor, background: "none", border: "none", fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: F, flexShrink: 0 }}>Edit</button>
+              <button onClick={() => { setQNotesDraft(sec.qNotes || sec.note || ""); setQNotesOpen(true); }} style={{ color: sColor, background: "none", border: "none", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: F, flexShrink: 0 }}>Edit</button>
             </div>
           ) : qNotesOpen ? (
             <div style={{ marginBottom: 12 }}>
@@ -483,9 +488,9 @@ function SortableSectionBlock({
               </div>
             </div>
           ) : (
-            <button onClick={() => { setQNotesDraft(""); setQNotesOpen(true); }} style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.12)", borderRadius: 12, padding: "14px 16px", color: T4, fontSize: 16, fontWeight: 600, fontFamily: F, cursor: "pointer", textAlign: "left" as const, marginBottom: 8, display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 17 }}>✎</span> Add Q notes for this section
-            </button>
+            <div style={{ padding: "0 4px 10px" }}>
+              <span onClick={() => { setQNotesDraft(""); setQNotesOpen(true); }} style={{ color: T3, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: F }}>+ Add Q notes</span>
+            </div>
           )}
 
           {/* Exercises */}
