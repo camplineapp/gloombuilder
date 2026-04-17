@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   DndContext, PointerSensor, useSensor, useSensors, closestCenter, type DragEndEvent,
 } from "@dnd-kit/core";
@@ -66,21 +66,118 @@ function fmtCadence(ex: SectionExercise): string {
   return cad;
 }
 
+// ── Drag handle style (prevents iOS text selection / Copy-Look Up-Translate) ──
+const dragHandleStyle: React.CSSProperties = {
+  cursor: "grab",
+  touchAction: "none",
+  lineHeight: 1,
+  userSelect: "none",
+  WebkitUserSelect: "none",
+  // @ts-expect-error -- WebkitTouchCallout is a non-standard CSS property for iOS Safari
+  WebkitTouchCallout: "none",
+};
+
+// ── EXERCISE INFO SHEET (bottom sheet — peek at exercise description + how-to) ─
+function ExerciseInfoSheet({ exData, onClose }: { exData: ExerciseData; onClose: () => void }) {
+  // Lock body scroll when info sheet is open
+  useEffect(() => {
+    const orig = document.body.style.overflow;
+    const origPos = document.body.style.position;
+    const origW = document.body.style.width;
+    const scrollY = window.scrollY;
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.width = "100%";
+    document.body.style.top = `-${scrollY}px`;
+    return () => {
+      document.body.style.overflow = orig;
+      document.body.style.position = origPos;
+      document.body.style.width = origW;
+      document.body.style.top = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 250, display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: "#1c1c20", borderRadius: "22px 22px 0 0", width: "100%", maxWidth: 430,
+          maxHeight: "75vh", overflowY: "auto", overscrollBehavior: "contain",
+          border: "1px solid rgba(167,139,250,0.15)", borderBottom: "none",
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
+        {/* Grab handle bar */}
+        <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.15)", borderRadius: 2, margin: "10px auto 0" }} />
+
+        <div style={{ padding: "16px 22px 32px" }}>
+          {/* Header: name + close */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ color: T1, fontSize: 20, fontWeight: 800, fontFamily: F, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{exData.n}</div>
+            <button onClick={onClose} style={{ color: T4, background: "none", border: "none", fontSize: 24, cursor: "pointer", fontFamily: F, flexShrink: 0, padding: "0 0 0 12px" }}>✕</button>
+          </div>
+
+          {/* Description */}
+          {exData.d && (
+            <div style={{ color: T3, fontSize: 15, lineHeight: 1.65, fontFamily: F, marginBottom: 16 }}>{exData.d}</div>
+          )}
+
+          {/* How-to */}
+          {exData.h && (
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 16 }}>
+              <div style={{ color: T4, fontSize: 11, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 10, fontFamily: F }}>How to do it</div>
+              <div>
+                {exData.h.split(/(?=\d+\.\s)/).filter(Boolean).map((step, i) => (
+                  <div key={i} style={{ color: T3, fontSize: 15, lineHeight: 1.7, marginBottom: 5, fontFamily: F }}>{step.trim()}</div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tags */}
+          {exData.t && exData.t.length > 0 && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 16 }}>
+              {exData.t.filter(t => t !== "IC" && t !== "OYO" && t !== "either").map(tag => {
+                const tagColor = tag === "Warm-Up" ? G : tag === "Mary" || tag === "Core" ? P : tag === "Cardio" || tag === "Full Body" ? R : tag === "Coupon" ? A : T3;
+                return (
+                  <span key={tag} style={{ background: tagColor + "15", color: tagColor, fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 8, fontFamily: F }}>{tag}</span>
+                );
+              })}
+              {exData.df && (
+                <span style={{ background: (exData.df === 1 ? G : exData.df === 2 ? A : R) + "15", color: exData.df === 1 ? G : exData.df === 2 ? A : R, fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 8, fontFamily: F }}>
+                  {exData.df === 1 ? "Beginner" : exData.df === 2 ? "Intermediate" : "Advanced"}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── EXERCISE CARD ─────────────────────────────────────────────────────────────
-function ExerciseCard({ ex, sectionColor, onTap, onDelete, dragListeners, isDragging, allEx }: {
+function ExerciseCard({ ex, sectionColor, onTap, onDelete, onInfo, dragListeners, isDragging, allEx }: {
   ex: SectionExercise; sectionColor: string; onTap: () => void; onDelete?: () => void;
+  onInfo?: () => void;
   dragListeners?: Record<string, unknown>; isDragging?: boolean; allEx?: ExerciseData[];
 }) {
   const isTransition = ex.type === "transition";
   const exName = ex.name || ex.n || "";
   const isCustom = allEx ? !allEx.some(x => x.n.toLowerCase() === exName.toLowerCase()) : false;
+  const hasInfo = !isCustom && allEx && allEx.some(x => x.n.toLowerCase() === exName.toLowerCase());
   const amountStr = fmtAmount(ex);
   const cadStr = fmtCadence(ex);
 
   if (isTransition) {
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", marginBottom: 6, background: "rgba(255,255,255,0.03)", borderRadius: 10, opacity: isDragging ? 0.4 : 1 }}>
-        <div {...dragListeners} onClick={e => e.stopPropagation()} style={{ color: "rgba(255,255,255,0.2)", fontSize: 18, cursor: "grab", touchAction: "none", lineHeight: 1 }}>≡</div>
+        <div {...dragListeners} onClick={e => e.stopPropagation()} style={{ ...dragHandleStyle, color: "rgba(255,255,255,0.2)", fontSize: 18 }}>≡</div>
         <span style={{ color: T4, fontSize: 15, flex: "0 0 auto" }}>↗</span>
         <span style={{ color: T3, fontSize: 16, fontStyle: "italic", fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: F }}>{exName}</span>
         {onDelete && (
@@ -92,7 +189,7 @@ function ExerciseCard({ ex, sectionColor, onTap, onDelete, dragListeners, isDrag
 
   return (
     <div onClick={onTap} style={{ background: EX_BG, borderRadius: 14, padding: "13px 12px", marginBottom: 6, display: "flex", alignItems: "center", gap: 10, cursor: "pointer", userSelect: "none", opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s" }}>
-      <div {...dragListeners} onClick={e => e.stopPropagation()} style={{ color: sectionColor + "60", fontSize: 22, flexShrink: 0, lineHeight: 1, cursor: "grab", touchAction: "none" }}>≡</div>
+      <div {...dragListeners} onClick={e => e.stopPropagation()} style={{ ...dragHandleStyle, color: sectionColor + "60", fontSize: 22, flexShrink: 0 }}>≡</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap", overflow: "hidden" }}>
           <span style={{ color: T1, fontSize: 18, fontWeight: 700, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{exName}</span>
@@ -105,6 +202,10 @@ function ExerciseCard({ ex, sectionColor, onTap, onDelete, dragListeners, isDrag
         </div>
         {(ex.note || ex.nt) ? <div style={{ color: T5, fontSize: 13, fontStyle: "italic", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: F }}>{ex.note || ex.nt}</div> : null}
       </div>
+      {/* Info button — only for database exercises, not custom */}
+      {hasInfo && onInfo && (
+        <button onClick={e => { e.stopPropagation(); onInfo(); }} style={{ width: 28, height: 28, borderRadius: 8, background: P + "15", border: "1px solid " + P + "30", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: P, fontSize: 14, fontWeight: 700, fontFamily: F }}>?</button>
+      )}
       {onDelete && (
         <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(239,68,68,0.07)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: T5, fontSize: 13, fontFamily: F }}>✕</button>
       )}
@@ -112,14 +213,14 @@ function ExerciseCard({ ex, sectionColor, onTap, onDelete, dragListeners, isDrag
   );
 }
 
-function SortableExerciseCard({ ex, exKey, sectionColor, onTap, onDelete, allEx }: {
+function SortableExerciseCard({ ex, exKey, sectionColor, onTap, onDelete, onInfo, allEx }: {
   ex: SectionExercise; exKey?: string; sectionColor: string;
-  onTap: () => void; onDelete?: () => void; allEx?: ExerciseData[];
+  onTap: () => void; onDelete?: () => void; onInfo?: () => void; allEx?: ExerciseData[];
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exKey || ex.id || ex.n || "x" });
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} {...attributes}>
-      <ExerciseCard ex={ex} sectionColor={sectionColor} onTap={onTap} onDelete={onDelete} dragListeners={listeners as Record<string, unknown>} isDragging={isDragging} allEx={allEx} />
+      <ExerciseCard ex={ex} sectionColor={sectionColor} onTap={onTap} onDelete={onDelete} onInfo={onInfo} dragListeners={listeners as Record<string, unknown>} isDragging={isDragging} allEx={allEx} />
     </div>
   );
 }
@@ -142,6 +243,25 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
   const classification = classifyInput(amountText);
   const exData = allEx.find(x => x.n.toLowerCase() === exName.toLowerCase());
 
+  // FIX 2: Lock body scroll when edit sheet is open
+  useEffect(() => {
+    const orig = document.body.style.overflow;
+    const origPos = document.body.style.position;
+    const origW = document.body.style.width;
+    const scrollY = window.scrollY;
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.width = "100%";
+    document.body.style.top = `-${scrollY}px`;
+    return () => {
+      document.body.style.overflow = orig;
+      document.body.style.position = origPos;
+      document.body.style.width = origW;
+      document.body.style.top = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
   const handleSave = () => {
     const parsed = parseSmartText(amountText);
     const finalCadence = cadence === "Custom" ? (customCadence.trim() || "OYO") : cadence;
@@ -155,7 +275,15 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
 
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#111318", borderRadius: "24px 24px 0 0", width: "100%", maxWidth: 430, maxHeight: "92vh", overflowY: "auto", border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none" }}>
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          background: "#111318", borderRadius: "24px 24px 0 0", width: "100%", maxWidth: 430,
+          maxHeight: "92vh", overflowY: "auto", border: "1px solid rgba(255,255,255,0.08)", borderBottom: "none",
+          overscrollBehavior: "contain", /* FIX 2: prevents scroll chaining to background */
+          WebkitOverflowScrolling: "touch",
+        }}
+      >
         <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, margin: "12px auto 0" }} />
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 20px 12px" }}>
           <button onClick={onClose} style={{ color: T3, background: "none", border: "none", fontSize: 16, fontWeight: 600, cursor: "pointer", fontFamily: F }}>Cancel</button>
@@ -163,13 +291,27 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
           <div style={{ width: 60 }} />
         </div>
         <div style={{ padding: "0 20px 40px" }}>
-          <div style={{ background: EX_BG, borderRadius: 14, padding: "14px 16px", marginBottom: 24 }}>
+          {/* Exercise name */}
+          <div style={{ background: EX_BG, borderRadius: 14, padding: "14px 16px", marginBottom: 12 }}>
             <div style={{ color: T1, fontSize: 19, fontWeight: 700, fontFamily: F }}>{exName}</div>
           </div>
+          {/* How to do this exercise — right below name for quick reference */}
+          {exData && (
+            <>
+              <div onClick={() => setShowHowTo(!showHowTo)} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "14px 16px", marginBottom: showHowTo ? 10 : 20, cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ color: P, fontSize: 16 }}>?</span>
+                <span style={{ color: T2, fontSize: 15, fontWeight: 600, fontFamily: F, flex: 1 }}>How to do this exercise</span>
+                <span style={{ color: T4 }}>{showHowTo ? "▲" : "›"}</span>
+              </div>
+              {showHowTo && <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>{exData.h.split(/(?=\d+\.\s)/).filter(Boolean).map((step, i) => <div key={i} style={{ color: T3, fontSize: 14, lineHeight: 1.7, marginBottom: 4, fontFamily: F }}>{step.trim()}</div>)}</div>}
+            </>
+          )}
+          {/* HOW MUCH */}
           <div style={{ color: T2, fontSize: 12, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8, fontFamily: F }}>HOW MUCH?</div>
-          <input value={amountText} onChange={e => setAmountText(e.target.value)} placeholder="20 · 45 sec · 50 yds..." autoFocus style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: `2px solid ${sectionColor}66`, borderRadius: 12, color: T1, padding: "16px 18px", fontSize: 17, fontWeight: 500, outline: "none", boxSizing: "border-box", fontFamily: F }} />
-          {classification && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6 }}><span style={{ fontSize: 16 }}>{classification.icon}</span><span style={{ color: classification.color, fontSize: 14, fontWeight: 600, fontFamily: F }}>{classification.text}</span></div>}
-          <div style={{ color: T5, fontSize: 11, fontStyle: "italic", marginTop: 4, marginBottom: 22, fontFamily: F }}>Try: 20 · 45 sec · 50 yds · 3 laps</div>
+          <input value={amountText} onChange={e => setAmountText(e.target.value)} placeholder="20 · 45 sec · 50 yds..." style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: `2px solid ${sectionColor}66`, borderRadius: 12, color: T1, padding: "16px 18px", fontSize: 17, fontWeight: 500, outline: "none", boxSizing: "border-box", fontFamily: F }} />
+          {classification && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}><span style={{ fontSize: 18 }}>{classification.icon}</span><span style={{ color: classification.color, fontSize: 15, fontWeight: 700, fontFamily: F }}>{classification.text}</span></div>}
+          <div style={{ color: T4, fontSize: 14, fontStyle: "italic", marginTop: 6, marginBottom: 22, fontFamily: F }}>Try: 20 · 45 sec · 50 yds · 3 laps</div>
+          {/* CADENCE */}
           <div style={{ color: T2, fontSize: 12, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8, fontFamily: F }}>CADENCE</div>
           <div style={{ display: "flex", gap: 8, marginBottom: cadence === "Custom" ? 10 : 22 }}>
             {["IC", "OYO", "Custom"].map(opt => {
@@ -179,19 +321,10 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
             })}
           </div>
           {cadence === "Custom" && <input value={customCadence} onChange={e => setCustomCadence(e.target.value)} placeholder="e.g., 30-20-10 pyramid" autoFocus style={{ ...ist, marginBottom: 22 }} />}
+          {/* NOTE */}
           <div style={{ color: T2, fontSize: 12, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8, fontFamily: F }}>NOTE (optional)</div>
           <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note..." rows={2} style={{ ...ist, resize: "vertical" as const, marginBottom: 22 }} />
-          {exData && (
-            <>
-              <div onClick={() => setShowHowTo(!showHowTo)} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 12, padding: "14px 16px", marginBottom: showHowTo ? 10 : 22, cursor: "pointer", display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ color: P, fontSize: 16 }}>?</span>
-                <span style={{ color: T2, fontSize: 15, fontWeight: 600, fontFamily: F, flex: 1 }}>How to do this exercise</span>
-                <span style={{ color: T4 }}>{showHowTo ? "▲" : "›"}</span>
-              </div>
-              {showHowTo && <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 16px", marginBottom: 22 }}>{exData.h.split(/(?=\d+\.\s)/).filter(Boolean).map((step, i) => <div key={i} style={{ color: T3, fontSize: 14, lineHeight: 1.7, marginBottom: 4, fontFamily: F }}>{step.trim()}</div>)}</div>}
-            </>
-          )}
-          {/* Transition after this exercise */}
+          {/* TRANSITION AFTER THIS — right below Note */}
           {onAddTransitionAfter && (
             <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 20, marginBottom: 20 }}>
               <div style={{ color: T2, fontSize: 13, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 10, fontFamily: F }}>TRANSITION AFTER THIS</div>
@@ -211,6 +344,7 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
               <div style={{ color: T5, fontSize: 13, marginTop: 6, fontFamily: F }}>Inserts a mosey line after {exName} in the beatdown</div>
             </div>
           )}
+          {/* Save + Delete */}
           <button onClick={handleSave} style={{ width: "100%", padding: "20px 0", background: G, border: "none", color: BG, fontSize: 18, fontWeight: 800, borderRadius: 14, cursor: "pointer", fontFamily: F, marginBottom: 10 }}>Save changes</button>
           <button onClick={onDelete} style={{ width: "100%", padding: "18px 0", background: "transparent", border: `2px solid ${R}`, color: R, fontSize: 16, fontWeight: 700, borderRadius: 14, cursor: "pointer", fontFamily: F }}>Delete exercise</button>
         </div>
@@ -227,6 +361,7 @@ function SortableSectionBlock({
   onEditSheet, onSetEditLabel, onSetQaSec, onSetQaQ, onSetTrSec, onSetTrText,
   onUpdate, onDeleteSec, onAddExercise, onAddTransition,
   onOpenPicker, onExDragEnd, onAddSection, onQNotesChange,
+  onShowInfo,
 }: {
   sec: Section; si: number; sections: Section[]; allEx: ExerciseData[];
   sensors: ReturnType<typeof useSensors>;
@@ -246,6 +381,7 @@ function SortableSectionBlock({
   onExDragEnd: (event: DragEndEvent) => void;
   onAddSection: () => void;
   onQNotesChange: (text: string) => void;
+  onShowInfo: (exName: string) => void;
 }) {
   const secId = sec.id || sec.label || String(si);
   const sColor = sec.color;
@@ -284,8 +420,8 @@ function SortableSectionBlock({
           <div style={{ padding: "14px 18px 12px", display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
             {/* Left: drag handle + section name (tap name to rename) */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flex: 1, minWidth: 0 }}>
-              {/* Section drag handle */}
-              <div {...listeners} style={{ color: sColor, fontSize: 28, lineHeight: 1, cursor: "grab", touchAction: "none", marginTop: 1, flexShrink: 0, opacity: 0.7 }}>≡</div>
+              {/* FIX 5: Section drag handle — userSelect + WebkitTouchCallout prevent iOS text selection */}
+              <div {...listeners} style={{ ...dragHandleStyle, color: sColor, fontSize: 28, marginTop: 1, flexShrink: 0, opacity: 0.7 }}>≡</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 {isRenaming ? (
                   <input
@@ -366,6 +502,7 @@ function SortableSectionBlock({
                     const exId = ex.id; const exName = ex.n || "";
                     onUpdate(sections.map((s, i) => i !== si ? s : { ...s, exercises: s.exercises.filter(e => exId ? e.id !== exId : e.n !== exName) }));
                   }}
+                  onInfo={() => onShowInfo(ex.name || ex.n || "")}
                 />
               ))}
             </SortableContext>
@@ -455,6 +592,8 @@ export default function SectionEditor({ sections, onSectionsChange, allEx }: Sec
   const [pS, setPS] = useState("");
   const [pTg, setPTg] = useState<string | null>(null);
   const [toast, setToast] = useState("");
+  // FIX 4: Exercise info sheet state
+  const [infoEx, setInfoEx] = useState<ExerciseData | null>(null);
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
   const update = (s: Section[]) => onSectionsChange(s);
@@ -518,6 +657,12 @@ export default function SectionEditor({ sections, onSectionsChange, allEx }: Sec
   const handleDeleteExercise = (si: number, exId: string | undefined, exName: string) => {
     update(sections.map((s, i) => i !== si ? s : { ...s, exercises: s.exercises.filter(e => exId ? e.id !== exId : e.n !== exName) }));
     setEditSheet(null);
+  };
+
+  // FIX 4: Show exercise info sheet
+  const handleShowInfo = (exName: string) => {
+    const found = allEx.find(x => x.n.toLowerCase() === exName.toLowerCase());
+    if (found) setInfoEx(found);
   };
 
   const qaResults = (() => {
@@ -594,6 +739,7 @@ export default function SectionEditor({ sections, onSectionsChange, allEx }: Sec
               onExDragEnd={handleExDragEnd(si)}
               onAddSection={() => handleAddSection(si)}
               onQNotesChange={(text) => update(sections.map((s, i) => i !== si ? s : { ...s, qNotes: text, note: text }))}
+              onShowInfo={handleShowInfo}
             />
           ))}
         </SortableContext>
@@ -621,6 +767,8 @@ export default function SectionEditor({ sections, onSectionsChange, allEx }: Sec
           }}
         />
       )}
+      {/* FIX 4: Exercise info bottom sheet */}
+      {infoEx && <ExerciseInfoSheet exData={infoEx} onClose={() => setInfoEx(null)} />}
       {pickerModal}
       {toastEl}
     </>

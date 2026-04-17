@@ -27,6 +27,10 @@ const ist: React.CSSProperties = {
   color: T2, padding: "12px 14px", fontSize: 15, outline: "none", boxSizing: "border-box", fontFamily: F,
 };
 
+// Helper: look up human-readable label for site/equipment IDs
+const siteLabel = (id: string) => SITES.find(s => s.id === id)?.l || id;
+const eqLabel = (id: string) => EQUIP.find(e => e.id === id)?.l || id;
+
 interface GeneratorScreenProps {
   onClose: () => void;
   onSave: (beatdown: {
@@ -120,7 +124,8 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis }: Generato
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
                   {gc.dur && <span style={{ fontFamily: F, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: G, fontSize: 14, fontWeight: 700, padding: "5px 12px", borderRadius: 8 }}>{gc.dur}</span>}
                   {gc.diff && <span style={{ fontFamily: F, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", color: A, fontSize: 14, fontWeight: 700, padding: "5px 12px", borderRadius: 8, textTransform: "capitalize" as const }}>{gc.diff}</span>}
-                  {(gc.sites || []).map(s => <span key={s} style={{ fontFamily: F, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: T3, fontSize: 14, fontWeight: 600, padding: "5px 12px", borderRadius: 8, textTransform: "capitalize" as const }}>{s}</span>)}
+                  {(gc.sites || []).map(s => <span key={s} style={{ fontFamily: F, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: T3, fontSize: 14, fontWeight: 600, padding: "5px 12px", borderRadius: 8 }}>{siteLabel(s)}</span>)}
+                  {(gc.eq || []).map(e => <span key={e} style={{ fontFamily: F, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.3)", color: P, fontSize: 14, fontWeight: 600, padding: "5px 12px", borderRadius: 8 }}>{eqLabel(e)}</span>)}
                 </div>
               )}
             </div>
@@ -130,8 +135,8 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis }: Generato
             <div style={{ padding: "12px 18px 16px", borderTop: "1px solid rgba(255,255,255,0.05)", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               {gc.dur && <span style={{ fontFamily: F, background: "rgba(34,197,94,0.15)", border: "1.5px solid rgba(34,197,94,0.4)", color: G, fontSize: 15, fontWeight: 700, padding: "8px 16px", borderRadius: 10 }}>{gc.dur}</span>}
               {gc.diff && <span style={{ fontFamily: F, background: "rgba(245,158,11,0.15)", border: "1.5px solid rgba(245,158,11,0.4)", color: A, fontSize: 15, fontWeight: 700, padding: "8px 16px", borderRadius: 10, textTransform: "capitalize" as const }}>{gc.diff}</span>}
-              {(gc.sites || []).map(s => <span key={s} style={{ fontFamily: F, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: T2, fontSize: 15, fontWeight: 600, padding: "8px 16px", borderRadius: 10, textTransform: "capitalize" as const }}>{s}</span>)}
-              {(gc.eq || []).map(e => <span key={e} style={{ fontFamily: F, background: "rgba(167,139,250,0.12)", border: "1.5px solid rgba(167,139,250,0.35)", color: P, fontSize: 15, fontWeight: 600, padding: "8px 16px", borderRadius: 10, textTransform: "capitalize" as const }}>{e}</span>)}
+              {(gc.sites || []).map(s => <span key={s} style={{ fontFamily: F, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: T2, fontSize: 15, fontWeight: 600, padding: "8px 16px", borderRadius: 10 }}>{siteLabel(s)}</span>)}
+              {(gc.eq || []).map(e => <span key={e} style={{ fontFamily: F, background: "rgba(167,139,250,0.12)", border: "1.5px solid rgba(167,139,250,0.35)", color: P, fontSize: 15, fontWeight: 600, padding: "8px 16px", borderRadius: 10 }}>{eqLabel(e)}</span>)}
               <div style={{ width: "100%", marginTop: 4 }}><span style={{ fontFamily: F, color: T5, fontSize: 13 }}>Generated with these settings. To change, start a new generation.</span></div>
             </div>
           )}
