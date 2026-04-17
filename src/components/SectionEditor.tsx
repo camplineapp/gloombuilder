@@ -394,7 +394,7 @@ function SortableSectionBlock({
                   style={{ background: "none", border: "none", outline: "none", color: T2, fontSize: 16, fontFamily: F, fontWeight: 500, padding: 0, width: "100%" }}
                 />
               </div>
-              <button onClick={onOpenPicker} style={{ padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "center", borderLeft: `1px solid ${sColor}33`, background: "none", border: "none", borderLeft: `1px solid ${sColor}33`, cursor: "pointer", flexShrink: 0 }}>
+              <button onClick={onOpenPicker} style={{ padding: "0 20px", display: "flex", alignItems: "center", justifyContent: "center", background: "none", border: "none", borderLeft: `1px solid ${sColor}33`, cursor: "pointer", flexShrink: 0 }}>
                 <span style={{ color: sColor, fontSize: 28, lineHeight: 1 }}>⌕</span>
               </button>
             </div>
