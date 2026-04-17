@@ -73,7 +73,6 @@ const dragHandleStyle: React.CSSProperties = {
   lineHeight: 1,
   userSelect: "none",
   WebkitUserSelect: "none",
-  // @ts-expect-error -- WebkitTouchCallout is a non-standard CSS property for iOS Safari
   WebkitTouchCallout: "none",
 };
 
