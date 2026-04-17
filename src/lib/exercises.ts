@@ -9,6 +9,7 @@ export interface ExerciseData {
   df?: number; // difficulty level 1-3
   pt?: number; // popularity tier: 1=classic, 2=well-known, 3=exotic
   ix?: string; // intensity: low, medium, high
+  cr?: boolean; // is_core: true = curated core exercise every PAX knows (60 exercises)
 }
 
 // Local fallback exercises (45) — used if Supabase load fails
@@ -205,6 +206,7 @@ export function mapSupabaseExercise(row: Record<string, unknown>): ExerciseData 
     df: difficulty,
     pt: (row.popularity_tier as number) || 3,
     ix: intensity,
+    cr: (row.is_core as boolean) || false,
   };
 }
 
@@ -264,11 +266,24 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
     else                 { tC = 12; mC = 5; }
   }
   const rL = 10, rH = 20;
-  // Popularity tiers: 1=classics (86), 2=well-known (135), 3=exotic (683)
-  // Local EX exercises (fallback) get tier 1 treatment
-  const tier = (e: ExerciseData) => e.pt || (EX.some(x => x.n.toLowerCase() === e.n.toLowerCase()) ? 1 : 3);
-  const isT1 = (e: ExerciseData) => tier(e) === 1;
-  const isT2 = (e: ExerciseData) => tier(e) <= 2;
+  // Core exercises: 60 curated exercises every PAX knows (curated by Ritz / The Bishop)
+  // Hardcoded Set for reliability — does not depend on is_core column being fetched correctly
+  const CORE_EXERCISES = new Set([
+    "Merkin", "Side Straddle Hop", "Burpee", "Coupon Military Press", "LBCs",
+    "Murder Bunny", "Block-Over Burpees", "Bonnie Blairs", "Jump Squat", "Lt. Dans",
+    "Mountain Climbers", "Mountain Climber Merkin", "Flutter kicks", "Elf on the Shelf",
+    "T-Bomb", "Alternating Shoulder Taps", "Hand-release Mike Tysons", "Plank Jacks",
+    "Alternating Side Squats", "Moroccan Nightclub", "Classic Sit-Up", "World War I Sit-up",
+    "Dolly", "Donkey Kicks", "Freddie Mercury", "Boat Canoe", "American Hammer",
+    "Bear Crawl", "Big Boy Sit-up-Ups (aka, Bissyous)", "Bobby Hurley", "Butterfly Sit-up",
+    "Bulgarian Split Squat", "Coupon Curl", "Peter Parker", "Windshield Wipers", "Rosalita",
+    "Dying Cockroach", "Balls to the Wall", "Balls to the Wall Crawl", "Merkin Jack",
+    "Suicides", "Crab Walk", "Crab Jacks", "Frankensteins", "Mountaineer Motivators",
+    "21s", "Al Gore", "Coupon Kettle Bell Swing", "Derkin", "Dips", "Duck Walk",
+    "Monkey Humpers", "Sumo Squat", "Suzanne Somers", "Smurf Jacks", "Squat Thrust",
+    "Single Arm Row", "Dive Bombers", "Crawl Bear", "Merkin Ladder",
+  ]);
+  const isCore = (e: ExerciseData) => CORE_EXERCISES.has(e.n);
 
   const pool = exList.filter(e => e.s.length === 0 || e.s.some(s => cfg.sites.includes(s)));
   const wP = pool.filter(e => e.t.includes("Warm-Up"));
@@ -298,41 +313,50 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
     mP = mP.filter(e => !e.t.includes("Coupon"));
   }
 
-  // Split main pool by popularity tier
-  const mT1 = mP.filter(isT1);           // Classics every PAX knows
-  const mT2 = mP.filter(e => tier(e) === 2); // Well-known exercises
-  const mT1T2 = mP.filter(isT2);         // T1 + T2 combined
-  const mAll = mP;                        // Full 904 pool
+  // Split main pool by core status
+  const mCore = mP.filter(isCore);           // 60 curated exercises every PAX knows
+  const mNonCore = mP.filter(e => !isCore(e)); // Full 904 pool minus core
+  const mAll = mP;                            // Everything combined
+  const useCore = cfg.diff === "easy" || cfg.diff === "medium"; // Easy/Medium = core only, no exceptions
 
-  // Warmup: always low reps (10 or 15) regardless of difficulty — these are just getting loose
-  const wT1 = wP.filter(isT1);
+  // Warmup: for Easy/Medium, pick from core exercises directly (ignore Warm-Up tag)
+  // Core exercises like SSH, Merkin, Bobby Hurley ARE warmup-appropriate
+  // For Hard/Beast, use the Warm-Up tagged pool as before
+  const wCore = pool.filter(e => isCore(e) && !e.t.includes("Mary") && !e.t.includes("Transport") && !FORMAT_EXERCISES.has(e.n));
+  const wTagged = pool.filter(e => e.t.includes("Warm-Up"));
+  const wPool = useCore ? (wCore.length >= 4 ? wCore : wTagged) : (wTagged.length >= 4 ? wTagged : wCore);
   const wRepOpts = [10, 10, 15, 15, 15];
-  const w = pk(wT1.length >= 4 ? wT1 : wP, 4).map(e => {
+  const w = pk(wPool, 4).map(e => {
     const wRep = String(wRepOpts[Math.floor(Math.random() * wRepOpts.length)]);
     return { id: _genId(), type: "exercise" as const, name: e.n, mode: "reps" as const, value: parseInt(wRep), cadence: "IC", note: "", n: e.n, r: wRep, c: "IC", nt: "" };
   });
 
-  // Mary: prefer tier 1 for easy/medium
-  const yT1 = yP.filter(isT1);
-  const maryPool = (cfg.diff === "easy" || cfg.diff === "medium") && yT1.length >= mC ? yT1 : yP;
+  // Mary: for Easy/Medium use core mary exercises only
+  const yCore = yP.filter(isCore);
+  const maryPool = useCore && yCore.length >= mC ? yCore : yP;
 
   // ════ THANG EXERCISE SELECTION ════
-  // Tier-based: Easy=100% T1, Medium=60% T1 + 40% T2, Hard=30% T1+T2 + 70% all, Beast=full
+  // Core-based selection:
+  //   Easy   = 100% core (exercises every PAX knows — NO exceptions, NO fallback to non-core)
+  //   Medium = 100% core (exercises every PAX knows — NO exceptions, NO fallback to non-core)
+  //   Hard   = 70% core + 30% full pool (introduces some new exercises)
+  //   Beast  = 50% core + 50% full pool (veteran Qs want exotic exercises)
   let thangPicks: ExerciseData[];
-  const sitePool = mP.filter(e => e.s.length > 0 && e.s.some(s => cfg.sites.includes(s)));
-  const couponPool = mP.filter(e => e.t.includes("Coupon"));
+
+  // For Easy/Medium: ALL picks come from core. No site-specific or coupon exceptions.
+  // For Hard/Beast: site-specific and coupon picks can come from full pool.
+  const thangSource = useCore ? mCore : mP;
+  const sitePool = thangSource.filter(e => e.s.length > 0 && e.s.some(s => cfg.sites.includes(s)));
+  const couponPool = thangSource.filter(e => e.t.includes("Coupon"));
 
   let picks: ExerciseData[] = [];
   let remaining = tC;
 
   // 1. Site-specific exercises (guarantee ~30% of Thang when sites selected)
   if (sitePool.length > 0) {
-    // For easy, prefer tier 1 site exercises; otherwise any tier
-    const sitePicks = cfg.diff === "easy" ? sitePool.filter(isT1) : cfg.diff === "medium" ? sitePool.filter(isT2) : sitePool;
-    const fallbackSite = sitePicks.length > 0 ? sitePicks : sitePool;
-    const siteCount = Math.min(Math.ceil(tC * 0.3), fallbackSite.length);
+    const siteCount = Math.min(Math.ceil(tC * 0.3), sitePool.length);
     if (siteCount > 0) {
-      picks.push(...pk(fallbackSite, siteCount));
+      picks.push(...pk(sitePool, siteCount));
       remaining -= picks.length;
     }
   }
@@ -347,33 +371,40 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
     }
   }
 
-  // 3. Fill remaining slots based on beatdown difficulty + popularity tiers
+  // 3. Fill remaining slots
   if (remaining > 0) {
-    const unused = (e: ExerciseData) => !picks.some(p => p.n === e.n) && !e.t.includes("Coupon");
+    // Exclude exercises already in warmup to prevent duplicates
+    const warmupNames = new Set(w.map(e => e.n));
+    const unused = (e: ExerciseData) => !picks.some(p => p.n === e.n) && !e.t.includes("Coupon") && !warmupNames.has(e.n);
     let fillPicks: ExerciseData[] = [];
 
-    if (cfg.diff === "easy") {
-      // 100% tier 1 classics — the exercises every PAX knows
-      fillPicks = pk(mT1.filter(unused), remaining);
-    } else if (cfg.diff === "medium") {
-      // ~60% tier 1, ~40% tier 2
-      const t1Count = Math.ceil(remaining * 0.6);
-      const t2Count = remaining - t1Count;
-      fillPicks = [
-        ...pk(mT1.filter(unused), t1Count),
-        ...pk(mT2.filter(unused), t2Count),
-      ];
+    if (useCore) {
+      // Easy/Medium: 100% core. Period. No fallback to non-core.
+      fillPicks = pk(mCore.filter(unused), remaining);
     } else if (cfg.diff === "hard") {
-      // ~30% tier 1+2, ~70% full pool including tier 3
-      const knownCount = Math.ceil(remaining * 0.3);
-      const restCount = remaining - knownCount;
-      fillPicks = [
-        ...pk(mT1T2.filter(unused), knownCount),
-        ...pk(mAll.filter(e => unused(e) && !isT2(e)), restCount),
-      ];
+      // 70% core + 30% full pool
+      const coreCount = Math.ceil(remaining * 0.7);
+      const adventureCount = remaining - coreCount;
+      const corePicks = pk(mCore.filter(unused), coreCount);
+      const adventurePicks = pk(mNonCore.filter(unused), adventureCount);
+      fillPicks = [...corePicks, ...adventurePicks];
+      if (fillPicks.length < remaining) {
+        const stillNeeded = remaining - fillPicks.length;
+        const fallback = mAll.filter(e => unused(e) && !fillPicks.some(p => p.n === e.n));
+        fillPicks.push(...pk(fallback, stillNeeded));
+      }
     } else {
-      // Beast: full 904 pool, no restriction
-      fillPicks = pk(mAll.filter(unused), remaining);
+      // Beast: 50% core + 50% full pool
+      const coreCount = Math.ceil(remaining * 0.5);
+      const adventureCount = remaining - coreCount;
+      const corePicks = pk(mCore.filter(unused), coreCount);
+      const adventurePicks = pk(mNonCore.filter(unused), adventureCount);
+      fillPicks = [...corePicks, ...adventurePicks];
+      if (fillPicks.length < remaining) {
+        const stillNeeded = remaining - fillPicks.length;
+        const fallback = mAll.filter(e => unused(e) && !fillPicks.some(p => p.n === e.n));
+        fillPicks.push(...pk(fallback, stillNeeded));
+      }
     }
 
     picks.push(...fillPicks);
