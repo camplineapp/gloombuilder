@@ -220,7 +220,7 @@ function rn(lo: number, hi: number) {
   return lo + Math.floor(Math.random() * (steps + 1)) * 5;
 }
 
-export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] {
+export function generate(cfg: GenConfig, exercises?: ExerciseData[], goRogue?: boolean): Section[] {
   const G = "#22c55e", A = "#f59e0b", P = "#a78bfa";
   const exList = exercises && exercises.length > 0 ? exercises : EX;
 
@@ -329,18 +329,22 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
   // ════ WARMUP POOL ════
   // ALL difficulties use CORE_WARMUP — nobody wants exotic warmup exercises
   // ALL difficulties use core exercises for ALL sections. No exotic exercises anywhere.
+  // UNLESS goRogue=true — then use the full 904 pool for everything ("Go Rogue" mode)
 
   const wCorePool = pool.filter(e => CORE_WARMUP.has(e.n) && couponFilter(e));
+  const wTaggedPool = pool.filter(e => e.t.includes("Warm-Up") && couponFilter(e));
   const wRepOpts = [10, 10, 15, 15, 15];
-  const w = pk(wCorePool, 2).map(e => {
+  const w = pk(goRogue ? (wTaggedPool.length >= 2 ? wTaggedPool : wCorePool) : wCorePool, 2).map(e => {
     const wRep = String(wRepOpts[Math.floor(Math.random() * wRepOpts.length)]);
     return { id: _genId(), type: "exercise" as const, name: e.n, mode: "reps" as const, value: parseInt(wRep), cadence: "IC", note: "", n: e.n, r: wRep, c: "IC", nt: "" };
   });
 
   // ════ MARY POOL ════
   // ALL difficulties use CORE_MARY — nobody wants exotic mary exercises
+  // UNLESS goRogue=true — then use full Mary-tagged pool
   const yCorePool = pool.filter(e => CORE_MARY.has(e.n) && couponFilter(e));
-  const maryPool = yCorePool;
+  const yTaggedPool = pool.filter(e => e.t.includes("Mary") && couponFilter(e));
+  const maryPool = goRogue ? yTaggedPool : yCorePool;
 
   // ════ THANG POOL ════
   // Exclude warmup-only, mary-only, transport, format exercises from thang
@@ -358,12 +362,12 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
 
   // ════ THANG EXERCISE SELECTION ════
   // ALL difficulties use 100% core thang exercises. No exceptions. No exotic exercises ever.
-  // The generator's promise is "exercises every PAX knows" — that applies to Easy through Beast.
-  // Beast difficulty = higher reps and harder exercises from the core list, NOT random exotic exercises.
+  // UNLESS goRogue=true — then use the full thang pool (all exercises minus warmup/mary/transport/format)
   let thangPicks: ExerciseData[];
 
-  const sitePool = mCore.filter(e => e.s.length > 0 && e.s.some(s => cfg.sites.includes(s)));
-  const couponPool = mCore.filter(e => e.t.includes("Coupon"));
+  const thangSource = goRogue ? mP : mCore;
+  const sitePool = thangSource.filter(e => e.s.length > 0 && e.s.some(s => cfg.sites.includes(s)));
+  const couponPool = thangSource.filter(e => e.t.includes("Coupon"));
 
   let picks: ExerciseData[] = [];
   let remaining = tC;
@@ -387,12 +391,12 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[]): Section[] 
     }
   }
 
-  // 3. Fill remaining slots — 100% core for ALL difficulties
+  // 3. Fill remaining slots — 100% core for ALL difficulties (or full pool if goRogue)
   if (remaining > 0) {
     // Exclude exercises already in warmup to prevent duplicates
     const warmupNames = new Set(w.map(e => e.n));
     const unused = (e: ExerciseData) => !picks.some(p => p.n === e.n) && !warmupNames.has(e.n);
-    const fillPicks = pk(mCore.filter(unused), remaining);
+    const fillPicks = pk(thangSource.filter(unused), remaining);
     picks.push(...fillPicks);
   }
 

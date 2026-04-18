@@ -90,6 +90,7 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
     if (beatdownName || beatdownDesc) qpText += "Q: " + (qName || "The Bishop") + "\n";
     secs.forEach(s => {
       qpText += "\n── " + _sLabel(s) + " ──\n";
+      if (_sNotes(s)) qpText += "> " + _sNotes(s) + "\n";
       s.exercises.forEach(e => {
         if (e.type === "transition") {
           qpText += "↗ " + _exName(e) + "\n";
@@ -100,7 +101,6 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
           if (_exNote(e)) qpText += "  > " + _exNote(e) + "\n";
         }
       });
-      if (_sNotes(s)) qpText += "> " + _sNotes(s) + "\n";
     });
     qpText += "\nBuilt with GloomBuilder · gloombuilder.app";
 
@@ -132,6 +132,7 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
   bbText += "\n*Workout:*\n";
   secs.forEach(s => {
     bbText += "\n── " + _sLabel(s) + " ──\n";
+    if (_sNotes(s)) bbText += "> " + _sNotes(s) + "\n";
     s.exercises.forEach(e => {
       if (e.type === "transition") {
         bbText += "↗ " + _exName(e) + "\n";
@@ -142,7 +143,6 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
         if (_exNote(e)) bbText += "  > " + _exNote(e) + "\n";
       }
     });
-    if (_sNotes(s)) bbText += "> " + _sNotes(s) + "\n";
   });
   if (bb.cot) bbText += "\n*COT:*\n" + bb.cot + "\n";
   if (bb.ann) bbText += "\n*Announcements:*\n" + bb.ann + "\n";
