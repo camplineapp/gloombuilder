@@ -216,21 +216,78 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
           <button onClick={() => onToggleVote?.(String(bd.id), bd.tp === "exercise" ? "exercise" : "beatdown")} style={{ fontFamily: F, background: voted ? G + "15" : "rgba(255,255,255,0.04)", color: voted ? G : T4, border: "1px solid " + (voted ? G + "30" : BD), padding: "8px 16px", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 600 }}>▲ {bd.v}</button>
           <span style={{ fontSize: 13, color: T5 }}>Stolen {bd.u}x</span>
         </div>
-        {bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? <div style={{ marginTop: 24 }}>{bd.secs.map((sec, si) => (
-          <div key={si} style={{ marginTop: 16 }}>
-            <div style={{ color: sec.color, fontSize: 12, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8, fontWeight: 700 }}>{sec.label}</div>
-            {sec.exercises.map((ex, ei) => (
-              <div key={ei} onClick={() => { const found = seedEx.find(se => se.n.toLowerCase() === ex.n.toLowerCase()); if (found) setDbDetail(found); }} style={{ padding: "10px 14px", background: CD, borderLeft: "3px solid " + sec.color + "40", borderRadius: "0 10px 10px 0", marginBottom: 4, cursor: "pointer" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ color: T2, fontSize: 15, fontWeight: 600, borderBottom: "1px dashed rgba(255,255,255,0.15)" }}>{ex.n} <span style={{ fontSize: 10, color: T5 }}>ⓘ</span></span>
-                  <span style={{ color: sec.color, fontSize: 13, fontWeight: 600 }}>x{ex.r} {ex.c}</span>
+        {bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? <div style={{ marginTop: 24 }}>{bd.secs.map((sec, si) => {
+          const sColor = sec.color || G;
+          const secName = (sec as any).name || sec.label || "Section";
+          const secNotes = (sec as any).qNotes || sec.note || "";
+          const exCount = sec.exercises.filter(e => (e as any).type !== "transition").length;
+          return (
+          <div key={si} style={{ marginBottom: 10 }}>
+            <div style={{ background: "#111114", borderRadius: 22, boxShadow: `0 0 0 1px ${sColor}40, 0 4px 24px ${sColor}0D` }}>
+              <div style={{ borderRadius: "22px 22px 0 0", overflow: "hidden" }}>
+                <div style={{ height: 3, background: sColor }} />
+                <div style={{ padding: "14px 18px 10px" }}>
+                  <div style={{ color: T1, fontSize: 21, fontWeight: 800, letterSpacing: "-0.5px", fontFamily: F }}>{secName}</div>
+                  <div style={{ color: T5, fontSize: 12, marginTop: 3, fontFamily: F }}>{exCount} {exCount === 1 ? "exercise" : "exercises"}</div>
                 </div>
-                {ex.nt ? <div style={{ color: T4, fontSize: 12, marginTop: 4, fontStyle: "italic" }}>{ex.nt}</div> : null}
               </div>
-            ))}
-            {sec.note ? <div style={{ color: T4, fontSize: 13, marginTop: 6, fontStyle: "italic", padding: "8px 14px", background: "rgba(255,255,255,0.02)", borderRadius: 8 }}>{sec.note}</div> : null}
+              <div style={{ padding: "0 12px 14px" }}>
+                {secNotes ? (
+                  <div style={{ padding: "0 4px 10px", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <span style={{ color: T4, fontSize: 14, flexShrink: 0, marginTop: 1 }}>✎</span>
+                    <div style={{ color: T2, fontSize: 14, fontStyle: "italic", lineHeight: 1.5, fontFamily: F, wordBreak: "break-word" as const }}>{secNotes}</div>
+                  </div>
+                ) : null}
+                {sec.exercises.map((ex, ei) => {
+                  const exName = (ex as any).name || ex.n || "";
+                  const exNote = (ex as any).note || ex.nt || "";
+                  const isTransition = (ex as any).type === "transition";
+                  const exReps = (() => {
+                    const a = ex as any;
+                    if (a.mode === "time") return `${a.value} ${a.unit}`;
+                    if (a.mode === "distance") return `${a.value} ${a.unit}`;
+                    if (a.mode === "reps" && a.value !== undefined && a.value !== "") return `${a.value} reps`;
+                    return ex.r ? `${ex.r} reps` : "";
+                  })();
+                  const exCad = (() => {
+                    const a = ex as any;
+                    const cad = a.cadence || ex.c || "";
+                    if (a.mode === "time" || a.mode === "distance") return "";
+                    return cad;
+                  })();
+                  const foundEx = seedEx.find(se => se.n.toLowerCase() === exName.toLowerCase());
+
+                  if (isTransition) {
+                    return (
+                      <div key={ei} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", marginBottom: 6, background: "rgba(255,255,255,0.03)", borderRadius: 10 }}>
+                        <span style={{ color: T4, fontSize: 15 }}>↗</span>
+                        <span style={{ color: T3, fontSize: 16, fontStyle: "italic", fontWeight: 500, fontFamily: F }}>{exName}</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={ei} onClick={() => { if (foundEx) setDbDetail(foundEx); }} style={{ background: "#1a1a1f", borderRadius: 14, padding: "13px 14px", marginBottom: 6, display: "flex", alignItems: "center", gap: 10, cursor: foundEx ? "pointer" : "default" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden" }}>
+                          <span style={{ color: T1, fontSize: 18, fontWeight: 700, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, minWidth: 0 }}>{exName}</span>
+                        </div>
+                        <div style={{ color: T4, fontSize: 14, fontWeight: 600, marginTop: 3, fontFamily: F }}>
+                          {exReps}{exCad ? ` · ${exCad}` : ""}
+                        </div>
+                        {exNote ? <div style={{ color: T5, fontSize: 13, fontStyle: "italic", marginTop: 2, fontFamily: F }}>{exNote}</div> : null}
+                      </div>
+                      {foundEx && (
+                        <button onClick={e => { e.stopPropagation(); setDbDetail(foundEx); }} style={{ width: 28, height: 28, borderRadius: 8, background: P + "15", border: "1px solid " + P + "30", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: P, fontSize: 14, fontWeight: 700, fontFamily: F }}>?</button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        ))}</div> : null}
+          );
+        })}</div> : null}
         {/* Comments */}
         <div style={{ marginTop: 28 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
