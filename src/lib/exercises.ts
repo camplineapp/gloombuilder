@@ -273,14 +273,31 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[], goRogue?: b
   // Everything else is Thang-only (the main workout).
 
   const CORE_WARMUP = new Set([
+    // Original 5
     "Mountaineer Motivators", "Side Straddle Hop", "Frankensteins", "21s", "Bobby Hurley",
+    // 20 new dynamic warmups (April 17 s16)
+    "High Knees", "Butt Kickers", "Hip Circles", "Neck Rolls", "Ankle Circles",
+    "Toy Soldier", "A-Skip", "B-Skip", "Side Shuffle", "Karaoke",
+    "Walking Lunge", "World's Greatest Stretch", "Cherry Picker", "Trunk Rotation",
+    "Torso Twist", "Overhead Clap", "Shoulder Rolls", "Willie Mays Hayes",
+    "Cotton Picker", "Good Morning",
+    // 13 stretches (April 17 s16)
+    "Standing Quad Stretch", "Hamstring Stretch", "Calf Stretch", "Shoulder Stretch",
+    "Tricep Stretch", "Chest Stretch", "Hip Flexor Stretch", "Figure Four Stretch",
+    "Pigeon Stretch", "Butterfly Stretch", "Groin Stretch", "Cross-Body Shoulder Stretch",
+    "Standing Toe Touch",
   ]);
 
   const CORE_MARY = new Set([
+    // Original 15
     "Freddie Mercury", "Rosalita", "LBCs", "Flutter kicks", "Classic Sit-Up",
     "World War I Sit-up", "Dolly", "Boat Canoe", "American Hammer",
     "Big Boy Sit-up-Ups (aka, Bissyous)", "Butterfly Sit-up", "Windshield Wipers",
     "Dying Cockroach", "Reverse Crunch", "Superman",
+    // 3 new mary exercises (April 17 s16)
+    "Bicycle Crunch", "Dead Bug", "Heel Touch",
+    // 6 yoga/mobility exercises (April 17 s16)
+    "Child's Pose", "Downward Dog", "Cobra Stretch", "Cat-Cow", "Happy Baby", "Spinal Twist",
   ]);
 
   const CORE_THANG = new Set([
@@ -297,6 +314,8 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[], goRogue?: b
     "Diamond Merkin", "Manmaker Merkin", "Manmaker", "Apolo Ohno",
     "Double Merkin Burpee", "Elevens", "Fire Drill", "No Cheat Merkin",
     "Pull-up Squats", "Prisoner's Squat", "Ranger Merkins",
+    // 2 new thang exercises (April 17 s16)
+    "Reverse Lunge", "Fire Hydrant",
   ]);
 
   // Combined set for general "is this core?" checks
@@ -334,7 +353,7 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[], goRogue?: b
   const wCorePool = pool.filter(e => CORE_WARMUP.has(e.n) && couponFilter(e));
   const wTaggedPool = pool.filter(e => e.t.includes("Warm-Up") && couponFilter(e));
   const wRepOpts = [10, 10, 15, 15, 15];
-  const w = pk(goRogue ? (wTaggedPool.length >= 2 ? wTaggedPool : wCorePool) : wCorePool, 2).map(e => {
+  const w = pk(goRogue ? (wTaggedPool.length >= 4 ? wTaggedPool : wCorePool) : wCorePool, 4).map(e => {
     const wRep = String(wRepOpts[Math.floor(Math.random() * wRepOpts.length)]);
     return { id: _genId(), type: "exercise" as const, name: e.n, mode: "reps" as const, value: parseInt(wRep), cadence: "IC", note: "", n: e.n, r: wRep, c: "IC", nt: "" };
   });

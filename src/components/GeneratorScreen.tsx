@@ -37,9 +37,10 @@ interface GeneratorScreenProps {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
   }) => void;
+  profName?: string;
 }
 
-export default function GeneratorScreen({ onClose, onSave, onRunThis }: GeneratorScreenProps) {
+export default function GeneratorScreen({ onClose, onSave, onRunThis, profName }: GeneratorScreenProps) {
   const [gs, setGs] = useState(0);
   const [gc, setGc] = useState<GenConfig>({ dur: null, diff: null, sites: [], eq: [] });
   const [gr, setGr] = useState<Section[] | null>(null);
@@ -86,7 +87,7 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis }: Generato
     return (
       <div style={{ padding: "0 24px" }}>
         {toastEl}
-        {copyModal && gr ? <CopyModal secs={gr} beatdownName={grT || "Generated Beatdown"} beatdownDesc={grD} qName="The Bishop" onClose={() => setCopyModal(false)} onToast={fl} /> : null}
+        {copyModal && gr ? <CopyModal secs={gr} beatdownName={grT || "Generated Beatdown"} beatdownDesc={grD} qName={profName || "Q"} onClose={() => setCopyModal(false)} onToast={fl} /> : null}
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid " + BD }}>

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import type { Section, SectionExercise } from "@/lib/exercises";
+import type { Section, SectionExercise, ExerciseData } from "@/lib/exercises";
+import { EX, mapSupabaseExercise } from "@/lib/exercises";
+import { loadSeedExercises } from "@/lib/db";
 import CopyModal from "@/components/CopyModal";
 
 // ════ LIVE MODE COLORS (from spec — stone palette for focused dark UI) ════
@@ -40,6 +42,7 @@ interface FlatExercise {
   reps: string;
   cadence: string;
   note: string;
+  howTo: string;
   isTimer: boolean;
   seconds: number;
   display: string;
@@ -50,7 +53,7 @@ interface FlatExercise {
   isTransition: boolean;
 }
 
-function flattenBeatdown(sections: Section[]): FlatExercise[] {
+function flattenBeatdown(sections: Section[], allEx?: ExerciseData[]): FlatExercise[] {
   const flat: FlatExercise[] = [];
   sections.forEach((sec, si) => {
     // Support both old (label/note) and new (name/qNotes) section fields
@@ -61,6 +64,10 @@ function flattenBeatdown(sections: Section[]): FlatExercise[] {
       const exName = (ex as any).name || ex.n || "";
       const exNote = (ex as any).note || ex.nt || "";
       const exCad = (ex as any).cadence || ex.c || "";
+
+      // Look up howTo from seed exercises
+      const found = allEx?.find(se => se.n.toLowerCase() === exName.toLowerCase());
+      const howTo = found?.h || "";
 
       // Build reps string from new format if available
       let repsStr = ex.r || "";
@@ -94,6 +101,7 @@ function flattenBeatdown(sections: Section[]): FlatExercise[] {
         reps: repsStr,
         cadence: exCad,
         note: exNote,
+        howTo,
         ...parsed,
         sectionName: secName,
         sectionIndex: si,
@@ -156,14 +164,16 @@ function CountdownTimer({ seconds, isPaused }: { seconds: number; isPaused: bool
 }
 
 // ════ PRE-LAUNCH ════
-function PreLaunchScreen({ title, qName, ao, duration, sections, exercises, onStart }: {
-  title: string; qName: string; ao: string; duration: string; sections: Section[]; exercises: FlatExercise[]; onStart: () => void;
+function PreLaunchScreen({ title, qName, ao, duration, sections, exercises, onStart, onClose }: {
+  title: string; qName: string; ao: string; duration: string; sections: Section[]; exercises: FlatExercise[]; onStart: () => void; onClose: () => void;
 }) {
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", padding: "0 20px", position: "relative" }}>
       <div style={{ position: "absolute", top: "10%", left: "50%", transform: "translateX(-50%)", width: 300, height: 300, background: `radial-gradient(circle, ${C.greenGlow} 0%, transparent 70%)`, borderRadius: "50%", filter: "blur(60px)", pointerEvents: "none" }} />
       <div style={{ position: "relative", zIndex: 1, maxWidth: 400, width: "100%", margin: "0 auto", flex: 1, display: "flex", flexDirection: "column" }}>
-        <div style={{ textAlign: "center", paddingTop: 60 }}>
+        {/* Back button */}
+        <button onClick={onClose} style={{ fontFamily: F, background: "none", border: "none", color: C.t3, fontSize: 15, fontWeight: 600, cursor: "pointer", padding: "16px 0 0", textAlign: "left" as const }}>← Back</button>
+        <div style={{ textAlign: "center", paddingTop: 32 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.greenDim, border: `1px solid ${C.green}33`, borderRadius: 24, padding: "8px 18px", marginBottom: 24, fontFamily: F, fontSize: 14, fontWeight: 700, color: C.green, letterSpacing: 1.5, textTransform: "uppercase" }}>
             <span style={{ width: 8, height: 8, borderRadius: "50%", background: C.green, boxShadow: `0 0 10px ${C.green}` }} />
             Live Mode
@@ -200,19 +210,23 @@ function PreLaunchScreen({ title, qName, ao, duration, sections, exercises, onSt
 }
 
 // ════ EXERCISE TELEPROMPTER ════
-function ExerciseScreen({ exercise, exercises, currentIndex, totalExercises, onNext, onJumpList, onExit, elapsedTime, sectionJustChanged }: {
+function ExerciseScreen({ exercise, exercises, currentIndex, totalExercises, onNext, onPrev, onJumpList, onExit, elapsedTime, sectionJustChanged }: {
   exercise: FlatExercise; exercises: FlatExercise[]; currentIndex: number; totalExercises: number;
-  onNext: () => void; onJumpList: () => void; onExit: () => void; elapsedTime: number; sectionJustChanged: boolean;
+  onNext: () => void; onPrev: () => void; onJumpList: () => void; onExit: () => void; elapsedTime: number; sectionJustChanged: boolean;
 }) {
   const [isPaused, setIsPaused] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [swipeX, setSwipeX] = useState(0);
   const progress = ((currentIndex + 1) / totalExercises) * 100;
   const nextEx = currentIndex < totalExercises - 1 ? exercises[currentIndex + 1] : null;
   const nameLen = exercise.name.length;
-  const nameFontSize = nameLen > 20 ? 38 : nameLen > 14 ? 46 : 56;
+  const nameFontSize = nameLen > 20 ? 42 : nameLen > 14 ? 52 : 64;
 
   useEffect(() => {
     setIsPaused(false);
+    setShowInfo(false);
     if (sectionJustChanged) {
       setShowBanner(true);
       const t = setTimeout(() => setShowBanner(false), 2200);
@@ -222,11 +236,29 @@ function ExerciseScreen({ exercise, exercises, currentIndex, totalExercises, onN
     }
   }, [currentIndex, sectionJustChanged]);
 
+  const handleTouchStart = (e: React.TouchEvent | React.MouseEvent) => {
+    const x = "touches" in e ? e.touches[0].clientX : e.clientX;
+    setTouchStart(x);
+  };
+  const handleTouchMove = (e: React.TouchEvent | React.MouseEvent) => {
+    if (touchStart === null) return;
+    const x = "touches" in e ? e.touches[0].clientX : e.clientX;
+    setSwipeX(x - touchStart);
+  };
+  const handleTouchEnd = () => {
+    if (Math.abs(swipeX) > 60) {
+      if (swipeX < 0) onNext();
+      if (swipeX > 0 && currentIndex > 0) onPrev();
+    }
+    setSwipeX(0);
+    setTouchStart(null);
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", userSelect: "none" }}>
-      {/* ═══ TOP BAR ═══ */}
+      {/* ═══ TOP BAR — red exit button ═══ */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 14px 0" }}>
-        <button onClick={onExit} style={{ fontFamily: F, background: C.solidCard, border: `1px solid ${C.border}`, borderRadius: 12, color: C.t3, fontSize: 18, fontWeight: 700, cursor: "pointer", padding: "12px 18px", minWidth: 54, textAlign: "center" }}>✕</button>
+        <button onClick={onExit} style={{ fontFamily: F, background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.30)", borderRadius: 12, color: C.red, fontSize: 18, fontWeight: 700, cursor: "pointer", padding: "12px 18px", minWidth: 54, textAlign: "center" }}>✕</button>
         <div style={{ fontFamily: F, fontSize: 32, fontWeight: 900, color: C.t1, fontVariantNumeric: "tabular-nums", background: C.solidCard, border: `1px solid ${C.border}`, borderRadius: 14, padding: "8px 22px", letterSpacing: 1.5, lineHeight: 1 }}>
           {formatTime(elapsedTime)}
         </div>
@@ -254,8 +286,23 @@ function ExerciseScreen({ exercise, exercises, currentIndex, totalExercises, onN
         </span>
       </div>
 
-      {/* ═══ MAIN TELEPROMPTER ═══ */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 20px" }}>
+      {/* ═══ MAIN TELEPROMPTER — swipeable ═══ */}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onMouseDown={handleTouchStart}
+        onMouseMove={(e) => { if (touchStart !== null) handleTouchMove(e); }}
+        onMouseUp={handleTouchEnd}
+        onMouseLeave={() => { if (touchStart !== null) handleTouchEnd(); }}
+        style={{
+          flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 20px",
+          cursor: "grab",
+          transform: `translateX(${swipeX * 0.3}px)`,
+          transition: swipeX === 0 ? "transform 0.2s ease" : "none",
+          opacity: Math.max(0.5, 1 - Math.abs(swipeX) / 500),
+        }}
+      >
         {exercise.isTransition ? (
           <>
             <div style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: C.t4, textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>Transition</div>
@@ -265,36 +312,77 @@ function ExerciseScreen({ exercise, exercises, currentIndex, totalExercises, onN
           </>
         ) : (
           <>
-            <h1 style={{ fontFamily: F, fontSize: nameFontSize, fontWeight: 900, color: C.t1, textAlign: "center", margin: 0, lineHeight: 1.05, letterSpacing: -1 }}>
+            {/* Exercise name — tap to show how-to */}
+            <h1
+              onClick={() => { if (exercise.howTo) setShowInfo(!showInfo); }}
+              style={{
+                fontFamily: F, fontSize: nameFontSize, fontWeight: 900, color: C.t1, textAlign: "center", margin: 0, lineHeight: 1.05, letterSpacing: -1,
+                cursor: exercise.howTo ? "pointer" : "default",
+                borderBottom: exercise.howTo && !showInfo ? "2px dashed rgba(167,139,250,0.35)" : "none",
+                paddingBottom: exercise.howTo && !showInfo ? 6 : 0,
+              }}
+            >
               {exercise.name}
             </h1>
-            {exercise.note && (
+            {exercise.note && !showInfo && (
               <p style={{ fontFamily: F, fontSize: 18, color: C.t3, textAlign: "center", margin: "8px 0 0", fontStyle: "italic", fontWeight: 500 }}>{exercise.note}</p>
             )}
-            {exercise.isTimer ? (
-              <div style={{ marginTop: 20 }}>
-                <CountdownTimer seconds={exercise.seconds} isPaused={isPaused} />
-                <button onClick={() => setIsPaused(!isPaused)} style={{
-                  fontFamily: F, display: "block", margin: "24px auto 0", background: C.solidCard, border: `1px solid ${C.border}`,
-                  borderRadius: 14, padding: "16px 44px", color: C.t2, fontSize: 19, fontWeight: 700, cursor: "pointer",
-                }}>
-                  {isPaused ? "Resume" : "Pause"}
-                </button>
+
+            {/* ═══ HOW-TO EXPANSION (tap name to toggle) ═══ */}
+            {showInfo && (
+              <div
+                onClick={(e) => { e.stopPropagation(); setShowInfo(false); }}
+                style={{
+                  marginTop: 16, padding: "18px 20px",
+                  background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.18)", borderRadius: 16,
+                  maxHeight: 280, overflowY: "auto", cursor: "pointer", width: "100%",
+                  WebkitOverflowScrolling: "touch" as any,
+                }}
+              >
+                <div style={{ fontFamily: F, fontSize: 12, fontWeight: 800, color: "rgba(167,139,250,0.7)", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 12 }}>How to execute</div>
+                {exercise.howTo.split(/(?=\d+\.\s)/).filter(Boolean).map((step, i) => {
+                  const stepText = step.replace(/^\d+\.\s*/, "").trim();
+                  const stepNum = step.match(/^(\d+)\./)?.[1];
+                  return (
+                    <div key={i} style={{ display: "flex", gap: 10, marginBottom: 10, alignItems: "flex-start" }}>
+                      {stepNum && <span style={{ fontFamily: F, color: "rgba(167,139,250,0.6)", fontSize: 18, fontWeight: 800, flexShrink: 0, minWidth: 22, textAlign: "right" as const }}>{stepNum}.</span>}
+                      <span style={{ fontFamily: F, color: C.t2, fontSize: 18, lineHeight: 1.5 }}>{stepText}</span>
+                    </div>
+                  );
+                })}
+                <div style={{ fontFamily: F, fontSize: 15, color: "rgba(167,139,250,0.5)", marginTop: 16, textAlign: "center", fontWeight: 600, padding: "8px 0" }}>tap anywhere to close</div>
               </div>
-            ) : (
-              <div style={{ textAlign: "center", marginTop: 14 }}>
-                <span style={{ fontFamily: F, fontSize: 80, fontWeight: 900, color: C.green, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{exercise.display}</span>
-                <div style={{ fontFamily: F, fontSize: 22, fontWeight: 800, marginTop: 8, letterSpacing: 2, textTransform: "uppercase", color: exercise.cadence === "IC" ? C.amber : C.t3 }}>
-                  {exercise.cadence === "IC" ? "In Cadence" : exercise.cadence === "OYO" ? "On Your Own" : exercise.cadence}
-                </div>
-              </div>
+            )}
+
+            {/* Reps + Cadence — hidden when info is showing */}
+            {!showInfo && (
+              <>
+                {exercise.isTimer ? (
+                  <div style={{ marginTop: 20 }}>
+                    <CountdownTimer seconds={exercise.seconds} isPaused={isPaused} />
+                    <button onClick={() => setIsPaused(!isPaused)} style={{
+                      fontFamily: F, display: "block", margin: "24px auto 0", background: C.solidCard, border: `1px solid ${C.border}`,
+                      borderRadius: 14, padding: "16px 44px", color: C.t2, fontSize: 19, fontWeight: 700, cursor: "pointer",
+                    }}>
+                      {isPaused ? "Resume" : "Pause"}
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ textAlign: "center", marginTop: 20 }}>
+                    <span style={{ fontFamily: F, fontSize: 48, fontWeight: 800, color: C.green, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{exercise.display}</span>
+                    <div style={{ fontFamily: F, fontSize: 18, fontWeight: 700, marginTop: 6, letterSpacing: 2, textTransform: "uppercase", color: exercise.cadence === "IC" ? C.amber : C.t3 }}>
+                      {exercise.cadence === "IC" ? "In Cadence" : exercise.cadence === "OYO" ? "On Your Own" : exercise.cadence}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
       </div>
 
       {/* ═══ UP NEXT ═══ */}
-      {nextEx && (
+      {nextEx && !showInfo && (
         <div style={{ margin: "20px 14px 0", padding: "14px 18px", textAlign: "center", background: C.solidCard, border: `1px solid ${C.border}`, borderRadius: 14 }}>
           <div style={{ fontFamily: F, fontSize: 13, color: C.t4, textTransform: "uppercase", letterSpacing: 2, marginBottom: 6, fontWeight: 700 }}>Up Next</div>
           {nextEx.isFirstInSection && nextEx.sectionName !== exercise.sectionName ? (
@@ -398,9 +486,9 @@ function JumpList({ exercises, currentIndex, onJump, onClose }: {
 }
 
 // ════ COMPLETION ════
-function CompletionScreen({ title, qName, ao, sections, exercises, elapsedTime, onDone, onCopyBackblast }: {
+function CompletionScreen({ title, qName, ao, sections, exercises, elapsedTime, onDone, onReview, onRunAgain }: {
   title: string; qName: string; ao: string; sections: Section[]; exercises: FlatExercise[]; elapsedTime: number;
-  onDone: () => void; onCopyBackblast: () => void;
+  onDone: () => void; onReview: () => void; onRunAgain: () => void;
 }) {
   const mins = Math.floor(elapsedTime / 60);
   const secs = elapsedTime % 60;
@@ -425,7 +513,7 @@ function CompletionScreen({ title, qName, ao, sections, exercises, elapsedTime, 
         <div style={{ background: C.solidCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: "16px 20px", marginBottom: 24 }}>
           {sections.map((s, i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "11px 0", borderBottom: i < sections.length - 1 ? `1px solid ${C.border}` : "none" }}>
-              <span style={{ fontFamily: F, fontSize: 18, color: C.t2, fontWeight: 700 }}>{s.label}</span>
+              <span style={{ fontFamily: F, fontSize: 18, color: C.t2, fontWeight: 700 }}>{(s as any).name || s.label}</span>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontFamily: F, fontSize: 17, color: C.t3, fontWeight: 600 }}>{s.exercises.filter((e: SectionExercise) => e.type !== "transition").length}</span>
                 <span style={{ color: C.green, fontSize: 18, fontWeight: 700 }}>✓</span>
@@ -433,20 +521,190 @@ function CompletionScreen({ title, qName, ao, sections, exercises, elapsedTime, 
             </div>
           ))}
         </div>
-        <button onClick={onCopyBackblast} style={{
-          fontFamily: F, width: "100%", padding: "22px 0", border: "none", borderRadius: 16,
-          fontSize: 20, fontWeight: 800, cursor: "pointer",
-          background: C.green, color: "#000",
-          boxShadow: `0 0 30px ${C.green}44`,
-        }}>
-          Copy Backblast
-        </button>
-        <button onClick={onDone} style={{
-          fontFamily: F, width: "100%", padding: "20px 0", background: C.solidCard, border: `1px solid ${C.border}`, borderRadius: 16,
-          fontSize: 18, fontWeight: 700, color: C.t2, cursor: "pointer", marginTop: 14,
-        }}>
+        <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
+          <button onClick={onReview} style={{ fontFamily: F, flex: 1, padding: "22px 0", border: "none", borderRadius: 16, fontSize: 18, fontWeight: 800, cursor: "pointer", background: C.green, color: "#000", boxShadow: `0 0 30px ${C.green}44` }}>
+            Review Beatdown
+          </button>
+          <button onClick={onRunAgain} style={{ fontFamily: F, flex: 1, padding: "22px 0", border: "none", borderRadius: 16, fontSize: 18, fontWeight: 800, cursor: "pointer", background: C.amber, color: "#000", boxShadow: `0 0 30px ${C.amber}33` }}>
+            Run Again
+          </button>
+        </div>
+        <button onClick={onDone} style={{ fontFamily: F, width: "100%", padding: "16px 0", background: "transparent", border: "none", fontSize: 16, fontWeight: 600, color: C.t4, cursor: "pointer" }}>
           Done — Back to Locker
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ════ REVIEW BEATDOWN (post-workout edit before copy) ════
+function ReviewScreen({ sections, exercises, elapsedTime, qName, beatdownTitle, onBack, onCopied, onCopyBackblast, onEditsChanged }: {
+  sections: Section[]; exercises: FlatExercise[]; elapsedTime: number; qName: string; beatdownTitle: string;
+  onBack: () => void; onCopied: (msg: string) => void; onCopyBackblast: () => void; onEditsChanged: (editedSecs: Section[]) => void;
+}) {
+  const [edits, setEdits] = useState(() =>
+    exercises.map(ex => ({
+      name: ex.name, reps: ex.display || ex.reps, cadence: ex.cadence,
+      note: ex.note || "", qNote: "", removed: false, sectionName: ex.sectionName, isTransition: ex.isTransition,
+    }))
+  );
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const updateEdit = (i: number, field: string, value: string | boolean) => {
+    setEdits(prev => prev.map((e, idx) => idx === i ? { ...e, [field]: value } : e));
+  };
+
+  // Build edited sections from edits and push to parent whenever edits change
+  useEffect(() => {
+    const sectionMap = new Map<string, SectionExercise[]>();
+    const sectionOrder: string[] = [];
+    edits.forEach(ex => {
+      if (ex.removed) return;
+      if (!sectionMap.has(ex.sectionName)) {
+        sectionMap.set(ex.sectionName, []);
+        sectionOrder.push(ex.sectionName);
+      }
+      const arr = sectionMap.get(ex.sectionName)!;
+      if (ex.isTransition) {
+        arr.push({ n: ex.name, r: "", c: "", nt: "", type: "transition", name: ex.name });
+      } else {
+        const noteText = ex.qNote ? (ex.note ? `${ex.note} · ${ex.qNote}` : ex.qNote) : ex.note;
+        arr.push({ n: ex.name, r: ex.reps, c: ex.cadence, nt: noteText, name: ex.name, note: noteText });
+      }
+    });
+    const editedSecs: Section[] = sectionOrder.map((sName, i) => {
+      const origSec = sections.find(s => ((s as any).name || s.label) === sName);
+      return {
+        label: sName, name: sName, color: origSec?.color || "#22c55e",
+        exercises: sectionMap.get(sName) || [], note: "", qNotes: "",
+        id: (origSec as any)?.id || String(i),
+      };
+    });
+    onEditsChanged(editedSecs);
+  }, [edits]);
+
+  const activeCount = edits.filter(e => !e.removed && !e.isTransition).length;
+
+  const generateBackblast = () => {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+    const mins = Math.floor(elapsedTime / 60);
+    let text = "";
+    if (beatdownTitle) text += `*${beatdownTitle}*\n`;
+    text += `*Q:* ${qName}\n*Date:* ${dateStr}\n*PAX:* _[fill in]_\n*Total PAX:* _[count]_\n\n`;
+    let currentSection = "";
+    edits.forEach(ex => {
+      if (ex.removed) return;
+      if (ex.isTransition) { text += `↗ ${ex.name}\n`; return; }
+      if (ex.sectionName !== currentSection) {
+        currentSection = ex.sectionName;
+        text += `── ${currentSection} ──\n`;
+      }
+      text += `${ex.reps} ${ex.name} ${ex.cadence}\n`;
+      if (ex.qNote) text += `  > ${ex.qNote}\n`;
+    });
+    text += `\n*Elapsed:* ~${mins} min\n\nBuilt with GloomBuilder · gloombuilder.app`;
+    return text;
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(generateBackblast());
+    setCopied(true);
+    onCopied("Backblast copied!");
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  let currentSection = "";
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 16px", borderBottom: `1px solid ${C.border}` }}>
+        <button onClick={onBack} style={{ fontFamily: F, background: C.solidCard, border: `1px solid ${C.border}`, borderRadius: 14, color: C.t2, fontSize: 15, fontWeight: 700, cursor: "pointer", padding: "10px 18px" }}>← Back</button>
+        <div style={{ textAlign: "center" }}>
+          <div style={{ fontFamily: F, fontSize: 20, fontWeight: 800, color: C.t1 }}>Review Beatdown</div>
+          <div style={{ fontFamily: F, fontSize: 15, color: C.t3, marginTop: 4, fontWeight: 600 }}>{activeCount} exercises · Tap any to edit</div>
+        </div>
+        <div style={{ width: 80 }} />
+      </div>
+      <div style={{ flex: 1, overflowY: "auto", padding: "4px 14px 140px", WebkitOverflowScrolling: "touch" as any }}>
+        {edits.map((ex, i) => {
+          if (ex.isTransition) return null;
+          const showSection = ex.sectionName !== currentSection;
+          if (showSection) currentSection = ex.sectionName;
+          const isExpanded = expandedIdx === i;
+          return (
+            <div key={i}>
+              {showSection && (
+                <div style={{ fontFamily: F, fontSize: 14, fontWeight: 800, color: C.green, textTransform: "uppercase", letterSpacing: 2.5, padding: "18px 0 10px", borderTop: i > 0 ? `1px solid ${C.border}` : "none" }}>
+                  {ex.sectionName}
+                </div>
+              )}
+              <div style={{ background: isExpanded ? C.solidCard : "transparent", border: isExpanded ? `1px solid ${C.green}40` : "1px solid transparent", borderRadius: 14, marginBottom: 4, overflow: "hidden" }}>
+                <button onClick={() => setExpandedIdx(isExpanded ? null : i)} style={{
+                  display: "flex", alignItems: "center", gap: 14, width: "100%", textAlign: "left" as const,
+                  background: "transparent", border: "none", borderRadius: 14, padding: "14px 14px", cursor: "pointer",
+                  opacity: ex.removed ? 0.35 : 1,
+                }}>
+                  <div style={{ width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 800, flexShrink: 0, background: ex.removed ? "rgba(239,68,68,0.15)" : "rgba(34,197,94,0.12)", color: ex.removed ? C.red : C.green }}>
+                    {ex.removed ? "✕" : "✓"}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontFamily: F, fontSize: 19, fontWeight: 700, color: ex.removed ? C.t4 : C.t1, textDecoration: ex.removed ? "line-through" : "none" }}>{ex.name}</div>
+                    <div style={{ fontFamily: F, fontSize: 15, color: ex.removed ? C.t4 : C.t3, fontWeight: 500, marginTop: 2 }}>
+                      {ex.reps} · {ex.cadence}
+                      {ex.qNote && <span style={{ color: "#a78bfa", marginLeft: 8 }}>✎ noted</span>}
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 14, color: C.t4, flexShrink: 0, transform: isExpanded ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s" }}>▼</span>
+                </button>
+                {isExpanded && (
+                  <div style={{ padding: "0 14px 16px", borderTop: `1px solid ${C.border}` }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
+                      <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: C.t3, width: 55 }}>Reps</span>
+                      <input value={ex.reps} onChange={(e) => updateEdit(i, "reps", e.target.value)} style={{ flex: 1, fontFamily: F, background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, borderRadius: 10, color: C.t1, fontSize: 17, fontWeight: 700, padding: "10px 14px", outline: "none", fontVariantNumeric: "tabular-nums" }} />
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10 }}>
+                      <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: C.t3, width: 55 }}>Count</span>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        {(["IC", "OYO"] as const).map(cad => (
+                          <button key={cad} onClick={() => updateEdit(i, "cadence", cad)} style={{
+                            fontFamily: F, padding: "10px 20px", borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: "pointer",
+                            background: ex.cadence === cad ? (cad === "IC" ? "rgba(245,158,11,0.15)" : "rgba(255,255,255,0.08)") : "rgba(255,255,255,0.03)",
+                            color: ex.cadence === cad ? (cad === "IC" ? C.amber : C.t2) : C.t4,
+                            border: `1px solid ${ex.cadence === cad ? (cad === "IC" ? "rgba(245,158,11,0.30)" : C.border) : "transparent"}`,
+                          }}>{cad}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div style={{ marginTop: 10 }}>
+                      <span style={{ fontFamily: F, fontSize: 14, fontWeight: 700, color: C.t3 }}>Q Note</span>
+                      <input value={ex.qNote} onChange={(e) => updateEdit(i, "qNote", e.target.value)} placeholder="Modified reps, swapped exercise, skipped..." style={{ width: "100%", fontFamily: F, marginTop: 6, background: "rgba(255,255,255,0.06)", border: `1px solid ${C.border}`, borderRadius: 10, color: C.t2, fontSize: 15, padding: "10px 14px", outline: "none", boxSizing: "border-box" as const }} />
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14 }}>
+                      {ex.removed
+                        ? <button onClick={() => updateEdit(i, "removed", false)} style={{ fontFamily: F, background: "none", border: `1px solid ${C.green}30`, borderRadius: 10, padding: "8px 16px", fontSize: 14, color: C.green, cursor: "pointer", fontWeight: 700 }}>Restore</button>
+                        : <button onClick={() => updateEdit(i, "removed", true)} style={{ fontFamily: F, background: "none", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 10, padding: "8px 16px", fontSize: 14, color: C.red, cursor: "pointer", fontWeight: 600 }}>Remove</button>
+                      }
+                      <button onClick={() => setExpandedIdx(null)} style={{ fontFamily: F, background: C.green, border: "none", borderRadius: 10, padding: "8px 22px", fontSize: 15, fontWeight: 800, color: "#000", cursor: "pointer" }}>Done</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: C.bg, borderTop: `1px solid ${C.border}`, padding: "14px 16px 28px" }}>
+        <div style={{ maxWidth: 430, margin: "0 auto" }}>
+          <button onClick={onCopyBackblast} style={{
+            fontFamily: F, width: "100%", padding: "22px 0", border: "none", borderRadius: 16, fontSize: 20, fontWeight: 800, cursor: "pointer",
+            background: C.green, color: "#000",
+            boxShadow: `0 0 30px ${C.green}44`,
+          }}>
+            Copy for Slack
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -479,12 +737,14 @@ interface LiveModeScreenProps {
 }
 
 export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sections, onClose }: LiveModeScreenProps) {
-  const exercises = flattenBeatdown(sections);
-  const [screen, setScreen] = useState<"prelaunch" | "exercise" | "complete">("prelaunch");
+  const [seedEx, setSeedEx] = useState<ExerciseData[]>(EX);
+  const exercises = flattenBeatdown(sections, seedEx);
+  const [screen, setScreen] = useState<"prelaunch" | "exercise" | "complete" | "review">("prelaunch");
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showJumpList, setShowJumpList] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showCopyModal, setShowCopyModal] = useState(false);
+  const [editedSections, setEditedSections] = useState<Section[] | null>(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [sectionJustChanged, setSectionJustChanged] = useState(false);
   const [toast, setToast] = useState("");
@@ -493,6 +753,16 @@ export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sec
   const wakeLockRef = useRef<any>(null);
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
+
+  // Load seed exercises for how-to lookup
+  useEffect(() => {
+    loadSeedExercises().then(rows => {
+      if (rows.length > 0) {
+        const mapped = rows.map(r => mapSupabaseExercise(r as Record<string, unknown>));
+        setSeedEx(mapped);
+      }
+    });
+  }, []);
 
   // Elapsed timer
   useEffect(() => {
@@ -540,10 +810,22 @@ export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sec
     setCurrentIndex(currentIndex + 1);
   };
 
+  const handlePrev = () => {
+    if (currentIndex <= 0) return;
+    setSectionJustChanged(exercises[currentIndex - 1].sectionName !== exercises[currentIndex].sectionName);
+    setCurrentIndex(currentIndex - 1);
+  };
+
   const handleExit = () => {
-    setScreen("prelaunch");
+    setScreen("complete");
     setShowExitConfirm(false);
+  };
+
+  const handleRunAgain = () => {
+    setCurrentIndex(0);
     setElapsedTime(0);
+    setSectionJustChanged(true);
+    setScreen("exercise");
   };
 
   const toastEl = toast ? (
@@ -554,19 +836,23 @@ export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sec
     <div style={{ maxWidth: 430, margin: "0 auto", fontFamily: F, background: C.bg, minHeight: "100vh", position: "relative", overflow: "hidden" }}>
       {toastEl}
       {showCopyModal && (
-        <CopyModal secs={sections} beatdownName={beatdownTitle} beatdownDesc="" qName={qName} onClose={() => setShowCopyModal(false)} onToast={fl} />
+        <CopyModal secs={editedSections || sections} beatdownName={beatdownTitle} beatdownDesc="" qName={qName} onClose={() => setShowCopyModal(false)} onToast={fl} />
       )}
       {screen === "prelaunch" && (
-        <PreLaunchScreen title={beatdownTitle} qName={qName} ao={ao} duration={duration} sections={sections} exercises={exercises} onStart={startBeatdown} />
+        <PreLaunchScreen title={beatdownTitle} qName={qName} ao={ao} duration={duration} sections={sections} exercises={exercises} onStart={startBeatdown} onClose={onClose} />
       )}
       {screen === "exercise" && (
         <ExerciseScreen exercise={exercises[currentIndex]} exercises={exercises} currentIndex={currentIndex} totalExercises={exercises.length}
-          onNext={handleNext} onJumpList={() => setShowJumpList(true)} onExit={() => setShowExitConfirm(true)}
+          onNext={handleNext} onPrev={handlePrev} onJumpList={() => setShowJumpList(true)} onExit={() => setShowExitConfirm(true)}
           elapsedTime={elapsedTime} sectionJustChanged={sectionJustChanged} />
       )}
       {screen === "complete" && (
         <CompletionScreen title={beatdownTitle} qName={qName} ao={ao} sections={sections} exercises={exercises} elapsedTime={elapsedTime}
-          onDone={onClose} onCopyBackblast={() => setShowCopyModal(true)} />
+          onDone={onClose} onReview={() => setScreen("review")} onRunAgain={handleRunAgain} />
+      )}
+      {screen === "review" && (
+        <ReviewScreen sections={sections} exercises={exercises} elapsedTime={elapsedTime} qName={qName} beatdownTitle={beatdownTitle}
+          onBack={() => setScreen("complete")} onCopied={fl} onCopyBackblast={() => setShowCopyModal(true)} onEditsChanged={setEditedSections} />
       )}
       {showJumpList && (
         <JumpList exercises={exercises} currentIndex={currentIndex} onJump={goToExercise} onClose={() => setShowJumpList(false)} />

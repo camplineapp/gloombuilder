@@ -35,7 +35,7 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
     date: new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "2-digit", year: "numeric" }),
     time: "5:15 AM",
     cond: "",
-    q: qName || "The Bishop",
+    q: qName || "Q",
     fngs: "",
     pax: "",
     cnt: "",
@@ -87,7 +87,7 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
     let qpText = "";
     if (beatdownName) qpText += beatdownName + "\n";
     if (beatdownDesc) qpText += beatdownDesc + "\n";
-    if (beatdownName || beatdownDesc) qpText += "Q: " + (qName || "The Bishop") + "\n";
+    if (beatdownName || beatdownDesc) qpText += "Q: " + (qName || "Q") + "\n";
     secs.forEach(s => {
       qpText += "\n── " + _sLabel(s) + " ──\n";
       if (_sNotes(s)) qpText += "> " + _sNotes(s) + "\n";

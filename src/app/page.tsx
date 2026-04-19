@@ -471,7 +471,7 @@ export default function App() {
   if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "live") {
     return (
       <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: vw === "live" ? 0 : 20, paddingBottom: vw === "live" ? 0 : 100, position: "relative" }}>
-        {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} onRunThis={async (secs, title, dur, saveData) => {
+        {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} onRunThis={async (secs, title, dur, saveData) => {
           // Save to locker WITHOUT resetting view
           if (saveData) {
             const result = await saveBeatdown({ nm: saveData.nm, desc: saveData.desc, d: saveData.d, secs: saveData.secs, tg: saveData.tg, src: saveData.src, dur: saveData.dur, sites: saveData.sites, eq: saveData.eq, isPublic: saveData.share || false });
