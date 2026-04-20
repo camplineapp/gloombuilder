@@ -616,8 +616,9 @@ export default function SectionEditor({ sections, onSectionsChange, allEx }: Sec
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const sec = sections[si];
-    const oi = sec.exercises.findIndex(e => (e.id || e.n) === active.id);
-    const ni = sec.exercises.findIndex(e => (e.id || e.n) === over.id);
+    const exIds = sec.exercises.map((e, idx) => e.id ? `${e.id}-${idx}` : (e.n ? `${e.n}-${idx}` : `ex-${si}-${idx}`));
+    const oi = exIds.indexOf(String(active.id));
+    const ni = exIds.indexOf(String(over.id));
     if (oi === -1 || ni === -1) return;
     update(sections.map((s, i) => i !== si ? s : { ...s, exercises: arrayMove(s.exercises, oi, ni) }));
   };
