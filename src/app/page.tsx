@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
-import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, unshareBeatdown, unshareExercise, addVote, removeVote, loadUserVotes, addBookmark, removeBookmark, loadMyBookmarks, stealBeatdown, stealExercise, updateExercise, updateBeatdown } from "@/lib/db";
+import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, unshareBeatdown, unshareExercise, addVote, removeVote, loadUserVotes, stealBeatdown, stealExercise, updateExercise, updateBeatdown } from "@/lib/db";
 import type { User } from "@supabase/supabase-js";
 import { normalizeSection } from "@/lib/exercises";
 import type { Section } from "@/lib/exercises";
@@ -160,7 +160,6 @@ export default function App() {
   // Locker state — loaded from Supabase
   const [lk, setLk] = useState<LockerBeatdown[]>([]);
   const [lkEx, setLkEx] = useState<LockerExercise[]>([]);
-  const [lkBm, setLkBm] = useState<Set<string>>(new Set());
 
   // Library shared items — loaded from Supabase
   const [sharedItems, setSharedItems] = useState<SharedItem[]>([]);
@@ -241,7 +240,6 @@ export default function App() {
       loadLocker();
       loadLibrary();
       loadUserVotes().then(ids => setUserVotes(new Set(ids)));
-      loadMyBookmarks().then(bms => setLkBm(new Set(bms.map(b => b.item_id as string))));
     }
   }, [user, loadLocker, loadLibrary]);
 
@@ -464,29 +462,6 @@ export default function App() {
     }
   };
 
-  const handleBookmark = async (itemId: string, itemType: "beatdown" | "exercise") => {
-    const isBookmarked = lkBm.has(itemId);
-    if (isBookmarked) {
-      const success = await removeBookmark(itemId, itemType);
-      if (success) {
-        const nb = new Set(lkBm);
-        nb.delete(itemId);
-        setLkBm(nb);
-        fl("Bookmark removed");
-      }
-    } else {
-      const success = await addBookmark(itemId, itemType);
-      if (success) {
-        const nb = new Set(lkBm);
-        nb.add(itemId);
-        setLkBm(nb);
-        fl("Bookmarked!");
-      } else {
-        fl("Bookmark failed");
-      }
-    }
-  };
-
   const handleSteal = async (itemId: string, itemType: "beatdown" | "exercise") => {
     if (itemType === "beatdown") {
       const copy = await stealBeatdown(itemId);
@@ -572,15 +547,13 @@ export default function App() {
           onCreateEx={() => setVw("create-ex")}
         />
       )}
-      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} userBookmarks={lkBm} onBookmark={handleBookmark} onSteal={handleSteal} onRunBeatdown={handleRunLibraryBeatdown} onRefresh={loadLibrary} />}
+      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} onSteal={handleSteal} onRunBeatdown={handleRunLibraryBeatdown} onRefresh={loadLibrary} />}
       {tab === "locker" && (
         <LockerScreen
           lk={lk}
           setLk={setLk}
           lkEx={lkEx}
           setLkEx={setLkEx}
-          lkBm={lkBm}
-          sharedItems={sharedItems}
           onNavigate={(view) => setVw(view)}
           onDeleteBeatdown={handleDeleteBeatdown}
           onDeleteExercise={handleDeleteExercise}
@@ -588,8 +561,6 @@ export default function App() {
           onShareExercise={handleShareExercise}
           onUnshareBeatdown={handleUnshareBeatdown}
           onUnshareExercise={handleUnshareExercise}
-          onRemoveBookmark={handleBookmark}
-          onSteal={handleSteal}
           onUpdateExercise={handleUpdateExercise}
           onEditBeatdown={handleEditBeatdown}
           onRunBeatdown={handleRunBeatdown}
