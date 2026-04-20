@@ -733,10 +733,11 @@ interface LiveModeScreenProps {
   ao: string;
   duration: string;
   sections: Section[];
+  inspiredBy?: string;
   onClose: () => void;
 }
 
-export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sections, onClose }: LiveModeScreenProps) {
+export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sections, inspiredBy, onClose }: LiveModeScreenProps) {
   const [seedEx, setSeedEx] = useState<ExerciseData[]>(EX);
   const exercises = flattenBeatdown(sections, seedEx);
   const [screen, setScreen] = useState<"prelaunch" | "exercise" | "complete" | "review">("prelaunch");
@@ -836,7 +837,7 @@ export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sec
     <div style={{ maxWidth: 430, margin: "0 auto", fontFamily: F, background: C.bg, minHeight: "100vh", position: "relative", overflow: "hidden" }}>
       {toastEl}
       {showCopyModal && (
-        <CopyModal secs={editedSections || sections} beatdownName={beatdownTitle} beatdownDesc="" qName={qName} onClose={() => { setShowCopyModal(false); if (screen === "review") setScreen("complete"); }} onToast={fl} />
+        <CopyModal secs={editedSections || sections} beatdownName={beatdownTitle} beatdownDesc="" qName={qName} inspiredBy={inspiredBy} onClose={() => { setShowCopyModal(false); if (screen === "review") setScreen("complete"); }} onToast={fl} />
       )}
       {screen === "prelaunch" && (
         <PreLaunchScreen title={beatdownTitle} qName={qName} ao={ao} duration={duration} sections={sections} exercises={exercises} onStart={startBeatdown} onClose={onClose} />

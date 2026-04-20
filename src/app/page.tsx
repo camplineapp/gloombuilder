@@ -385,6 +385,25 @@ export default function App() {
     setVw("live");
   };
 
+  // Run a shared beatdown from the Library (read-only, no save)
+  const handleRunLibraryBeatdown = (item: { nm: string; au: string; ao: string; d: string; dur: string | null; secs?: { label: string; color: string; exercises: { n: string; r: string; c: string; nt: string }[]; note: string }[]; tg?: string[] }) => {
+    if (!item.secs || item.secs.length === 0) return;
+    const secs = item.secs.map(s => normalizeSection(s as unknown as Section));
+    setLiveBd({
+      id: "library-run",
+      nm: item.nm,
+      dt: "",
+      src: "Library",
+      d: item.d || "medium",
+      desc: "",
+      secs,
+      tg: item.tg || [],
+      isPublic: false,
+      inspiredBy: item.au,
+    });
+    setVw("live");
+  };
+
   const handleUpdateBeatdown = async (id: string, data: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; dur: string | null; sites: string[]; eq: string[] }) => {
     const durNum = data.dur ? parseInt(data.dur) : null;
     const success = await updateBeatdown(id, { nm: data.nm, desc: data.desc, d: data.d, dur: durNum, siteFeatures: data.sites, equipment: data.eq, tags: data.tg, sections: data.secs });
@@ -512,6 +531,7 @@ export default function App() {
           ao={profAO || "F3"}
           duration={liveBd.tg.find(t => t.includes("min")) || "45 min"}
           sections={liveBd.secs}
+          inspiredBy={liveBd.inspiredBy}
           onClose={() => { setVw(null); setLiveBd(null); }}
         />}
         {toastEl}
@@ -530,7 +550,7 @@ export default function App() {
           onCreateEx={() => setVw("create-ex")}
         />
       )}
-      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} userBookmarks={lkBm} onBookmark={handleBookmark} onSteal={handleSteal} onRefresh={loadLibrary} />}
+      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} userBookmarks={lkBm} onBookmark={handleBookmark} onSteal={handleSteal} onRunBeatdown={handleRunLibraryBeatdown} onRefresh={loadLibrary} />}
       {tab === "locker" && (
         <LockerScreen
           lk={lk}

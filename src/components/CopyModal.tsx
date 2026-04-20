@@ -24,11 +24,12 @@ interface CopyModalProps {
   beatdownName?: string;
   beatdownDesc?: string;
   qName?: string;
+  inspiredBy?: string;
   onClose: () => void;
   onToast: (msg: string) => void;
 }
 
-export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onClose, onToast }: CopyModalProps) {
+export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, inspiredBy, onClose, onToast }: CopyModalProps) {
   const [step, setStep] = useState<"pick" | "quickpreview" | "bb">("pick");
 
   // ═══ TASK 2: Body scroll lock when modal is open ═══
@@ -115,6 +116,7 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
     let qpText = "";
     if (beatdownName) qpText += beatdownName + "\n";
     if (beatdownName) qpText += "Q: " + (qName || "Q") + "\n";
+    if (inspiredBy) qpText += "Inspired by: " + inspiredBy + "\n";
     secs.forEach(s => {
       qpText += "\n── " + _sLabel(s) + " ──\n";
       if (_sNotes(s)) qpText += "> " + _sNotes(s) + "\n";
@@ -152,6 +154,7 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
   if (bb.time) bbText += "Time: " + bb.time + "\n";
   if (bb.cond) bbText += "Conditions: " + bb.cond + "\n";
   bbText += "Q: " + bb.q + "\n";
+  if (inspiredBy) bbText += "Inspired by: " + inspiredBy + "\n";
   if (bb.fngs) bbText += "FNGs: " + bb.fngs + "\n";
   if (bb.pax) bbText += "PAX: " + bb.pax + "\n";
   if (bb.cnt) bbText += "Total PAX: " + bb.cnt + "\n";
