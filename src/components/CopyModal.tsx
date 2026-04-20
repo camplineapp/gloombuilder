@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Section, SectionExercise } from "@/lib/exercises";
 
 const CD = "rgba(255,255,255,0.028)";
@@ -30,6 +30,34 @@ interface CopyModalProps {
 
 export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onClose, onToast }: CopyModalProps) {
   const [step, setStep] = useState<"pick" | "quickpreview" | "bb">("pick");
+
+  // ═══ TASK 2: Body scroll lock when modal is open ═══
+  useEffect(() => {
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.overflow = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
+  // ═══ TASK 3: Auto-close after copy with delay ═══
+  const handleCopy = (text: string, toastMsg: string) => {
+    navigator.clipboard.writeText(text);
+    onToast(toastMsg);
+    setTimeout(() => {
+      onClose();
+    }, 1500);
+  };
+
   const [bb, setBb] = useState({
     ao: "F3 Essex",
     date: new Date().toLocaleDateString("en-US", { weekday: "short", month: "short", day: "2-digit", year: "numeric" }),
@@ -86,8 +114,7 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
   if (step === "quickpreview") {
     let qpText = "";
     if (beatdownName) qpText += beatdownName + "\n";
-    if (beatdownDesc) qpText += beatdownDesc + "\n";
-    if (beatdownName || beatdownDesc) qpText += "Q: " + (qName || "Q") + "\n";
+    if (beatdownName) qpText += "Q: " + (qName || "Q") + "\n";
     secs.forEach(s => {
       qpText += "\n── " + _sLabel(s) + " ──\n";
       if (_sNotes(s)) qpText += "> " + _sNotes(s) + "\n";
@@ -111,25 +138,24 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
           <div style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: T1, textAlign: "center", marginBottom: 6 }}>Quick copy</div>
           <div style={{ fontFamily: F, fontSize: 14, color: T4, textAlign: "center", marginBottom: 20 }}>Preview what gets copied</div>
           <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid " + BD, borderRadius: 14, padding: "16px 18px", fontFamily: "monospace", fontSize: 13, color: T3, lineHeight: 1.7, whiteSpace: "pre-wrap", marginBottom: 16 }}>{qpText}</div>
-          <button onClick={() => { navigator.clipboard.writeText(qpText); onToast("Copied!"); onClose(); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Copy to clipboard</button>
+          <button onClick={() => handleCopy(qpText, "Copied!")} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Copy to clipboard</button>
           <div style={{ textAlign: "center", marginTop: 10, fontFamily: F, fontSize: 13, color: T5 }}>Paste in Slack, WhatsApp, or anywhere</div>
         </div>
       </div>
     );
   }
 
-  // ════ FULL BACKBLAST ════
+  // ════ FULL BACKBLAST — TASK 1: No asterisks, clean plain text ════
   let bbText = "";
-  if (beatdownName) bbText += "*" + beatdownName + "*\n";
-  if (beatdownDesc) bbText += beatdownDesc + "\n";
-  bbText += "\n*AO:* " + bb.ao + "\n*Date:* " + bb.date + "\n";
-  if (bb.time) bbText += "*Time:* " + bb.time + "\n";
-  if (bb.cond) bbText += "*Conditions:* " + bb.cond + "\n";
-  bbText += "*Q:* " + bb.q + "\n";
-  if (bb.fngs) bbText += "*FNGs:* " + bb.fngs + "\n";
-  if (bb.pax) bbText += "*PAX:* " + bb.pax + "\n";
-  if (bb.cnt) bbText += "*Total PAX:* " + bb.cnt + "\n";
-  bbText += "\n*Workout:*\n";
+  if (beatdownName) bbText += beatdownName + "\n";
+  bbText += "\nAO: " + bb.ao + "\nDate: " + bb.date + "\n";
+  if (bb.time) bbText += "Time: " + bb.time + "\n";
+  if (bb.cond) bbText += "Conditions: " + bb.cond + "\n";
+  bbText += "Q: " + bb.q + "\n";
+  if (bb.fngs) bbText += "FNGs: " + bb.fngs + "\n";
+  if (bb.pax) bbText += "PAX: " + bb.pax + "\n";
+  if (bb.cnt) bbText += "Total PAX: " + bb.cnt + "\n";
+  bbText += "\nWorkout:\n";
   secs.forEach(s => {
     bbText += "\n── " + _sLabel(s) + " ──\n";
     if (_sNotes(s)) bbText += "> " + _sNotes(s) + "\n";
@@ -144,8 +170,8 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
       }
     });
   });
-  if (bb.cot) bbText += "\n*COT:*\n" + bb.cot + "\n";
-  if (bb.ann) bbText += "\n*Announcements:*\n" + bb.ann + "\n";
+  if (bb.cot) bbText += "\nCOT:\n" + bb.cot + "\n";
+  if (bb.ann) bbText += "\nAnnouncements:\n" + bb.ann + "\n";
   bbText += "\nBuilt with GloomBuilder · gloombuilder.app";
 
   return (
@@ -216,9 +242,9 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, onC
         {/* Preview */}
         <div style={{ borderTop: "1px solid " + BD, marginTop: 20, paddingTop: 20 }}>
           <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: T1, marginBottom: 4 }}>Preview</div>
-          <div style={{ fontFamily: F, fontSize: 13, color: T5, marginBottom: 14 }}>Formatted for Slack — works in any app</div>
+          <div style={{ fontFamily: F, fontSize: 13, color: T5, marginBottom: 14 }}>Clean text — works in any app</div>
           <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid " + BD, borderRadius: 14, padding: "16px 18px", fontFamily: "monospace", fontSize: 12, color: T3, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{bbText}</div>
-          <button onClick={() => { navigator.clipboard.writeText(bbText); onToast("Backblast copied!"); onClose(); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none", marginTop: 16 }}>Copy backblast</button>
+          <button onClick={() => handleCopy(bbText, "Backblast copied!")} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none", marginTop: 16 }}>Copy backblast</button>
           <div style={{ textAlign: "center", marginTop: 10, fontFamily: F, fontSize: 13, color: T5 }}>Paste into #backblasts or any chat</div>
         </div>
       </div>

@@ -118,12 +118,12 @@ function ExerciseInfoSheet({ exData, onClose }: { exData: ExerciseData; onClose:
           {/* Header: name + close */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <div style={{ color: T1, fontSize: 20, fontWeight: 800, fontFamily: F, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{exData.n}</div>
-            <button onClick={onClose} style={{ color: T4, background: "none", border: "none", fontSize: 24, cursor: "pointer", fontFamily: F, flexShrink: 0, padding: "0 0 0 12px" }}>✕</button>
+            <button onClick={onClose} style={{ color: T3, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", fontSize: 22, cursor: "pointer", fontFamily: F, flexShrink: 0, padding: 0, width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: 12 }}>✕</button>
           </div>
 
           {/* Description */}
           {exData.d && (
-            <div style={{ color: T3, fontSize: 15, lineHeight: 1.65, fontFamily: F, marginBottom: 16 }}>{exData.d}</div>
+            <div style={{ color: T3, fontSize: 17, lineHeight: 1.65, fontFamily: F, marginBottom: 16 }}>{exData.d}</div>
           )}
 
           {/* How-to */}
@@ -132,7 +132,7 @@ function ExerciseInfoSheet({ exData, onClose }: { exData: ExerciseData; onClose:
               <div style={{ color: T4, fontSize: 11, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 10, fontFamily: F }}>How to do it</div>
               <div>
                 {exData.h.split(/(?=\d+\.\s)/).filter(Boolean).map((step, i) => (
-                  <div key={i} style={{ color: T3, fontSize: 15, lineHeight: 1.7, marginBottom: 5, fontFamily: F }}>{step.trim()}</div>
+                  <div key={i} style={{ color: T3, fontSize: 18, lineHeight: 1.7, marginBottom: 5, fontFamily: F }}>{step.trim()}</div>
                 ))}
               </div>
             </div>
@@ -489,7 +489,7 @@ function SortableSectionBlock({
             </div>
           ) : (
             <div style={{ padding: "0 4px 10px" }}>
-              <span onClick={() => { setQNotesDraft(""); setQNotesOpen(true); }} style={{ color: T3, fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: F }}>+ Add Q notes</span>
+              <span onClick={() => { setQNotesDraft(""); setQNotesOpen(true); }} style={{ color: T4, fontSize: 13, fontWeight: 500, cursor: "pointer", fontFamily: F }}>+ Add Q notes</span>
             </div>
           )}
 
