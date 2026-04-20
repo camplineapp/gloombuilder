@@ -164,10 +164,7 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
       {/* Share toggle — hidden in edit mode */}
       {!editData ? (
         <div
-          onClick={() => {
-            if (!shareLib) { if (confirm("Share to community? This can't be undone.")) setShareLib(true); }
-            else { setShareLib(false); }
-          }}
+          onClick={() => setShareLib(!shareLib)}
           style={{ background: shareLib ? G + "10" : CD, border: "1px solid " + (shareLib ? G + "25" : BD), borderRadius: 12, padding: "14px 16px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}
         >
           <div style={{ width: 24, height: 24, borderRadius: 6, border: "2px solid " + (shareLib ? G : T4), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: BG, background: shareLib ? G : "transparent", fontWeight: 800 }}>{shareLib ? "✓" : ""}</div>

@@ -108,7 +108,7 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName }
         </div>
 
         {/* Share toggle */}
-        <div onClick={() => { if (!shareLib) { if (confirm("Share to community? This can't be undone.")) setShareLib(true); } else { setShareLib(false); } }} style={{ background: shareLib ? G + "10" : CD, border: "1px solid " + (shareLib ? G + "25" : BD), borderRadius: 12, padding: "14px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+        <div onClick={() => setShareLib(!shareLib)} style={{ background: shareLib ? G + "10" : CD, border: "1px solid " + (shareLib ? G + "25" : BD), borderRadius: 12, padding: "14px 16px", marginBottom: 14, display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
           <div style={{ width: 24, height: 24, borderRadius: 6, border: "2px solid " + (shareLib ? G : T4), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, color: BG, background: shareLib ? G : "transparent", fontWeight: 800 }}>{shareLib ? "✓" : ""}</div>
           <span style={{ fontSize: 16, color: shareLib ? G : T4, fontWeight: 600, fontFamily: F }}>Share to community library</span>
         </div>

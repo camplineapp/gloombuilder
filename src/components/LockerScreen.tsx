@@ -104,6 +104,8 @@ interface LockerScreenProps {
   onDeleteExercise?: (id: string) => void;
   onShareBeatdown?: (id: string) => void;
   onShareExercise?: (id: string) => void;
+  onUnshareBeatdown?: (id: string) => void;
+  onUnshareExercise?: (id: string) => void;
   onRemoveBookmark?: (id: string, itemType: "beatdown" | "exercise") => void;
   onSteal?: (id: string, itemType: "beatdown" | "exercise") => void;
   onUpdateExercise?: (id: string, data: { nm: string; desc?: string; how: string; tags: string[] }) => void;
@@ -111,13 +113,14 @@ interface LockerScreenProps {
   onRunBeatdown?: (bd: LockerBeatdown) => void;
 }
 
-export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedItems = [], onNavigate, onDeleteBeatdown, onDeleteExercise, onShareBeatdown, onShareExercise, onRemoveBookmark, onSteal, onUpdateExercise, onEditBeatdown, onRunBeatdown }: LockerScreenProps) {
+export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedItems = [], onNavigate, onDeleteBeatdown, onDeleteExercise, onShareBeatdown, onShareExercise, onUnshareBeatdown, onUnshareExercise, onRemoveBookmark, onSteal, onUpdateExercise, onEditBeatdown, onRunBeatdown }: LockerScreenProps) {
   const [lT, setLT] = useState(0);
   const [toast, setToast] = useState("");
   const [edLkExI, setEdLkExI] = useState<number | null>(null);
   const [edLkExD, setEdLkExD] = useState<LockerExercise | null>(null);
   const [copySecs, setCopySecs] = useState<LockerBeatdown | null>(null);
   const [actionSheet, setActionSheet] = useState<{ items: { label: string; color: string; icon: string; onClick: () => void }[] } | null>(null);
+  const [unshareConfirm, setUnshareConfirm] = useState<{ id: string; name: string; type: "beatdown" | "exercise" } | null>(null);
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 
@@ -134,7 +137,7 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedIte
     if (!bd.isPublic) {
       items.push({ label: "Share to Library", color: A, icon: "↗", onClick: () => { if (confirm("Share this beatdown to the community library?")) onShareBeatdown?.(bd.id); } });
     } else {
-      items.push({ label: "Shared", color: G, icon: "✓", onClick: () => {} });
+      items.push({ label: "Unshare", color: R, icon: "↙", onClick: () => setUnshareConfirm({ id: bd.id, name: bd.nm, type: "beatdown" }) });
     }
     items.push({ label: "Delete", color: R, icon: "🗑", onClick: () => { if (confirm("Delete this beatdown? This can't be undone.")) onDeleteBeatdown?.(bd.id); } });
     setActionSheet({ items });
@@ -148,7 +151,7 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedIte
     if (!ex.shared) {
       items.push({ label: "Share to Library", color: A, icon: "↗", onClick: () => { if (confirm("Share this exercise to the community library?")) onShareExercise?.(ex.id); } });
     } else {
-      items.push({ label: "Shared", color: G, icon: "✓", onClick: () => {} });
+      items.push({ label: "Unshare", color: R, icon: "↙", onClick: () => setUnshareConfirm({ id: ex.id, name: ex.nm, type: "exercise" }) });
     }
     items.push({ label: "Delete", color: R, icon: "🗑", onClick: () => { if (confirm("Delete this exercise? This can't be undone.")) onDeleteExercise?.(ex.id); } });
     setActionSheet({ items });
@@ -300,6 +303,29 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedIte
         ) : null}
 
       </div>
+
+      {/* ═══ UNSHARE CONFIRMATION DIALOG ═══ */}
+      {unshareConfirm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 250, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div style={{ background: "#1c1c20", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 22, padding: "32px 28px", maxWidth: 360, width: "100%", textAlign: "center" }}>
+            <h3 style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: T1, margin: "0 0 12px" }}>Unshare {unshareConfirm.type === "beatdown" ? "beatdown" : "exercise"}?</h3>
+            <p style={{ fontFamily: F, fontSize: 15, color: T3, margin: "0 0 8px", lineHeight: 1.6 }}>
+              This will remove <span style={{ color: T1, fontWeight: 700 }}>{unshareConfirm.name}</span> from the Library.
+            </p>
+            <p style={{ fontFamily: F, fontSize: 14, color: R, margin: "0 0 28px", lineHeight: 1.5 }}>
+              All votes and comments from other PAX will be permanently deleted.
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button onClick={() => setUnshareConfirm(null)} style={{ fontFamily: F, flex: 1, padding: "18px 0", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 14, fontSize: 16, fontWeight: 700, color: T2, cursor: "pointer" }}>Keep Shared</button>
+              <button onClick={() => {
+                if (unshareConfirm.type === "beatdown") onUnshareBeatdown?.(unshareConfirm.id);
+                else onUnshareExercise?.(unshareConfirm.id);
+                setUnshareConfirm(null);
+              }} style={{ fontFamily: F, flex: 1, padding: "18px 0", background: R, border: "none", borderRadius: 14, fontSize: 16, fontWeight: 800, color: "#fff", cursor: "pointer" }}>Unshare</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ ACTION SHEET ═══ */}
       {actionSheet && <ActionSheet items={actionSheet.items} onClose={() => setActionSheet(null)} />}

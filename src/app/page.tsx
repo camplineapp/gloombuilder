@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase";
-import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, addVote, removeVote, loadUserVotes, addBookmark, removeBookmark, loadMyBookmarks, stealBeatdown, stealExercise, updateExercise, updateBeatdown } from "@/lib/db";
+import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, unshareBeatdown, unshareExercise, addVote, removeVote, loadUserVotes, addBookmark, removeBookmark, loadMyBookmarks, stealBeatdown, stealExercise, updateExercise, updateBeatdown } from "@/lib/db";
 import type { User } from "@supabase/supabase-js";
 import { normalizeSection } from "@/lib/exercises";
 import type { Section } from "@/lib/exercises";
@@ -364,6 +364,28 @@ export default function App() {
     }
   };
 
+  const handleUnshareBeatdown = async (id: string) => {
+    const success = await unshareBeatdown(id);
+    if (success) {
+      setLk(lk.map(b => b.id === id ? { ...b, isPublic: false } : b));
+      await loadLibrary();
+      fl("Removed from Library");
+    } else {
+      fl("Error unsharing");
+    }
+  };
+
+  const handleUnshareExercise = async (id: string) => {
+    const success = await unshareExercise(id);
+    if (success) {
+      setLkEx(lkEx.map(e => e.id === id ? { ...e, shared: false } : e));
+      await loadLibrary();
+      fl("Removed from Library");
+    } else {
+      fl("Error unsharing");
+    }
+  };
+
   const handleUpdateExercise = async (id: string, data: { nm: string; desc?: string; how: string; tags: string[] }) => {
     const success = await updateExercise(id, data);
     if (success) {
@@ -564,6 +586,8 @@ export default function App() {
           onDeleteExercise={handleDeleteExercise}
           onShareBeatdown={handleShareBeatdown}
           onShareExercise={handleShareExercise}
+          onUnshareBeatdown={handleUnshareBeatdown}
+          onUnshareExercise={handleUnshareExercise}
           onRemoveBookmark={handleBookmark}
           onSteal={handleSteal}
           onUpdateExercise={handleUpdateExercise}

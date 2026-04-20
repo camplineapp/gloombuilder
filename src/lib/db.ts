@@ -219,13 +219,57 @@ export async function shareExercise(id: string) {
   return true;
 }
 
+// ════ UNSHARE (remove from public, delete votes/comments/bookmarks) ════
+
+export async function unshareBeatdown(id: string) {
+  const supabase = createClient();
+
+  // Delete votes, comments, and bookmarks for this item
+  await supabase.from("votes").delete().eq("item_id", id).eq("item_type", "beatdown");
+  await supabase.from("comments").delete().eq("item_id", id).eq("item_type", "beatdown");
+  await supabase.from("bookmarks").delete().eq("item_id", id).eq("item_type", "beatdown");
+
+  // Set beatdown back to private
+  const { error } = await supabase
+    .from("beatdowns")
+    .update({ is_public: false })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Unshare beatdown error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function unshareExercise(id: string) {
+  const supabase = createClient();
+
+  // Delete votes, comments, and bookmarks for this item
+  await supabase.from("votes").delete().eq("item_id", id).eq("item_type", "exercise");
+  await supabase.from("comments").delete().eq("item_id", id).eq("item_type", "exercise");
+  await supabase.from("bookmarks").delete().eq("item_id", id).eq("item_type", "exercise");
+
+  // Set exercise back to private
+  const { error } = await supabase
+    .from("exercises")
+    .update({ source: "private" })
+    .eq("id", id);
+
+  if (error) {
+    console.error("Unshare exercise error:", error);
+    return false;
+  }
+  return true;
+}
+
 // ════ LOAD SEED EXERCISES FOR GENERATOR ════
 
 export async function loadSeedExercises() {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("exercises")
-    .select("name, aliases, description, how_to, body_part, exercise_type, equipment, site_type, cadence, difficulty, intensity, movement_type, is_mary, is_transport, popularity_tier, is_core")
+    .select("name, aliases, description, how_to, body_part, exercise_type, equipment, site_type, cadence, difficulty, intensity, movement_type, is_mary, is_transport, popularity_tier")
     .eq("source", "seed");
 
   if (error) {
