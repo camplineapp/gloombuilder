@@ -481,7 +481,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
       {/* Exercise Database view */}
       {libT === "exercises" && exMode === "database" ? (
         <div>
-          <input value={dbSearch} onChange={e => setDbSearch(e.target.value)} placeholder="Search 904 exercises..." style={{ ...ist, marginBottom: 10 }} />
+          <input value={dbSearch} onChange={e => setDbSearch(e.target.value)} placeholder={`Search ${seedEx.length} exercises...`} style={{ ...ist, marginBottom: 10 }} />
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 14 }}>
             {["All", ...TAGS].map(t => (
               <button key={t} onClick={() => setDbTag(t)} style={{ fontFamily: F, background: dbTag === t ? P + "20" : "rgba(255,255,255,0.04)", color: dbTag === t ? P : T5, border: "1px solid " + (dbTag === t ? P + "30" : BD), padding: "5px 11px", borderRadius: 20, fontSize: 10, cursor: "pointer", textTransform: "uppercase", fontWeight: 600 }}>{t}</button>
