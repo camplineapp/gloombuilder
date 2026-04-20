@@ -56,9 +56,11 @@ interface FlatExercise {
 function flattenBeatdown(sections: Section[], allEx?: ExerciseData[]): FlatExercise[] {
   const flat: FlatExercise[] = [];
   sections.forEach((sec, si) => {
+    if (!sec || !sec.exercises) return;
     // Support both old (label/note) and new (name/qNotes) section fields
     const secName = (sec as any).name || sec.label || "Section";
     sec.exercises.forEach((ex: SectionExercise, ei: number) => {
+      if (!ex) return;
       const isTransition = ex.type === "transition";
       // Support both old (n/r/c/nt) and new (name/mode/value/unit/cadence/note) fields
       const exName = (ex as any).name || ex.n || "";
@@ -188,9 +190,15 @@ function PreLaunchScreen({ title, qName, ao, duration, sections, exercises, onSt
               </div>
             ))}
           </div>
-          <button onClick={onStart} style={{ fontFamily: F, width: "100%", padding: "22px 0", background: C.green, border: "none", borderRadius: 16, fontSize: 20, fontWeight: 800, color: "#000", cursor: "pointer", boxShadow: `0 0 40px ${C.green}44` }}>
-            Start Beatdown
-          </button>
+          {exercises.filter(e => !e.isTransition).length > 0 ? (
+            <button onClick={onStart} style={{ fontFamily: F, width: "100%", padding: "22px 0", background: C.green, border: "none", borderRadius: 16, fontSize: 20, fontWeight: 800, color: "#000", cursor: "pointer", boxShadow: `0 0 40px ${C.green}44` }}>
+              Start Beatdown
+            </button>
+          ) : (
+            <div style={{ fontFamily: F, width: "100%", padding: "22px 0", background: C.solidCard, border: `1px solid ${C.border}`, borderRadius: 16, fontSize: 18, fontWeight: 700, color: C.t4, textAlign: "center" }}>
+              No exercises yet
+            </div>
+          )}
           <p style={{ fontFamily: F, fontSize: 14, color: C.t4, marginTop: 10 }}>Screen stays awake during Live Mode</p>
         </div>
         <div style={{ marginTop: 24, paddingBottom: 40 }}>
@@ -198,8 +206,8 @@ function PreLaunchScreen({ title, qName, ao, duration, sections, exercises, onSt
           <div style={{ background: C.solidCard, border: `1px solid ${C.border}`, borderRadius: 16, padding: "12px 18px" }}>
             {sections.map((sec, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: i < sections.length - 1 ? `1px solid ${C.border}` : "none" }}>
-                <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: C.t2 }}>{sec.label}</span>
-                <span style={{ fontFamily: F, fontSize: 15, color: C.t3 }}>{sec.exercises.filter((e: SectionExercise) => e.type !== "transition").length} exercises</span>
+                <span style={{ fontFamily: F, fontSize: 16, fontWeight: 700, color: C.t2 }}>{(sec as any).name || sec.label || "Section"}</span>
+                <span style={{ fontFamily: F, fontSize: 15, color: C.t3 }}>{(sec.exercises || []).filter((e: SectionExercise) => e.type !== "transition").length} exercises</span>
               </div>
             ))}
           </div>
