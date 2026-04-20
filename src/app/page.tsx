@@ -388,7 +388,7 @@ export default function App() {
   // Run a shared beatdown from the Library (read-only, no save)
   const handleRunLibraryBeatdown = (item: { nm: string; au: string; ao: string; d: string; dur: string | null; secs?: { label: string; color: string; exercises: { n: string; r: string; c: string; nt: string }[]; note: string }[]; tg?: string[] }) => {
     if (!item.secs || item.secs.length === 0) return;
-    const secs = item.secs.map(s => normalizeSection(s as unknown as Section));
+    const secs = item.secs.map(s => normalizeSection(s as unknown as Record<string, unknown>));
     setLiveBd({
       id: "library-run",
       nm: item.nm,
