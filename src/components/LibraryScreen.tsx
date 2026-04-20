@@ -139,21 +139,38 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: G, color: BG, padding: "10px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: F, zIndex: 100 }}>{toast}</div>
   ) : null;
 
-  // Exercise detail modal (shared between database browser and beatdown detail)
+  // Exercise detail modal — matches Builder ExerciseInfoSheet (Task 4)
   const exDetailModal = dbDetail ? (
-    <div onClick={() => setDbDetail(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#111318", borderRadius: "24px 24px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 430, maxHeight: "65vh", overflowY: "auto", border: "1px solid " + BD, borderBottom: "none" }}>
-        <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, margin: "0 auto 24px" }} />
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <div style={{ fontFamily: F, fontSize: 24, fontWeight: 800, color: T1, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{dbDetail.n}</div>
-          <button onClick={() => setDbDetail(null)} style={{ color: T3, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", fontSize: 22, cursor: "pointer", fontFamily: F, flexShrink: 0, padding: 0, width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: 12 }}>✕</button>
+    <div onClick={() => setDbDetail(null)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 250, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#1c1c20", borderRadius: "22px 22px 0 0", width: "100%", maxWidth: 430, maxHeight: "75vh", overflowY: "auto", overscrollBehavior: "contain", border: "1px solid rgba(167,139,250,0.15)", borderBottom: "none", WebkitOverflowScrolling: "touch" as any }}>
+        <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.15)", borderRadius: 2, margin: "10px auto 0" }} />
+        <div style={{ padding: "16px 22px 32px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ color: T1, fontSize: 20, fontWeight: 800, fontFamily: F, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{dbDetail.n}</div>
+            <button onClick={() => setDbDetail(null)} style={{ color: T3, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", fontSize: 22, cursor: "pointer", fontFamily: F, flexShrink: 0, padding: 0, width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: 12 }}>✕</button>
+          </div>
+          {dbDetail.f !== dbDetail.n ? <div style={{ fontFamily: F, color: T4, fontSize: 13, marginTop: -8, marginBottom: 10 }}>{dbDetail.f}</div> : null}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{dbDetail.t.map(t => <span key={t} style={{ background: P + "12", color: P, fontSize: 10, padding: "3px 9px", borderRadius: 5, fontFamily: F, textTransform: "uppercase" }}>{t}</span>)}</div>
+          {dbDetail.s.length > 0 ? <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>{dbDetail.s.map(s => <span key={s} style={{ background: A + "12", color: A, fontSize: 10, padding: "3px 9px", borderRadius: 5, fontFamily: F }}>{s}</span>)}</div> : null}
+          {dbDetail.d ? <><div style={{ fontFamily: F, marginTop: 20, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>Description</div><div style={{ fontFamily: F, color: T3, fontSize: 17, lineHeight: 1.65, marginTop: 8 }}>{dbDetail.d}</div></> : null}
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", marginTop: 20, paddingTop: 16 }}>
+            <div style={{ fontFamily: F, color: T4, fontSize: 11, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 10 }}>How to do it</div>
+            <div>{dbDetail.h.split(/(?=\d+\.\s)/).filter(Boolean).map((step: string, i: number) => <div key={i} style={{ color: T3, fontSize: 18, lineHeight: 1.7, marginBottom: 5, fontFamily: F }}>{step.trim()}</div>)}</div>
+          </div>
+          {dbDetail.t && dbDetail.t.length > 0 && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 16 }}>
+              {dbDetail.t.filter((t: string) => t !== "IC" && t !== "OYO" && t !== "either").map((tag: string) => {
+                const tagColor = tag === "Warm-Up" ? G : tag === "Mary" || tag === "Core" ? P : tag === "Cardio" || tag === "Full Body" ? "#ef4444" : tag === "Coupon" ? A : T3;
+                return <span key={tag} style={{ background: tagColor + "15", color: tagColor, fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 8, fontFamily: F }}>{tag}</span>;
+              })}
+              {dbDetail.df && (
+                <span style={{ background: (dbDetail.df === 1 ? G : dbDetail.df === 2 ? A : "#ef4444") + "15", color: dbDetail.df === 1 ? G : dbDetail.df === 2 ? A : "#ef4444", fontSize: 12, fontWeight: 600, padding: "4px 10px", borderRadius: 8, fontFamily: F }}>
+                  {dbDetail.df === 1 ? "Beginner" : dbDetail.df === 2 ? "Intermediate" : "Advanced"}
+                </span>
+              )}
+            </div>
+          )}
         </div>
-        {dbDetail.f !== dbDetail.n ? <div style={{ fontFamily: F, color: T4, fontSize: 13, marginTop: -8, marginBottom: 10 }}>{dbDetail.f}</div> : null}
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>{dbDetail.t.map(t => <span key={t} style={{ background: P + "12", color: P, fontSize: 10, padding: "3px 9px", borderRadius: 5, fontFamily: F, textTransform: "uppercase" }}>{t}</span>)}</div>
-        {dbDetail.s.length > 0 ? <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>{dbDetail.s.map(s => <span key={s} style={{ background: A + "12", color: A, fontSize: 10, padding: "3px 9px", borderRadius: 5, fontFamily: F }}>{s}</span>)}</div> : null}
-        {dbDetail.d ? <><div style={{ fontFamily: F, marginTop: 20, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>Description</div><div style={{ fontFamily: F, color: T3, fontSize: 17, lineHeight: 1.7, marginTop: 8 }}>{dbDetail.d}</div></> : null}
-        <div style={{ fontFamily: F, marginTop: 20, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>How to execute</div>
-        <div style={{ fontFamily: F, color: T3, fontSize: 18, lineHeight: 1.8, marginTop: 8 }}>{dbDetail.h.split(/(?=\d+\.\s)/).filter(Boolean).map((step: string, i: number) => <div key={i} style={{ marginBottom: 4 }}>{step.trim()}</div>)}</div>
       </div>
     </div>
   ) : null;
@@ -192,21 +209,78 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
           <button onClick={() => onToggleVote?.(String(bd.id), bd.tp === "exercise" ? "exercise" : "beatdown")} style={{ fontFamily: F, background: voted ? G + "15" : "rgba(255,255,255,0.04)", color: voted ? G : T4, border: "1px solid " + (voted ? G + "30" : BD), padding: "8px 16px", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 600 }}>▲ {bd.v}</button>
           <span style={{ fontSize: 13, color: T5 }}>Stolen {bd.u}x</span>
         </div>
-        {bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? <div style={{ marginTop: 24 }}>{bd.secs.map((sec, si) => (
-          <div key={si} style={{ marginTop: 16 }}>
-            <div style={{ color: sec.color, fontSize: 12, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8, fontWeight: 700 }}>{sec.label}</div>
-            {sec.exercises.map((ex, ei) => (
-              <div key={ei} onClick={() => { const found = seedEx.find(se => se.n.toLowerCase() === ex.n.toLowerCase()); if (found) setDbDetail(found); }} style={{ padding: "10px 14px", background: CD, borderLeft: "3px solid " + sec.color + "40", borderRadius: "0 10px 10px 0", marginBottom: 4, cursor: "pointer" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ color: T2, fontSize: 15, fontWeight: 600, borderBottom: "1px dashed rgba(255,255,255,0.15)" }}>{ex.n} <span style={{ fontSize: 10, color: T5 }}>ⓘ</span></span>
-                  <span style={{ color: sec.color, fontSize: 13, fontWeight: 600 }}>x{ex.r} {ex.c}</span>
+        {bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? <div style={{ marginTop: 24 }}>{bd.secs.map((sec, si) => {
+          const sColor = sec.color || G;
+          const secName = (sec as any).name || sec.label || "Section";
+          const secNotes = (sec as any).qNotes || sec.note || "";
+          const exCount = sec.exercises.filter(e => (e as any).type !== "transition").length;
+          return (
+          <div key={si} style={{ marginBottom: 10 }}>
+            <div style={{ background: "#111114", borderRadius: 22, boxShadow: `0 0 0 1px ${sColor}40, 0 4px 24px ${sColor}0D` }}>
+              <div style={{ borderRadius: "22px 22px 0 0", overflow: "hidden" }}>
+                <div style={{ height: 3, background: sColor }} />
+                <div style={{ padding: "14px 18px 10px" }}>
+                  <div style={{ color: T1, fontSize: 21, fontWeight: 800, letterSpacing: "-0.5px", fontFamily: F }}>{secName}</div>
+                  <div style={{ color: T5, fontSize: 12, marginTop: 3, fontFamily: F }}>{exCount} {exCount === 1 ? "exercise" : "exercises"}</div>
                 </div>
-                {ex.nt ? <div style={{ color: T4, fontSize: 12, marginTop: 4, fontStyle: "italic" }}>{ex.nt}</div> : null}
               </div>
-            ))}
-            {sec.note ? <div style={{ color: T4, fontSize: 13, marginTop: 6, fontStyle: "italic", padding: "8px 14px", background: "rgba(255,255,255,0.02)", borderRadius: 8 }}>{sec.note}</div> : null}
+              <div style={{ padding: "0 12px 14px" }}>
+                {secNotes ? (
+                  <div style={{ padding: "0 4px 10px", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <span style={{ color: T4, fontSize: 14, flexShrink: 0, marginTop: 1 }}>✎</span>
+                    <div style={{ color: T2, fontSize: 14, fontStyle: "italic", lineHeight: 1.5, fontFamily: F, wordBreak: "break-word" as const }}>{secNotes}</div>
+                  </div>
+                ) : null}
+                {sec.exercises.map((ex, ei) => {
+                  const exName = (ex as any).name || ex.n || "";
+                  const exNote = (ex as any).note || ex.nt || "";
+                  const isTransition = (ex as any).type === "transition";
+                  const exReps = (() => {
+                    const a = ex as any;
+                    if (a.mode === "time") return `${a.value} ${a.unit}`;
+                    if (a.mode === "distance") return `${a.value} ${a.unit}`;
+                    if (a.mode === "reps" && a.value !== undefined && a.value !== "") return `${a.value} reps`;
+                    return ex.r ? `${ex.r} reps` : "";
+                  })();
+                  const exCad = (() => {
+                    const a = ex as any;
+                    const cad = a.cadence || ex.c || "";
+                    if (a.mode === "time" || a.mode === "distance") return "";
+                    return cad;
+                  })();
+                  const foundEx = seedEx.find(se => se.n.toLowerCase() === exName.toLowerCase());
+
+                  if (isTransition) {
+                    return (
+                      <div key={ei} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", marginBottom: 6, background: "rgba(255,255,255,0.03)", borderRadius: 10 }}>
+                        <span style={{ color: T4, fontSize: 15 }}>↗</span>
+                        <span style={{ color: T3, fontSize: 16, fontStyle: "italic", fontWeight: 500, fontFamily: F }}>{exName}</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={ei} onClick={() => { if (foundEx) setDbDetail(foundEx); }} style={{ background: "#1a1a1f", borderRadius: 14, padding: "13px 14px", marginBottom: 6, display: "flex", alignItems: "center", gap: 10, cursor: foundEx ? "pointer" : "default" }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden" }}>
+                          <span style={{ color: T1, fontSize: 18, fontWeight: 700, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, minWidth: 0 }}>{exName}</span>
+                        </div>
+                        <div style={{ color: T4, fontSize: 14, fontWeight: 600, marginTop: 3, fontFamily: F }}>
+                          {exReps}{exCad ? ` · ${exCad}` : ""}
+                        </div>
+                        {exNote ? <div style={{ color: T5, fontSize: 13, fontStyle: "italic", marginTop: 2, fontFamily: F }}>{exNote}</div> : null}
+                      </div>
+                      {foundEx && (
+                        <button onClick={e => { e.stopPropagation(); setDbDetail(foundEx); }} style={{ width: 28, height: 28, borderRadius: 8, background: P + "15", border: "1px solid " + P + "30", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: P, fontSize: 14, fontWeight: 700, fontFamily: F }}>?</button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-        ))}</div> : null}
+          );
+        })}</div> : null}
         {/* Comments */}
         <div style={{ marginTop: 28 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
