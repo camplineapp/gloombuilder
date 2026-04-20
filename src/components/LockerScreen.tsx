@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Section } from "@/lib/exercises";
 import CopyModal from "@/components/CopyModal";
 
@@ -47,6 +47,51 @@ interface SharedItem {
   tp: string; tg?: string[]; et?: string[];
 }
 
+// ════ ACTION SHEET (bottom sheet with options) ════
+function ActionSheet({ items, onClose }: { items: { label: string; color: string; icon: string; onClick: () => void }[]; onClose: () => void }) {
+  useEffect(() => {
+    const scrollY = window.scrollY;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.left = "";
+      document.body.style.right = "";
+      document.body.style.overflow = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#1c1c20", borderRadius: "22px 22px 0 0", width: "100%", maxWidth: 430, border: "1px solid rgba(255,255,255,0.10)", borderBottom: "none" }}>
+        <div style={{ width: 36, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, margin: "10px auto 4px" }} />
+        <div style={{ padding: "4px 0 12px" }}>
+          {items.map((item, i) => (
+            <button key={i} onClick={() => { item.onClick(); onClose(); }} style={{
+              fontFamily: F, width: "100%", display: "flex", alignItems: "center", gap: 14,
+              padding: "16px 24px", background: "none", border: "none", borderBottom: i < items.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
+              color: item.color, fontSize: 16, fontWeight: 600, cursor: "pointer", textAlign: "left",
+            }}>
+              <span style={{ fontSize: 16, width: 24, textAlign: "center" }}>{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <button onClick={onClose} style={{
+          fontFamily: F, width: "100%", padding: "18px 0", background: "rgba(255,255,255,0.04)",
+          border: "none", borderTop: "1px solid rgba(255,255,255,0.08)", color: T3, fontSize: 16, fontWeight: 700, cursor: "pointer",
+          borderRadius: "0 0 0 0",
+        }}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
 interface LockerScreenProps {
   lk: LockerBeatdown[];
   setLk: (lk: LockerBeatdown[]) => void;
@@ -72,12 +117,42 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedIte
   const [edLkExI, setEdLkExI] = useState<number | null>(null);
   const [edLkExD, setEdLkExD] = useState<LockerExercise | null>(null);
   const [copySecs, setCopySecs] = useState<LockerBeatdown | null>(null);
+  const [actionSheet, setActionSheet] = useState<{ items: { label: string; color: string; icon: string; onClick: () => void }[] } | null>(null);
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 
   const toastEl = toast ? (
     <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: G, color: BG, padding: "10px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: F, zIndex: 100 }}>{toast}</div>
   ) : null;
+
+  // ═══ Beatdown action sheet builder ═══
+  const openBdActions = (bd: LockerBeatdown) => {
+    const items: { label: string; color: string; icon: string; onClick: () => void }[] = [
+      { label: "Edit", color: T2, icon: "✎", onClick: () => onEditBeatdown?.(bd) },
+      { label: "Copy for Slack", color: T2, icon: "📋", onClick: () => setCopySecs(bd) },
+    ];
+    if (!bd.isPublic) {
+      items.push({ label: "Share to Library", color: A, icon: "↗", onClick: () => { if (confirm("Share this beatdown to the community library?")) onShareBeatdown?.(bd.id); } });
+    } else {
+      items.push({ label: "Shared", color: G, icon: "✓", onClick: () => {} });
+    }
+    items.push({ label: "Delete", color: R, icon: "🗑", onClick: () => { if (confirm("Delete this beatdown? This can't be undone.")) onDeleteBeatdown?.(bd.id); } });
+    setActionSheet({ items });
+  };
+
+  // ═══ Exercise action sheet builder ═══
+  const openExActions = (ex: LockerExercise, idx: number) => {
+    const items: { label: string; color: string; icon: string; onClick: () => void }[] = [
+      { label: "Edit", color: T2, icon: "✎", onClick: () => { setEdLkExI(idx); setEdLkExD({ ...ex }); } },
+    ];
+    if (!ex.shared) {
+      items.push({ label: "Share to Library", color: A, icon: "↗", onClick: () => { if (confirm("Share this exercise to the community library?")) onShareExercise?.(ex.id); } });
+    } else {
+      items.push({ label: "Shared", color: G, icon: "✓", onClick: () => {} });
+    }
+    items.push({ label: "Delete", color: R, icon: "🗑", onClick: () => { if (confirm("Delete this exercise? This can't be undone.")) onDeleteExercise?.(ex.id); } });
+    setActionSheet({ items });
+  };
 
   // ════ EXERCISE EDIT ════
   if (lT === 1 && edLkExI !== null && edLkExD) {
@@ -130,69 +205,72 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedIte
 
       <div style={{ padding: "16px 24px 0", display: "flex", flexDirection: "column", gap: 8 }}>
 
+        {/* ════ BEATDOWNS TAB ════ */}
         {lT === 0 ? (
           <div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <div onClick={() => onNavigate?.("gen")} style={{ flex: 1, background: CD, border: "1px dashed " + G + "30", borderRadius: 14, padding: "16px 14px", textAlign: "center", cursor: "pointer" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: G }}>+ Generate</div>
-              </div>
-              <div onClick={() => onNavigate?.("build")} style={{ flex: 1, background: CD, border: "1px dashed " + A + "30", borderRadius: 14, padding: "16px 14px", textAlign: "center", cursor: "pointer" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: A }}>+ Build manually</div>
-              </div>
-            </div>
             {lk.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40, border: "1px dashed " + BD, borderRadius: 14 }}>No beatdowns yet</div> : null}
             {lk.map((bd) => (
-              <div key={bd.id} style={{ background: CD, border: "1px solid " + BD, borderRadius: 14, padding: "16px 18px" }}>
+              <div key={bd.id} style={{ background: CD, border: "1px solid " + BD, borderRadius: 14, padding: "16px 18px", marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: T2 }}>{bd.nm}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: T2, fontFamily: F }}>{bd.nm}</div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                      <div style={{ fontSize: 12, color: T5 }}>{bd.dt} · {bd.src}</div>
+                      <div style={{ fontSize: 12, color: T5, fontFamily: F }}>{bd.dt} · {bd.src}</div>
+                      {bd.isPublic && <span style={{ fontSize: 10, fontWeight: 700, color: G, background: G + "15", padding: "2px 8px", borderRadius: 5, fontFamily: F }}>✓ Shared</span>}
                     </div>
-                    {bd.inspiredBy ? <div style={{ fontSize: 11, color: A, marginTop: 4 }}>Inspired by {bd.inspiredBy}</div> : null}
-                    {bd.desc ? <div style={{ fontSize: 12, color: T4, marginTop: 6, fontStyle: "italic" }}>{bd.desc}</div> : null}
+                    {bd.inspiredBy ? <div style={{ fontSize: 11, color: A, marginTop: 4, fontFamily: F }}>Inspired by {bd.inspiredBy}</div> : null}
+                    {bd.desc ? <div style={{ fontSize: 12, color: T4, marginTop: 6, fontStyle: "italic", fontFamily: F, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical" as const }}>{bd.desc}</div> : null}
                   </div>
-                  <span style={{ background: dc(bd.d) + "15", color: dc(bd.d), fontSize: 10, padding: "3px 9px", borderRadius: 5, fontWeight: 700, fontFamily: F, textTransform: "uppercase" }}>{bd.d}</span>
+                  <span style={{ background: dc(bd.d) + "15", color: dc(bd.d), fontSize: 10, padding: "3px 9px", borderRadius: 5, fontWeight: 700, fontFamily: F, textTransform: "uppercase", flexShrink: 0 }}>{bd.d}</span>
                 </div>
                 {bd.tg && bd.tg.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 10, flexWrap: "wrap" }}>{bd.tg.filter(t => !["Easy","Medium","Hard","Beast"].includes(t)).map(t => <span key={t} style={{ background: "rgba(255,255,255,0.04)", color: T4, fontSize: 10, padding: "2px 9px", borderRadius: 5, fontFamily: F }}>{t}</span>)}</div> : null}
-                <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => onEditBeatdown?.(bd)} style={{ fontFamily: F, background: G + "12", color: G, border: "1px solid " + G + "20", padding: "8px 14px", borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Edit</button>
-                    <button onClick={() => onRunBeatdown?.(bd)} style={{ fontFamily: F, background: G, color: "#000", border: "none", padding: "8px 14px", borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Run This</button>
-                    <button onClick={() => setCopySecs(bd)} style={{ fontFamily: F, background: "rgba(255,255,255,0.04)", color: T3, border: "1px solid " + BD, padding: "8px 14px", borderRadius: 10, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Copy for Slack</button>
-                  </div>
-                  <div style={{ display: "flex", gap: 16, marginTop: 8, paddingLeft: 2 }}>
-                    {!bd.isPublic ? <span onClick={() => { if (confirm("Share to community? This can't be undone.")) onShareBeatdown?.(bd.id); }} style={{ fontFamily: F, color: A, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: "4px 0" }}>Share</span> : <span style={{ fontFamily: F, color: G, fontSize: 12, fontWeight: 600, padding: "4px 0" }}>✓ Shared</span>}
-                    <span onClick={() => onDeleteBeatdown?.(bd.id)} style={{ fontFamily: F, color: R, fontSize: 12, cursor: "pointer", padding: "4px 0" }}>Delete</span>
-                  </div>
+                {/* ═══ SIMPLIFIED ACTIONS: Run This + ⋯ More ═══ */}
+                <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", gap: 10, alignItems: "center" }}>
+                  <button onClick={() => onRunBeatdown?.(bd)} style={{
+                    fontFamily: F, flex: 1, padding: "12px 0", background: G, color: "#000", border: "none",
+                    borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer",
+                  }}>Run This</button>
+                  <button onClick={() => openBdActions(bd)} style={{
+                    fontFamily: F, width: 48, height: 48, background: "rgba(255,255,255,0.04)",
+                    border: "1px solid " + BD, borderRadius: 12, color: T3, fontSize: 20,
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0, letterSpacing: 2,
+                  }}>···</button>
                 </div>
               </div>
             ))}
           </div>
         ) : null}
 
+        {/* ════ EXERCISES TAB ════ */}
         {lT === 1 ? (
           <div>
-            <div onClick={() => onNavigate?.("create-ex")} style={{ background: CD, border: "1px dashed " + G + "30", borderRadius: 14, padding: "20px 18px", textAlign: "center", cursor: "pointer", marginBottom: 8 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: G }}>+ Create new exercise</div>
-            </div>
             {lkEx.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 20 }}>No custom exercises yet</div> : null}
             {lkEx.map((ex, i) => (
               <div key={ex.id} style={{ background: CD, border: "1px solid " + BD, borderLeft: "3px solid " + P + "40", borderRadius: 14, padding: "16px 18px", marginBottom: 8 }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: T2 }}>{ex.nm}</div>
-                {ex.inspiredBy ? <div style={{ fontSize: 11, color: A, marginTop: 4 }}>Inspired by {ex.inspiredBy}</div> : null}
-                {ex.desc ? <div style={{ fontSize: 13, color: T3, marginTop: 6, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>{ex.desc}</div> : null}
-                {ex.tags && ex.tags.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" }}>{ex.tags.map(t => <span key={t} style={{ background: "rgba(255,255,255,0.04)", color: T4, fontSize: 10, padding: "2px 9px", borderRadius: 5, fontFamily: F }}>{t}</span>)}</div> : null}
-                <div style={{ display: "flex", gap: 8, marginTop: 12, paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-                  <button onClick={() => { setEdLkExI(i); setEdLkExD({ ...ex }); }} style={{ fontFamily: F, background: G + "12", color: G, border: "1px solid " + G + "20", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Edit</button>
-                  {!ex.shared ? <button onClick={() => { if (confirm("Share to community? This can't be undone.")) onShareExercise?.(ex.id); }} style={{ fontFamily: F, background: A + "12", color: A, border: "1px solid " + A + "20", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Share</button> : <span style={{ color: G, fontSize: 12, padding: "6px 10px", display: "flex", alignItems: "center" }}>✓ Shared</span>}
-                  <span onClick={() => onDeleteExercise?.(ex.id)} style={{ color: R, padding: "6px 10px", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center" }}>Delete</span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: T2, fontFamily: F }}>{ex.nm}</div>
+                      {ex.shared && <span style={{ fontSize: 10, fontWeight: 700, color: G, background: G + "15", padding: "2px 8px", borderRadius: 5, fontFamily: F }}>✓ Shared</span>}
+                    </div>
+                    {ex.inspiredBy ? <div style={{ fontSize: 11, color: A, marginTop: 4, fontFamily: F }}>Inspired by {ex.inspiredBy}</div> : null}
+                    {ex.desc ? <div style={{ fontSize: 13, color: T3, marginTop: 6, lineHeight: 1.5, fontFamily: F, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>{ex.desc}</div> : null}
+                  </div>
+                  <button onClick={() => openExActions(ex, i)} style={{
+                    fontFamily: F, width: 40, height: 40, background: "rgba(255,255,255,0.04)",
+                    border: "1px solid " + BD, borderRadius: 10, color: T3, fontSize: 18,
+                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0, letterSpacing: 2, marginLeft: 8,
+                  }}>···</button>
                 </div>
+                {ex.tags && ex.tags.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" }}>{ex.tags.map(t => <span key={t} style={{ background: "rgba(255,255,255,0.04)", color: T4, fontSize: 10, padding: "2px 9px", borderRadius: 5, fontFamily: F }}>{t}</span>)}</div> : null}
               </div>
             ))}
           </div>
         ) : null}
 
+        {/* ════ BOOKMARKED TAB ════ */}
         {lT === 2 ? (
           <div>
             {lkBm.size === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40, border: "1px dashed " + BD, borderRadius: 14 }}>No bookmarks yet</div> : null}
@@ -203,11 +281,11 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedIte
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ fontSize: 15, fontWeight: 700, color: T2 }}>{bd.nm}</div>
-                        <span style={{ background: isBd ? A + "12" : P + "12", color: isBd ? A : P, fontSize: 9, padding: "2px 7px", borderRadius: 4, fontWeight: 700, textTransform: "uppercase" }}>{isBd ? "Beatdown" : "Exercise"}</span>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: T2, fontFamily: F }}>{bd.nm}</div>
+                        <span style={{ background: isBd ? A + "12" : P + "12", color: isBd ? A : P, fontSize: 9, padding: "2px 7px", borderRadius: 4, fontWeight: 700, textTransform: "uppercase", fontFamily: F }}>{isBd ? "Beatdown" : "Exercise"}</span>
                       </div>
-                      <div style={{ fontSize: 12, color: T4, marginTop: 4 }}>{bd.au} · {bd.ao}</div>
-                      {bd.ds ? <div style={{ fontSize: 12, color: T5, marginTop: 4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical" }}>{bd.ds}</div> : null}
+                      <div style={{ fontSize: 12, color: T4, marginTop: 4, fontFamily: F }}>{bd.au} · {bd.ao}</div>
+                      {bd.ds ? <div style={{ fontSize: 12, color: T5, marginTop: 4, fontFamily: F, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical" }}>{bd.ds}</div> : null}
                     </div>
                     <span style={{ background: dc(bd.d) + "15", color: dc(bd.d), fontSize: 10, padding: "3px 9px", borderRadius: 5, fontWeight: 700, fontFamily: F, textTransform: "uppercase", flexShrink: 0 }}>{bd.d}</span>
                   </div>
@@ -222,9 +300,13 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, lkBm, sharedIte
         ) : null}
 
       </div>
+
+      {/* ═══ ACTION SHEET ═══ */}
+      {actionSheet && <ActionSheet items={actionSheet.items} onClose={() => setActionSheet(null)} />}
+
+      {/* ═══ COPY MODAL ═══ */}
       {copySecs ? <CopyModal secs={copySecs.secs} beatdownName={copySecs.nm} beatdownDesc={copySecs.desc} qName="The Bishop" onClose={() => setCopySecs(null)} onToast={fl} /> : null}
       {toastEl}
     </div>
   );
 }
-
