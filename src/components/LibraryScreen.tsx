@@ -383,7 +383,10 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
         </div>
         <div style={{ marginTop: 24 }}>
           {bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 && (
-            <button onClick={() => onRunBeatdown?.(bd)} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none", marginBottom: 10 }}>Run This</button>
+            <button onClick={() => onRunBeatdown?.(bd)} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: "transparent", border: "2px solid " + G, color: G, marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M5 3L17 10L5 17V3Z" fill={G} /></svg>
+              Run This
+            </button>
           )}
           <button onClick={() => { onSteal?.(String(bd.id), bd.tp as "beatdown" | "exercise"); fl("Saved to locker!"); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? "rgba(255,255,255,0.04)" : G, color: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? T3 : BG, border: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? "1px solid " + BD : "none" }}>Save to Locker</button>
         </div>

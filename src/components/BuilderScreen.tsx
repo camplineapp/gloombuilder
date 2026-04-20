@@ -47,6 +47,10 @@ interface BuilderScreenProps {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
   }) => void;
+  onRunBeatdown?: () => void;
+  onShareBeatdown?: () => void;
+  onUnshareBeatdown?: () => void;
+  onDeleteBeatdown?: () => void;
 }
 
 function defaultSections(): Section[] {
@@ -57,7 +61,7 @@ function defaultSections(): Section[] {
   ].map(s => normalizeSection(s as Record<string, unknown>));
 }
 
-export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onRunThis }: BuilderScreenProps) {
+export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onRunThis, onRunBeatdown, onShareBeatdown, onUnshareBeatdown, onDeleteBeatdown }: BuilderScreenProps) {
   const [bT, setBT] = useState(editData?.nm || "");
   const [bD, setBD] = useState(editData?.desc || "");
   const [bDur, setBDur] = useState<string | null>(editData?.dur || null);
@@ -231,13 +235,26 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
         >
           {saving ? "Saving..." : (editData ? "Save changes" : "Save to locker")}
         </button>
-        {!editData && onRunThis && !saving && (
+        {/* Run This — show in both new and edit mode */}
+        {!saving && (editData ? onRunBeatdown : onRunThis) && (
           <button
-            onClick={handleRunThis}
-            style={{ fontFamily: F, width: "100%", padding: "18px 0", borderRadius: 14, fontSize: 17, fontWeight: 700, cursor: "pointer", background: "transparent", border: "2px solid " + G, color: G }}
+            onClick={editData ? onRunBeatdown : handleRunThis}
+            style={{ fontFamily: F, width: "100%", padding: "18px 0", borderRadius: 14, fontSize: 17, fontWeight: 700, cursor: "pointer", background: "transparent", border: "2px solid " + G, color: G, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
           >
-            Run This →
+            <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M5 3L17 10L5 17V3Z" fill={G} /></svg>
+            Run This
           </button>
+        )}
+        {/* Share/Unshare + Delete — edit mode only */}
+        {editData && !saving && (
+          <div style={{ display: "flex", gap: 12, marginTop: 6, paddingTop: 16, borderTop: "1px solid " + BD }}>
+            {!editData.isPublic ? (
+              <button onClick={onShareBeatdown} style={{ fontFamily: F, flex: 1, padding: "14px 0", background: A + "12", color: A, border: "1px solid " + A + "25", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Share to Library</button>
+            ) : (
+              <button onClick={onUnshareBeatdown} style={{ fontFamily: F, flex: 1, padding: "14px 0", background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Unshare</button>
+            )}
+            <button onClick={onDeleteBeatdown} style={{ fontFamily: F, flex: 1, padding: "14px 0", background: "rgba(255,255,255,0.04)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.20)", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Delete</button>
+          </div>
         )}
       </div>
     </div>

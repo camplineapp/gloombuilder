@@ -521,6 +521,10 @@ export default function App() {
             isPublic: editingBd.isPublic,
           }}
           onUpdate={handleUpdateBeatdown}
+          onRunBeatdown={() => { handleRunBeatdown(editingBd); }}
+          onShareBeatdown={() => { handleShareBeatdown(editingBd.id); }}
+          onUnshareBeatdown={() => { setVw(null); setEditingBd(null); handleUnshareBeatdown(editingBd.id); }}
+          onDeleteBeatdown={() => { if (confirm("Delete this beatdown? This can't be undone.")) { setVw(null); setEditingBd(null); handleDeleteBeatdown(editingBd.id); } }}
         />}
         {vw === "live" && liveBd && <LiveModeScreen
           beatdownTitle={liveBd.nm}

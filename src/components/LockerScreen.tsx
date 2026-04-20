@@ -42,50 +42,6 @@ interface LockerExercise {
   id: string; nm: string; desc: string; tags: string[]; how: string; src: string; inspiredBy?: string; shared?: boolean;
 }
 
-// ════ ACTION SHEET (bottom sheet with options) ════
-function ActionSheet({ items, onClose }: { items: { label: string; color: string; icon: string; onClick: () => void }[]; onClose: () => void }) {
-  useEffect(() => {
-    const scrollY = window.scrollY;
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = "0";
-    document.body.style.right = "0";
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.position = "";
-      document.body.style.top = "";
-      document.body.style.left = "";
-      document.body.style.right = "";
-      document.body.style.overflow = "";
-      window.scrollTo(0, scrollY);
-    };
-  }, []);
-
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: "#1c1c20", borderRadius: "22px 22px 0 0", width: "100%", maxWidth: 430, border: "1px solid rgba(255,255,255,0.10)", borderBottom: "none" }}>
-        <div style={{ width: 36, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, margin: "10px auto 4px" }} />
-        <div style={{ padding: "4px 0 12px" }}>
-          {items.map((item, i) => (
-            <button key={i} onClick={() => { item.onClick(); onClose(); }} style={{
-              fontFamily: F, width: "100%", display: "flex", alignItems: "center", gap: 14,
-              padding: "16px 24px", background: "none", border: "none", borderBottom: i < items.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-              color: item.color, fontSize: 16, fontWeight: 600, cursor: "pointer", textAlign: "left",
-            }}>
-              <span style={{ fontSize: 16, width: 24, textAlign: "center" }}>{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
-        </div>
-        <button onClick={onClose} style={{
-          fontFamily: F, width: "100%", padding: "18px 0", background: "rgba(255,255,255,0.04)",
-          border: "none", borderTop: "1px solid rgba(255,255,255,0.08)", color: T3, fontSize: 16, fontWeight: 700, cursor: "pointer",
-          borderRadius: "0 0 0 0",
-        }}>Cancel</button>
-      </div>
-    </div>
-  );
-}
 
 interface LockerScreenProps {
   lk: LockerBeatdown[];
@@ -110,7 +66,6 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, onNavigate, onD
   const [edLkExI, setEdLkExI] = useState<number | null>(null);
   const [edLkExD, setEdLkExD] = useState<LockerExercise | null>(null);
   const [copySecs, setCopySecs] = useState<LockerBeatdown | null>(null);
-  const [actionSheet, setActionSheet] = useState<{ items: { label: string; color: string; icon: string; onClick: () => void }[] } | null>(null);
   const [unshareConfirm, setUnshareConfirm] = useState<{ id: string; name: string; type: "beatdown" | "exercise" } | null>(null);
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
@@ -119,20 +74,6 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, onNavigate, onD
     <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: G, color: BG, padding: "10px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: F, zIndex: 100 }}>{toast}</div>
   ) : null;
 
-  // ═══ Beatdown action sheet builder ═══
-  const openBdActions = (bd: LockerBeatdown) => {
-    const items: { label: string; color: string; icon: string; onClick: () => void }[] = [
-      { label: "Edit", color: T2, icon: "✎", onClick: () => onEditBeatdown?.(bd) },
-      { label: "Copy for Slack", color: T2, icon: "📋", onClick: () => setCopySecs(bd) },
-    ];
-    if (!bd.isPublic) {
-      items.push({ label: "Share to Library", color: A, icon: "↗", onClick: () => { if (confirm("Share this beatdown to the community library?")) onShareBeatdown?.(bd.id); } });
-    } else {
-      items.push({ label: "Unshare", color: R, icon: "↙", onClick: () => setUnshareConfirm({ id: bd.id, name: bd.nm, type: "beatdown" }) });
-    }
-    items.push({ label: "Delete", color: R, icon: "🗑", onClick: () => { if (confirm("Delete this beatdown? This can't be undone.")) onDeleteBeatdown?.(bd.id); } });
-    setActionSheet({ items });
-  };
 
 
   // ════ EXERCISE EDIT ════
@@ -200,33 +141,28 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, onNavigate, onD
           <div>
             {lk.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40, border: "1px dashed " + BD, borderRadius: 14 }}>No beatdowns yet</div> : null}
             {lk.map((bd) => (
-              <div key={bd.id} onClick={() => onEditBeatdown?.(bd)} style={{ background: CD, border: "1px solid " + BD, borderRadius: 14, padding: "16px 18px", marginBottom: 8, cursor: "pointer" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: T2, fontFamily: F }}>{bd.nm}</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                      <div style={{ fontSize: 12, color: T5, fontFamily: F }}>{bd.dt} · {bd.src}</div>
-                      {bd.isPublic && <span style={{ fontSize: 10, fontWeight: 700, color: G, background: G + "15", padding: "2px 8px", borderRadius: 5, fontFamily: F }}>✓ Shared</span>}
+              <div key={bd.id} onClick={() => onEditBeatdown?.(bd)} style={{ background: CD, border: "1px solid " + BD, borderRadius: 14, padding: "16px 18px", marginBottom: 8, cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 18, fontWeight: 800, color: T1, fontFamily: F }}>{bd.nm}</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                        <div style={{ fontSize: 12, color: T5, fontFamily: F }}>{bd.dt} · {bd.src}</div>
+                        {bd.isPublic && <span style={{ fontSize: 10, fontWeight: 700, color: G, background: G + "15", padding: "2px 8px", borderRadius: 5, fontFamily: F }}>✓ Shared</span>}
+                      </div>
                     </div>
-                    {bd.inspiredBy ? <div style={{ fontSize: 11, color: A, marginTop: 4, fontFamily: F }}>Inspired by {bd.inspiredBy}</div> : null}
-                    {bd.desc ? <div style={{ fontSize: 12, color: T4, marginTop: 6, fontStyle: "italic", fontFamily: F, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical" as const }}>{bd.desc}</div> : null}
+                    <span style={{ background: dc(bd.d) + "15", color: dc(bd.d), fontSize: 10, padding: "3px 9px", borderRadius: 5, fontWeight: 700, fontFamily: F, textTransform: "uppercase", flexShrink: 0 }}>{bd.d}</span>
                   </div>
-                  <span style={{ background: dc(bd.d) + "15", color: dc(bd.d), fontSize: 10, padding: "3px 9px", borderRadius: 5, fontWeight: 700, fontFamily: F, textTransform: "uppercase", flexShrink: 0 }}>{bd.d}</span>
+                  {bd.inspiredBy ? <div style={{ fontSize: 11, color: A, marginTop: 4, fontFamily: F }}>Inspired by {bd.inspiredBy}</div> : null}
+                  {bd.desc ? <div style={{ fontSize: 12, color: T4, marginTop: 6, fontStyle: "italic", fontFamily: F, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 1, WebkitBoxOrient: "vertical" as const }}>{bd.desc}</div> : null}
+                  {bd.tg && bd.tg.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" }}>{bd.tg.filter(t => !["Easy","Medium","Hard","Beast"].includes(t)).map(t => <span key={t} style={{ background: "rgba(255,255,255,0.04)", color: T4, fontSize: 10, padding: "2px 9px", borderRadius: 5, fontFamily: F }}>{t}</span>)}</div> : null}
                 </div>
-                {bd.tg && bd.tg.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 10, flexWrap: "wrap" }}>{bd.tg.filter(t => !["Easy","Medium","Hard","Beast"].includes(t)).map(t => <span key={t} style={{ background: "rgba(255,255,255,0.04)", color: T4, fontSize: 10, padding: "2px 9px", borderRadius: 5, fontFamily: F }}>{t}</span>)}</div> : null}
-                {/* ═══ ACTIONS: Run This + ⋯ More ═══ */}
-                <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.04)", display: "flex", gap: 10, alignItems: "center" }}>
-                  <button onClick={e => { e.stopPropagation(); onRunBeatdown?.(bd); }} style={{
-                    fontFamily: F, flex: 1, padding: "12px 0", background: G, color: "#000", border: "none",
-                    borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer",
-                  }}>Run This</button>
-                  <button onClick={e => { e.stopPropagation(); openBdActions(bd); }} style={{
-                    fontFamily: F, width: 48, height: 48, background: "rgba(255,255,255,0.04)",
-                    border: "1px solid " + BD, borderRadius: 12, color: T3, fontSize: 20,
-                    cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                    flexShrink: 0, letterSpacing: 2,
-                  }}>···</button>
-                </div>
+                <button onClick={e => { e.stopPropagation(); onRunBeatdown?.(bd); }} style={{
+                  width: 48, height: 48, borderRadius: 12, background: G + "15", border: "1.5px solid " + G + "30",
+                  display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0,
+                }}>
+                  <svg width="19" height="19" viewBox="0 0 20 20" fill="none"><path d="M5 3L17 10L5 17V3Z" fill={G} /></svg>
+                </button>
               </div>
             ))}
           </div>
@@ -277,8 +213,6 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, onNavigate, onD
         </div>
       )}
 
-      {/* ═══ ACTION SHEET ═══ */}
-      {actionSheet && <ActionSheet items={actionSheet.items} onClose={() => setActionSheet(null)} />}
 
       {/* ═══ COPY MODAL ═══ */}
       {copySecs ? <CopyModal secs={copySecs.secs} beatdownName={copySecs.nm} beatdownDesc={copySecs.desc} qName="The Bishop" onClose={() => setCopySecs(null)} onToast={fl} /> : null}
