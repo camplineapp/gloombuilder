@@ -38,9 +38,11 @@ interface GeneratorScreenProps {
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
   }) => void;
   profName?: string;
+  userExercises?: { id: string; nm: string; desc: string; tags: string[]; how: string }[];
+  communityExercises?: { nm: string; desc: string; tags: string[]; how: string }[];
 }
 
-export default function GeneratorScreen({ onClose, onSave, onRunThis, profName }: GeneratorScreenProps) {
+export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, userExercises, communityExercises }: GeneratorScreenProps) {
   const [gs, setGs] = useState(0);
   const [gc, setGc] = useState<GenConfig>({ dur: null, diff: null, sites: [], eq: [] });
   const [gr, setGr] = useState<Section[] | null>(null);
@@ -53,15 +55,25 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName }
   const [toast, setToast] = useState("");
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
 
-  // Load 904 exercises from Supabase on mount
+  // Load exercises from Supabase on mount + merge user custom + community exercises
   useEffect(() => {
     loadSeedExercises().then(rows => {
       if (rows.length > 0) {
         const mapped = rows.map(r => mapSupabaseExercise(r as Record<string, unknown>));
-        setAllEx(mapped);
+        const seedNames = new Set(mapped.map(e => e.n.toLowerCase()));
+        const userMapped: ExerciseData[] = (userExercises || []).map(ux => ({
+          n: ux.nm, f: ux.nm, t: ux.tags || [], s: [], h: ux.how || "", d: ux.desc || "",
+        }));
+        const uniqueUser = userMapped.filter(u => !seedNames.has(u.n.toLowerCase()));
+        const allNames = new Set([...seedNames, ...uniqueUser.map(u => u.n.toLowerCase())]);
+        const communityMapped: ExerciseData[] = (communityExercises || []).map(ce => ({
+          n: ce.nm, f: ce.nm, t: ce.tags || [], s: [], h: ce.how || "", d: ce.desc || "",
+        }));
+        const uniqueCommunity = communityMapped.filter(c => !allNames.has(c.n.toLowerCase()));
+        setAllEx([...mapped, ...uniqueUser, ...uniqueCommunity]);
       }
     });
-  }, []);
+  }, [userExercises, communityExercises]);
 
   const [copyModal, setCopyModal] = useState(false);
 

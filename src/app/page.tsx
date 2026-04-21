@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
 import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, unshareBeatdown, unshareExercise, addVote, removeVote, loadUserVotes, stealBeatdown, stealExercise, updateExercise, updateBeatdown } from "@/lib/db";
 import type { User } from "@supabase/supabase-js";
@@ -235,6 +235,14 @@ export default function App() {
   }, []);
 
   // Load data after user is confirmed
+  // Community exercises derived from sharedItems for Builder search
+  const communityExercises = useMemo(() =>
+    sharedItems.filter(si => si.tp === "exercise").map(si => ({
+      nm: si.nm, desc: si.ds || "", tags: si.et || [], how: si.howTo || "",
+    })),
+    [sharedItems]
+  );
+
   useEffect(() => {
     if (user) {
       loadLocker();
@@ -487,7 +495,7 @@ export default function App() {
   if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "live") {
     return (
       <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: vw === "live" ? 0 : 20, paddingBottom: vw === "live" ? 0 : 100, position: "relative" }}>
-        {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} onRunThis={async (secs, title, dur, saveData) => {
+        {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onRunThis={async (secs, title, dur, saveData) => {
           // Save to locker WITHOUT resetting view
           if (saveData) {
             const result = await saveBeatdown({ nm: saveData.nm, desc: saveData.desc, d: saveData.d, secs: saveData.secs, tg: saveData.tg, src: saveData.src, dur: saveData.dur, sites: saveData.sites, eq: saveData.eq, isPublic: saveData.share || false });
@@ -496,7 +504,7 @@ export default function App() {
           setLiveBd({ id: "temp", nm: title, dt: "", src: "Generated", d: "medium", desc: "", secs, tg: [dur], isPublic: false });
           setVw("live");
         }} />}
-        {vw === "build" && <BuilderScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} onRunThis={async (secs, title, dur, saveData) => {
+        {vw === "build" && <BuilderScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} userExercises={lkEx} communityExercises={communityExercises} onRunThis={async (secs, title, dur, saveData) => {
           if (saveData) {
             const result = await saveBeatdown({ nm: saveData.nm, desc: saveData.desc, d: saveData.d, secs: saveData.secs, tg: saveData.tg, src: saveData.src, dur: saveData.dur, sites: saveData.sites, eq: saveData.eq, isPublic: saveData.share || false });
             if (result) { await loadLocker(); if (saveData.share) await loadLibrary(); fl("Saved to locker!"); }
@@ -521,6 +529,8 @@ export default function App() {
             isPublic: editingBd.isPublic,
           }}
           onUpdate={handleUpdateBeatdown}
+          userExercises={lkEx}
+          communityExercises={communityExercises}
           onRunBeatdown={() => { handleRunBeatdown(editingBd); }}
           onShareBeatdown={() => { handleShareBeatdown(editingBd.id); }}
           onUnshareBeatdown={() => { setVw(null); setEditingBd(null); handleUnshareBeatdown(editingBd.id); }}

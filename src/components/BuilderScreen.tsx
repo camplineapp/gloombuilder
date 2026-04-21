@@ -51,6 +51,8 @@ interface BuilderScreenProps {
   onShareBeatdown?: () => void;
   onUnshareBeatdown?: () => void;
   onDeleteBeatdown?: () => void;
+  userExercises?: { id: string; nm: string; desc: string; tags: string[]; how: string }[];
+  communityExercises?: { nm: string; desc: string; tags: string[]; how: string }[];
 }
 
 function defaultSections(): Section[] {
@@ -61,7 +63,7 @@ function defaultSections(): Section[] {
   ].map(s => normalizeSection(s as Record<string, unknown>));
 }
 
-export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onRunThis, onRunBeatdown, onShareBeatdown, onUnshareBeatdown, onDeleteBeatdown }: BuilderScreenProps) {
+export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onRunThis, onRunBeatdown, onShareBeatdown, onUnshareBeatdown, onDeleteBeatdown, userExercises, communityExercises }: BuilderScreenProps) {
   const [bT, setBT] = useState(editData?.nm || "");
   const [bD, setBD] = useState(editData?.desc || "");
   const [bDur, setBDur] = useState<string | null>(editData?.dur || null);
@@ -85,10 +87,22 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
     loadSeedExercises().then(rows => {
       if (rows.length > 0) {
         const mapped = rows.map(r => mapSupabaseExercise(r as Record<string, unknown>));
-        setAllEx(mapped);
+        const seedNames = new Set(mapped.map(e => e.n.toLowerCase()));
+        // Merge user's custom exercises (from Locker)
+        const userMapped: ExerciseData[] = (userExercises || []).map(ux => ({
+          n: ux.nm, f: ux.nm, t: ux.tags || [], s: [], h: ux.how || "", d: ux.desc || "",
+        }));
+        const uniqueUser = userMapped.filter(u => !seedNames.has(u.n.toLowerCase()));
+        // Merge community-shared exercises
+        const allNames = new Set([...seedNames, ...uniqueUser.map(u => u.n.toLowerCase())]);
+        const communityMapped: ExerciseData[] = (communityExercises || []).map(ce => ({
+          n: ce.nm, f: ce.nm, t: ce.tags || [], s: [], h: ce.how || "", d: ce.desc || "",
+        }));
+        const uniqueCommunity = communityMapped.filter(c => !allNames.has(c.n.toLowerCase()));
+        setAllEx([...mapped, ...uniqueUser, ...uniqueCommunity]);
       }
     });
-  }, []);
+  }, [userExercises, communityExercises]);
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 

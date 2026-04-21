@@ -481,46 +481,63 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
       {/* Exercise Database view */}
       {libT === "exercises" && exMode === "database" ? (
         <div>
-          <input value={dbSearch} onChange={e => setDbSearch(e.target.value)} placeholder={`Search ${seedEx.length} exercises...`} style={{ ...ist, marginBottom: 10 }} />
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 14 }}>
-            {["All", ...TAGS].map(t => (
-              <button key={t} onClick={() => setDbTag(t)} style={{ fontFamily: F, background: dbTag === t ? P + "20" : "rgba(255,255,255,0.04)", color: dbTag === t ? P : T5, border: "1px solid " + (dbTag === t ? P + "30" : BD), padding: "5px 11px", borderRadius: 20, fontSize: 10, cursor: "pointer", textTransform: "uppercase", fontWeight: 600 }}>{t}</button>
-            ))}
-          </div>
-          {seedEx.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>Loading exercises...</div> : null}
           {(() => {
-            let filtered = seedEx.filter(e => {
-              const mS = !dbSearch.trim() || e.n.toLowerCase().includes(dbSearch.toLowerCase()) || e.f.toLowerCase().includes(dbSearch.toLowerCase()) || (e.d || "").toLowerCase().includes(dbSearch.toLowerCase());
-              const mT = dbTag === "All" || e.t.includes(dbTag);
-              return mS && mT;
-            });
-            // Sort: exact name → starts with → name contains → description contains
-            if (dbSearch.trim()) {
-              const q = dbSearch.toLowerCase();
-              filtered.sort((a, b) => {
-                const scoreOf = (e: typeof a) => {
-                  if (e.n.toLowerCase() === q) return 0; // exact match
-                  if (e.n.toLowerCase().startsWith(q)) return 1; // starts with
-                  if (e.n.toLowerCase().includes(q)) return 2; // name contains
-                  if (e.f.toLowerCase().includes(q)) return 3; // alias contains
-                  return 4; // description contains
-                };
-                return scoreOf(a) - scoreOf(b);
-              });
-            }
-            const shown = filtered.slice(0, 50);
+            // Merge seed exercises + community-shared exercises for unified search
+            const communityEx: ExerciseData[] = sharedItems.filter(si => si.tp === "exercise").map(si => ({
+              n: si.nm,
+              f: si.nm,
+              t: si.et || [],
+              s: [],
+              h: si.howTo || "",
+              d: si.ds || "",
+            }));
+            const seedNames = new Set(seedEx.map(e => e.n.toLowerCase()));
+            const uniqueCommunity = communityEx.filter(c => !seedNames.has(c.n.toLowerCase()));
+            const allDbEx = [...seedEx, ...uniqueCommunity];
             return (
               <>
-              {shown.map(e => (
-                <div key={e.n} onClick={() => setDbDetail(e)} style={{ background: CD, border: "1px solid " + BD, borderLeft: "3px solid " + P + "40", borderRadius: 14, padding: "14px 18px", marginBottom: 6, cursor: "pointer" }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: T2 }}>{e.n}</div>
-                  {e.f !== e.n ? <div style={{ fontSize: 12, color: T4, marginTop: 3 }}>{e.f}</div> : null}
-                  {e.d ? <div style={{ fontSize: 13, color: T3, marginTop: 6, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{e.d}</div> : null}
-                  {e.t.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" }}>{e.t.map(t => <span key={t} style={{ background: P + "10", color: P, fontSize: 10, padding: "2px 8px", borderRadius: 5, fontFamily: F, textTransform: "uppercase" }}>{t}</span>)}</div> : null}
-                </div>
-              ))}
-              {filtered.length === 0 && seedEx.length > 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>No exercises match your search</div> : null}
-              {filtered.length > 50 ? <div style={{ textAlign: "center", color: T5, padding: 16, fontSize: 12 }}>Showing first 50 of {filtered.length} results. Search to narrow down.</div> : null}
+              <input value={dbSearch} onChange={e => setDbSearch(e.target.value)} placeholder={`Search ${allDbEx.length} exercises...`} style={{ ...ist, marginBottom: 10 }} />
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 14 }}>
+                {["All", ...TAGS].map(t => (
+                  <button key={t} onClick={() => setDbTag(t)} style={{ fontFamily: F, background: dbTag === t ? P + "20" : "rgba(255,255,255,0.04)", color: dbTag === t ? P : T5, border: "1px solid " + (dbTag === t ? P + "30" : BD), padding: "5px 11px", borderRadius: 20, fontSize: 10, cursor: "pointer", textTransform: "uppercase", fontWeight: 600 }}>{t}</button>
+                ))}
+              </div>
+              {allDbEx.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>Loading exercises...</div> : null}
+              {(() => {
+                let filtered = allDbEx.filter(e => {
+                  const mS = !dbSearch.trim() || e.n.toLowerCase().includes(dbSearch.toLowerCase()) || e.f.toLowerCase().includes(dbSearch.toLowerCase()) || (e.d || "").toLowerCase().includes(dbSearch.toLowerCase());
+                  const mT = dbTag === "All" || e.t.includes(dbTag);
+                  return mS && mT;
+                });
+                if (dbSearch.trim()) {
+                  const q = dbSearch.toLowerCase();
+                  filtered.sort((a, b) => {
+                    const scoreOf = (e: typeof a) => {
+                      if (e.n.toLowerCase() === q) return 0;
+                      if (e.n.toLowerCase().startsWith(q)) return 1;
+                      if (e.n.toLowerCase().includes(q)) return 2;
+                      if (e.f.toLowerCase().includes(q)) return 3;
+                      return 4;
+                    };
+                    return scoreOf(a) - scoreOf(b);
+                  });
+                }
+                const shown = filtered.slice(0, 50);
+                return (
+                  <>
+                  {shown.map(e => (
+                    <div key={e.n} onClick={() => setDbDetail(e)} style={{ background: CD, border: "1px solid " + BD, borderLeft: "3px solid " + P + "40", borderRadius: 14, padding: "14px 18px", marginBottom: 6, cursor: "pointer" }}>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: T2 }}>{e.n}</div>
+                      {e.f !== e.n ? <div style={{ fontSize: 12, color: T4, marginTop: 3 }}>{e.f}</div> : null}
+                      {e.d ? <div style={{ fontSize: 13, color: T3, marginTop: 6, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{e.d}</div> : null}
+                      {e.t.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" }}>{e.t.map(t => <span key={t} style={{ background: P + "10", color: P, fontSize: 10, padding: "2px 8px", borderRadius: 5, fontFamily: F, textTransform: "uppercase" }}>{t}</span>)}</div> : null}
+                    </div>
+                  ))}
+                  {filtered.length === 0 && allDbEx.length > 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>No exercises match your search</div> : null}
+                  {filtered.length > 50 ? <div style={{ textAlign: "center", color: T5, padding: 16, fontSize: 12 }}>Showing first 50 of {filtered.length} results. Search to narrow down.</div> : null}
+                  </>
+                );
+              })()}
               </>
             );
           })()}
