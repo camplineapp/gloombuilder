@@ -102,12 +102,24 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
         {copyModal && gr ? <CopyModal secs={gr} beatdownName={grT || "Generated Beatdown"} beatdownDesc={grD} qName={profName || "Q"} onClose={() => setCopyModal(false)} onToast={fl} /> : null}
 
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid " + BD }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingBottom: 16, borderBottom: "1px solid " + BD }}>
           <button onClick={() => { setGr(null); setGs(0); onClose(); }} style={{ fontFamily: F, color: T3, background: "none", border: "none", cursor: "pointer", fontSize: 17, fontWeight: 600, padding: "8px 0" }}>← Home</button>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, background: A + "26", border: "1px solid " + A + "4D", color: A, fontSize: 15, fontWeight: 700, padding: "10px 16px", borderRadius: 10, cursor: "pointer" }}>Copy for Slack</button>
-            <button onClick={() => { setGr(generate(gc, allEx).map(s => normalizeSection(s as unknown as Record<string,unknown>))); setGrT(""); setGrD(""); }} style={{ fontFamily: F, background: A + "15", color: A, border: "1px solid " + A + "30", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Reroll</button>
-            <button onClick={() => { setGr(generate(gc, allEx, true).map(s => normalizeSection(s as unknown as Record<string,unknown>))); setGrT(""); setGrD(""); }} style={{ fontFamily: F, background: P + "15", color: P, border: "1px solid " + P + "30", padding: "10px 16px", borderRadius: 12, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Go Rogue</button>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ color: T4, fontSize: 12, fontFamily: F }}>Tap to reroll</span>
+            <button onClick={() => {
+              const fresh = generate(gc, allEx).map(s => normalizeSection(s as unknown as Record<string,unknown>));
+              setGr(prev => prev ? prev.map((sec, i) => ({ ...sec, exercises: fresh[i] ? fresh[i].exercises : sec.exercises })) : fresh);
+            }} style={{ fontFamily: F, background: G + "12", border: "1px solid " + G + "30", borderRadius: 12, padding: "10px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: G, fontSize: 13, fontWeight: 600 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 4v6h6" /><path d="M23 20v-6h-6" /><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10" /><path d="M3.51 15A9 9 0 0 0 18.36 18.36L23 14" /></svg>
+              Classics
+            </button>
+            <button onClick={() => {
+              const fresh = generate(gc, allEx, true).map(s => normalizeSection(s as unknown as Record<string,unknown>));
+              setGr(prev => prev ? prev.map((sec, i) => ({ ...sec, exercises: fresh[i] ? fresh[i].exercises : sec.exercises })) : fresh);
+            }} style={{ fontFamily: F, background: P + "12", border: "1px solid " + P + "30", borderRadius: 12, padding: "10px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: P, fontSize: 13, fontWeight: 600 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 4v6h6" /><path d="M23 20v-6h-6" /><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10" /><path d="M3.51 15A9 9 0 0 0 18.36 18.36L23 14" /></svg>
+              Full Library
+            </button>
           </div>
         </div>
 
@@ -152,9 +164,44 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
         </div>
 
         {/* Section Editor */}
-        <SectionEditor sections={gr} onSectionsChange={setGr} allEx={allEx} />
+        <SectionEditor sections={gr} onSectionsChange={setGr} allEx={allEx} onSectionReroll={(sectionIdx, mode) => {
+          const goRogue = mode === "rogue";
+          const sec = gr![sectionIdx];
+          const secName = (sec.name || sec.label || "").toLowerCase();
+          // Match section to generated pool: Warmup→0, Mary→2, everything else→1 (Thang)
+          let sourceIdx = 1;
+          if (secName.includes("warmup") || secName.includes("warm-up") || secName.includes("warm up")) sourceIdx = 0;
+          else if (secName.includes("mary")) sourceIdx = 2;
+          // Count non-transition exercises — this is how many we need to generate
+          let exCount = sec.exercises.filter(e => e.type !== "transition").length;
+          // Default counts for empty sections
+          if (exCount === 0) {
+            if (sourceIdx === 0) exCount = 4;       // Warmup default
+            else if (sourceIdx === 2) exCount = 6;  // Mary default
+            else exCount = 15;                       // Thang/custom default
+          }
+          // Generate batches until we have enough unique exercises
+          const collected: typeof sec.exercises = [];
+          const seen = new Set<string>();
+          for (let attempt = 0; attempt < 5 && collected.length < exCount; attempt++) {
+            const fresh = generate(gc, allEx, goRogue).map(s => normalizeSection(s as unknown as Record<string,unknown>));
+            const sourceSec = fresh[sourceIdx];
+            if (sourceSec) {
+              for (const ex of sourceSec.exercises) {
+                const name = (ex as any).name || ex.n || "";
+                if (!seen.has(name.toLowerCase()) && collected.length < exCount) {
+                  seen.add(name.toLowerCase());
+                  collected.push(ex);
+                }
+              }
+            }
+          }
+          if (collected.length > 0) {
+            setGr(prev => prev ? prev.map((s, i) => i !== sectionIdx ? s : { ...s, exercises: collected }) : prev);
+          }
+        }} />
 
-        {/* Save + Run This */}
+        {/* Save + Run This + Copy for Slack */}
         <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
           <button disabled={saving} onClick={() => {
             if (saving) return; setSaving(true);
@@ -163,13 +210,19 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
             onSave({ nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib });
           }} style={{ fontFamily: F, width: "100%", padding: "20px 0", borderRadius: 14, fontSize: 18, fontWeight: 800, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving..." : "Save to locker"}</button>
           {onRunThis && !saving && (
-            <button onClick={() => {
-              setSaving(true);
-              const nm = grT.trim() || "Generated Beatdown";
-              const tgs = [gc.dur, ...(gc.sites || []), ...(gc.eq || [])].filter(Boolean) as string[];
-              const saveData = { nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib };
-              onRunThis(JSON.parse(JSON.stringify(gr!)), nm, gc.dur || "45 min", saveData);
-            }} style={{ fontFamily: F, width: "100%", padding: "18px 0", borderRadius: 14, fontSize: 17, fontWeight: 700, cursor: "pointer", background: "transparent", border: "2px solid " + G, color: G }}>Run This →</button>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => {
+                setSaving(true);
+                const nm = grT.trim() || "Generated Beatdown";
+                const tgs = [gc.dur, ...(gc.sites || []), ...(gc.eq || [])].filter(Boolean) as string[];
+                const saveData = { nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib };
+                onRunThis(JSON.parse(JSON.stringify(gr!)), nm, gc.dur || "45 min", saveData);
+              }} style={{ fontFamily: F, flex: 1, padding: "16px 0", borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: "pointer", background: "transparent", border: "2px solid " + G, color: G, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M5 3L17 10L5 17V3Z" fill={G} /></svg>
+                Run This
+              </button>
+              <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, flex: 1, padding: "16px 0", borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: "pointer", background: A + "12", border: "1px solid " + A + "25", color: A }}>Copy for Slack</button>
+            </div>
           )}
         </div>
       </div>

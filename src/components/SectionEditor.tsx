@@ -370,7 +370,7 @@ function SortableSectionBlock({
   onEditSheet, onSetEditLabel, onSetQaSec, onSetQaQ, onSetTrSec, onSetTrText,
   onUpdate, onDeleteSec, onAddExercise, onAddTransition,
   onOpenPicker, onExDragEnd, onAddSection, onQNotesChange,
-  onShowInfo,
+  onShowInfo, onSectionReroll,
 }: {
   sec: Section; si: number; sections: Section[]; allEx: ExerciseData[];
   sensors: ReturnType<typeof useSensors>;
@@ -391,6 +391,7 @@ function SortableSectionBlock({
   onAddSection: () => void;
   onQNotesChange: (text: string) => void;
   onShowInfo: (exName: string) => void;
+  onSectionReroll?: (mode: "core" | "rogue") => void;
 }) {
   const secId = sec.id || sec.label || String(si);
   const sColor = sec.color;
@@ -403,6 +404,9 @@ function SortableSectionBlock({
   const hasQNotes = (sec.qNotes || sec.note || "").trim().length > 0;
   const [editTrIdx, setEditTrIdx] = useState<number | null>(null);
   const [editTrText, setEditTrText] = useState("");
+  const [rerollMode, setRerollMode] = useState<"core" | "rogue">("core");
+
+  const [renameText, setRenameText] = useState(secLabel);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: secId });
 
@@ -437,30 +441,47 @@ function SortableSectionBlock({
                 {isRenaming ? (
                   <input
                     autoFocus
-                    value={secLabel}
+                    value={renameText}
                     maxLength={60}
-                    onChange={e => onUpdate(sections.map((s, i) => i !== si ? s : { ...s, name: e.target.value, label: e.target.value }))}
-                    onBlur={() => onSetEditLabel(null)}
-                    onKeyDown={e => { if (e.key === "Enter") onSetEditLabel(null); }}
+                    onChange={e => setRenameText(e.target.value)}
+                    onBlur={() => { const nm = renameText.trim() || "Section"; onUpdate(sections.map((s, i) => i !== si ? s : { ...s, name: nm, label: nm })); onSetEditLabel(null); }}
+                    onKeyDown={e => { if (e.key === "Enter") { const nm = renameText.trim() || "Section"; onUpdate(sections.map((s, i) => i !== si ? s : { ...s, name: nm, label: nm })); onSetEditLabel(null); } }}
                     style={{ background: "rgba(255,255,255,0.08)", border: `1.5px solid ${sColor}60`, borderRadius: 8, color: T1, fontSize: 20, fontWeight: 800, padding: "5px 12px", outline: "none", width: "100%", boxSizing: "border-box", fontFamily: F }}
                   />
                 ) : (
                   <div
-                    onClick={() => onSetEditLabel(si)}
+                    onClick={() => { setRenameText(secLabel); onSetEditLabel(si); }}
                     title="Tap to rename"
                     style={{ color: T1, fontSize: 21, fontWeight: 800, letterSpacing: "-0.5px", fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "text" }}
                   >
                     {secLabel}
                   </div>
                 )}
-                <div style={{ color: T5, fontSize: 12, marginTop: 3, fontFamily: F }}>{exCount} {exCount === 1 ? "exercise" : "exercises"}</div>
+                <div style={{ color: T4, fontSize: 13, marginTop: 3, fontFamily: F, fontWeight: 500 }}>{exCount} {exCount === 1 ? "exercise" : "exercises"}</div>
               </div>
             </div>
-            {/* Right: delete button — always visible */}
-            <button
-              onClick={handleDelete}
-              style={{ width: 34, height: 34, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 9, color: R, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: F, marginTop: 1 }}
-            >✕</button>
+            {/* Right: reroll toggle + delete button */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginTop: 1 }}>
+              {onSectionReroll && (
+                <button
+                  onClick={() => {
+                    onSectionReroll(rerollMode);
+                    setRerollMode(rerollMode === "core" ? "rogue" : "core");
+                  }}
+                  style={{ width: 36, height: 36, borderRadius: 9, background: (rerollMode === "core" ? G : P) + "12", border: "1.5px solid " + (rerollMode === "core" ? G : P) + "30", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+                >
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke={rerollMode === "core" ? G : P} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 4v6h6" /><path d="M23 20v-6h-6" />
+                    <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10" />
+                    <path d="M3.51 15A9 9 0 0 0 18.36 18.36L23 14" />
+                  </svg>
+                </button>
+              )}
+              <button
+                onClick={handleDelete}
+                style={{ width: 34, height: 34, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 9, color: R, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: F }}
+              >✕</button>
+            </div>
           </div>
         </div>
 
@@ -630,9 +651,10 @@ export interface SectionEditorProps {
   sections: Section[];
   onSectionsChange: (sections: Section[]) => void;
   allEx: ExerciseData[];
+  onSectionReroll?: (sectionIdx: number, mode: "core" | "rogue") => void;
 }
 
-export default function SectionEditor({ sections, onSectionsChange, allEx }: SectionEditorProps) {
+export default function SectionEditor({ sections, onSectionsChange, allEx, onSectionReroll }: SectionEditorProps) {
   const [editSheet, setEditSheet] = useState<{ sectionIdx: number; exercise: SectionExercise } | null>(null);
   const [editLabel, setEditLabel] = useState<number | null>(null);
   const [qaQ, setQaQ] = useState("");
@@ -795,6 +817,7 @@ export default function SectionEditor({ sections, onSectionsChange, allEx }: Sec
               onAddSection={() => handleAddSection(si)}
               onQNotesChange={(text) => update(sections.map((s, i) => i !== si ? s : { ...s, qNotes: text, note: text }))}
               onShowInfo={handleShowInfo}
+              onSectionReroll={onSectionReroll ? (mode: "core" | "rogue") => onSectionReroll(si, mode) : undefined}
             />
           ))}
         </SortableContext>
