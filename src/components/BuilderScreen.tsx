@@ -82,6 +82,7 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
   const [copyModal, setCopyModal] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [unshareConfirm, setUnshareConfirm] = useState(false);
 
   useEffect(() => {
     loadSeedExercises().then(rows => {
@@ -265,12 +266,29 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
             {!editData.isPublic ? (
               <button onClick={onShareBeatdown} style={{ fontFamily: F, flex: 1, padding: "14px 0", background: A + "12", color: A, border: "1px solid " + A + "25", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Share to Library</button>
             ) : (
-              <button onClick={onUnshareBeatdown} style={{ fontFamily: F, flex: 1, padding: "14px 0", background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Unshare</button>
+              <button onClick={() => setUnshareConfirm(true)} style={{ fontFamily: F, flex: 1, padding: "14px 0", background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Unshare</button>
             )}
             <button onClick={onDeleteBeatdown} style={{ fontFamily: F, flex: 1, padding: "14px 0", background: "rgba(255,255,255,0.04)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.20)", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Delete</button>
           </div>
         )}
       </div>
+      {unshareConfirm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 250, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div style={{ background: "#1c1c20", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 22, padding: "32px 28px", maxWidth: 360, width: "100%", textAlign: "center" }}>
+            <h3 style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: T1, margin: "0 0 12px" }}>Unshare beatdown?</h3>
+            <p style={{ fontFamily: F, fontSize: 15, color: T3, margin: "0 0 8px", lineHeight: 1.6 }}>
+              This will remove <span style={{ color: T1, fontWeight: 700 }}>{bT || "this beatdown"}</span> from the Library.
+            </p>
+            <p style={{ fontFamily: F, fontSize: 14, color: "#ef4444", margin: "0 0 28px", lineHeight: 1.5 }}>
+              All votes and comments from other PAX will be permanently deleted.
+            </p>
+            <div style={{ display: "flex", gap: 12 }}>
+              <button onClick={() => setUnshareConfirm(false)} style={{ fontFamily: F, flex: 1, padding: "18px 0", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 14, fontSize: 16, fontWeight: 700, color: T2, cursor: "pointer" }}>Keep Shared</button>
+              <button onClick={() => { setUnshareConfirm(false); onUnshareBeatdown?.(); }} style={{ fontFamily: F, flex: 1, padding: "18px 0", background: "#ef4444", border: "none", borderRadius: 14, fontSize: 16, fontWeight: 800, color: "#fff", cursor: "pointer" }}>Unshare</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
