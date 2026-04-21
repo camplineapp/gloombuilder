@@ -117,6 +117,27 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, onNavigate, onD
           <button onClick={() => { if (confirm("Delete this exercise? This can't be undone.")) { onDeleteExercise?.(edLkExD.id); setEdLkExI(null); setEdLkExD(null); } }} style={{ fontFamily: F, flex: 1, padding: "14px 0", background: "rgba(255,255,255,0.04)", color: R, border: "1px solid " + R + "20", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Delete</button>
         </div>
         {toastEl}
+        {unshareConfirm && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 250, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+            <div style={{ background: "#1c1c20", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 22, padding: "32px 28px", maxWidth: 360, width: "100%", textAlign: "center" }}>
+              <h3 style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: T1, margin: "0 0 12px" }}>Unshare {unshareConfirm.type === "beatdown" ? "beatdown" : "exercise"}?</h3>
+              <p style={{ fontFamily: F, fontSize: 15, color: T3, margin: "0 0 8px", lineHeight: 1.6 }}>
+                This will remove <span style={{ color: T1, fontWeight: 700 }}>{unshareConfirm.name}</span> from the Library.
+              </p>
+              <p style={{ fontFamily: F, fontSize: 14, color: R, margin: "0 0 28px", lineHeight: 1.5 }}>
+                All votes and comments from other PAX will be permanently deleted.
+              </p>
+              <div style={{ display: "flex", gap: 12 }}>
+                <button onClick={() => setUnshareConfirm(null)} style={{ fontFamily: F, flex: 1, padding: "18px 0", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 14, fontSize: 16, fontWeight: 700, color: T2, cursor: "pointer" }}>Keep Shared</button>
+                <button onClick={() => {
+                  if (unshareConfirm.type === "beatdown") onUnshareBeatdown?.(unshareConfirm.id);
+                  else { onUnshareExercise?.(unshareConfirm.id); setEdLkExI(null); setEdLkExD(null); }
+                  setUnshareConfirm(null);
+                }} style={{ fontFamily: F, flex: 1, padding: "18px 0", background: R, border: "none", borderRadius: 14, fontSize: 16, fontWeight: 800, color: "#fff", cursor: "pointer" }}>Unshare</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
