@@ -205,7 +205,7 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
                 {bDur && <span style={{ fontFamily: F, background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.3)", color: G, fontSize: 14, fontWeight: 700, padding: "5px 12px", borderRadius: 8 }}>{bDur}</span>}
                 {bDiff && (() => { const d = DIFFS.find(x => x.id === bDiff); return d ? <span style={{ fontFamily: F, background: d.c + "15", border: "1px solid " + d.c + "40", color: d.c, fontSize: 14, fontWeight: 700, padding: "5px 12px", borderRadius: 8 }}>{d.l}</span> : null; })()}
-                {bSites.map(s => <span key={s} style={{ fontFamily: F, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: T3, fontSize: 14, fontWeight: 600, padding: "5px 12px", borderRadius: 8 }}>{siteLabel(s)}</span>)}
+                {bSites.map(s => <span key={s} style={{ fontFamily: F, background: G + "12", border: "1px solid " + G + "30", color: G, fontSize: 14, fontWeight: 600, padding: "5px 12px", borderRadius: 8 }}>{siteLabel(s)}</span>)}
                 {bEq.map(e => <span key={e} style={{ fontFamily: F, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.3)", color: P, fontSize: 14, fontWeight: 600, padding: "5px 12px", borderRadius: 8 }}>{eqLabel(e)}</span>)}
               </div>
             )}

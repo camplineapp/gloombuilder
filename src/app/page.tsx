@@ -26,6 +26,9 @@ export interface LockerBeatdown {
   desc: string;
   secs: Section[];
   tg: string[];
+  dur?: string | null;
+  sites?: string[];
+  eq?: string[];
   inspiredBy?: string;
   isPublic?: boolean;
 }
@@ -78,6 +81,9 @@ function dbToLocker(row: Record<string, unknown>): LockerBeatdown {
     desc: (row.description as string) || "",
     secs: ((row.sections as Record<string,unknown>[]) || []).map(normalizeSection),
     tg: (row.tags as string[]) || [],
+    dur: row.duration ? String(row.duration) + " min" : null,
+    sites: (row.site_features as string[]) || [],
+    eq: (row.equipment as string[]) || [],
     isPublic: (row.is_public as boolean) || false,
     inspiredBy: hasInspiredBy ? (inspiredProfile?.f3_name as string) || "a fellow PAX" : undefined,
   };
@@ -523,9 +529,9 @@ export default function App() {
             d: editingBd.d,
             secs: editingBd.secs,
             tg: editingBd.tg,
-            dur: null,
-            sites: [],
-            eq: [],
+            dur: editingBd.dur || null,
+            sites: editingBd.sites || [],
+            eq: editingBd.eq || [],
             isPublic: editingBd.isPublic,
           }}
           onUpdate={handleUpdateBeatdown}

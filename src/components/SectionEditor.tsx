@@ -236,7 +236,8 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
   onSave: (updated: SectionExercise) => void; onDelete: () => void; onClose: () => void;
   onAddTransitionAfter?: (text: string) => void;
 }) {
-  const exName = exercise.name || exercise.n || "";
+  const origName = exercise.name || exercise.n || "";
+  const [exName, setExName] = useState(origName);
   const [amountText, setAmountText] = useState(exerciseToAmountString(exercise));
   const initCad = exercise.cadence || exercise.c || "IC";
   const isInitCustom = initCad !== "IC" && initCad !== "OYO" && initCad !== "";
@@ -299,9 +300,13 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
           <div style={{ width: 60 }} />
         </div>
         <div style={{ padding: "0 20px 40px" }}>
-          {/* Exercise name */}
+          {/* Exercise name — editable for custom, read-only for database */}
           <div style={{ background: EX_BG, borderRadius: 14, padding: "14px 16px", marginBottom: 12 }}>
-            <div style={{ color: T1, fontSize: 19, fontWeight: 700, fontFamily: F }}>{exName}</div>
+            {exData ? (
+              <div style={{ color: T1, fontSize: 19, fontWeight: 700, fontFamily: F }}>{exName}</div>
+            ) : (
+              <input value={exName} onChange={e => setExName(e.target.value)} maxLength={50} style={{ width: "100%", background: "none", border: "none", outline: "none", color: T1, fontSize: 19, fontWeight: 700, fontFamily: F, padding: 0 }} />
+            )}
           </div>
           {/* How to do this exercise — right below name for quick reference */}
           {exData && (
