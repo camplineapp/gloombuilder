@@ -175,7 +175,7 @@ function ExerciseCard({ ex, sectionColor, onTap, onDelete, onInfo, dragListeners
 
   if (isTransition) {
     return (
-      <div style={{ display: "flex", alignItems: "stretch", marginBottom: 6, background: "rgba(255,255,255,0.03)", borderRadius: 10, opacity: isDragging ? 0.4 : 1, overflow: "hidden" }}>
+      <div onClick={onTap} style={{ display: "flex", alignItems: "stretch", marginBottom: 6, background: "rgba(255,255,255,0.03)", borderRadius: 10, opacity: isDragging ? 0.4 : 1, overflow: "hidden", cursor: "pointer" }}>
         {/* Wide drag strip — full left edge, 44px */}
         <div {...dragListeners} onClick={e => e.stopPropagation()} style={{ ...dragHandleStyle, width: 44, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.2)", fontSize: 18, borderRight: "1px solid rgba(255,255,255,0.04)" }}>≡</div>
         <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "9px 12px 9px 8px", minWidth: 0 }}>
@@ -276,6 +276,9 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
     let rLegacy = amountText;
     if (parsed?.mode === "reps") rLegacy = String(parsed.value);
     onSave({ ...exercise, name: exName, n: exName, mode, value, unit, cadence: finalCadence, c: finalCadence, r: rLegacy, note, nt: note });
+    if (transitionText.trim() && onAddTransitionAfter) {
+      onAddTransitionAfter(transitionText.trim());
+    }
   };
 
   return (
@@ -308,7 +311,7 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
                 <span style={{ color: T2, fontSize: 15, fontWeight: 600, fontFamily: F, flex: 1 }}>How to do this exercise</span>
                 <span style={{ color: T4 }}>{showHowTo ? "▲" : "›"}</span>
               </div>
-              {showHowTo && <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>{exData.h.split(/(?=\d+\.\s)/).filter(Boolean).map((step, i) => <div key={i} style={{ color: T3, fontSize: 14, lineHeight: 1.7, marginBottom: 4, fontFamily: F }}>{step.trim()}</div>)}</div>}
+              {showHowTo && <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>{exData.h.split(/(?=\d+\.\s)/).filter(Boolean).map((step, i) => <div key={i} style={{ color: T3, fontSize: 17, lineHeight: 1.7, marginBottom: 4, fontFamily: F }}>{step.trim()}</div>)}</div>}
             </>
           )}
           {/* HOW MUCH */}
@@ -339,12 +342,8 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
                   value={transitionText}
                   onChange={e => setTransitionText(e.target.value)}
                   placeholder="e.g. Mosey to the bleachers"
-                  onKeyDown={e => { if (e.key === "Enter" && transitionText.trim()) { onAddTransitionAfter(transitionText.trim()); setTransitionText(""); onClose(); } }}
                   style={{ flex: 1, background: "none", border: "none", outline: "none", color: T2, fontSize: 16, fontStyle: "italic", fontFamily: F, padding: "16px 0" }}
                 />
-                {transitionText.trim() && (
-                  <button onClick={() => { onAddTransitionAfter(transitionText.trim()); setTransitionText(""); onClose(); }} style={{ background: sectionColor, border: "none", color: BG, fontSize: 14, fontWeight: 800, padding: "0 16px", height: 54, cursor: "pointer", fontFamily: F, flexShrink: 0 }}>Add</button>
-                )}
               </div>
               <div style={{ color: T5, fontSize: 13, marginTop: 6, fontFamily: F }}>Inserts a mosey line after {exName} in the beatdown</div>
             </div>
@@ -397,6 +396,8 @@ function SortableSectionBlock({
   const [qNotesOpen, setQNotesOpen] = useState(false);
   const [qNotesDraft, setQNotesDraft] = useState(sec.qNotes || sec.note || "");
   const hasQNotes = (sec.qNotes || sec.note || "").trim().length > 0;
+  const [editTrIdx, setEditTrIdx] = useState<number | null>(null);
+  const [editTrText, setEditTrText] = useState("");
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: secId });
 
@@ -501,7 +502,14 @@ function SortableSectionBlock({
                   key={ex.id ? `${ex.id}-${exIdx}` : `${ex.n}-${exIdx}`}
                   exKey={ex.id ? `${ex.id}-${exIdx}` : `${ex.n}-${exIdx}`}
                   ex={ex} sectionColor={sColor} allEx={allEx}
-                  onTap={() => onEditSheet({ sectionIdx: si, exercise: ex })}
+                  onTap={() => {
+                    if (ex.type === "transition") {
+                      setEditTrIdx(exIdx);
+                      setEditTrText(ex.name || ex.n || "");
+                    } else {
+                      onEditSheet({ sectionIdx: si, exercise: ex });
+                    }
+                  }}
                   onDelete={() => {
                     const exId = ex.id; const exName = ex.n || "";
                     onUpdate(sections.map((s, i) => i !== si ? s : { ...s, exercises: s.exercises.filter(e => exId ? e.id !== exId : e.n !== exName) }));
@@ -509,6 +517,43 @@ function SortableSectionBlock({
                   onInfo={() => onShowInfo(ex.name || ex.n || "")}
                 />
               ))}
+              {/* Transition inline edit */}
+              {editTrIdx !== null && (
+                <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }} onClick={() => setEditTrIdx(null)}>
+                  <div onClick={e => e.stopPropagation()} style={{ background: "#1c1c20", borderRadius: "22px 22px 0 0", width: "100%", maxWidth: 430, padding: "20px 22px 32px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                      <span style={{ color: T2, fontSize: 14, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.5, fontFamily: F }}>Edit transition</span>
+                      <button onClick={() => setEditTrIdx(null)} style={{ width: 36, height: 36, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", borderRadius: 10, color: T3, fontSize: 18, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <span style={{ color: T4, fontSize: 17, marginTop: 12 }}>↗</span>
+                      <input
+                        autoFocus
+                        value={editTrText}
+                        onChange={e => setEditTrText(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === "Enter" && editTrText.trim()) {
+                            const idx = editTrIdx;
+                            onUpdate(sections.map((s, i) => i !== si ? s : { ...s, exercises: s.exercises.map((ex2, j) => j !== idx ? ex2 : { ...ex2, name: editTrText.trim(), n: editTrText.trim() }) }));
+                            setEditTrIdx(null);
+                          }
+                        }}
+                        style={{ flex: 1, background: "rgba(255,255,255,0.04)", border: `1.5px solid ${sColor}60`, borderRadius: 12, color: T2, fontSize: 16, fontStyle: "italic", padding: "12px 14px", fontFamily: F, outline: "none" }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
+                      <button onClick={() => {
+                        if (editTrText.trim()) {
+                          const idx = editTrIdx;
+                          onUpdate(sections.map((s, i) => i !== si ? s : { ...s, exercises: s.exercises.map((ex2, j) => j !== idx ? ex2 : { ...ex2, name: editTrText.trim(), n: editTrText.trim() }) }));
+                        }
+                        setEditTrIdx(null);
+                      }} style={{ flex: 1, padding: "14px 0", background: sColor, color: BG, border: "none", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: F }}>Save</button>
+                      <button onClick={() => setEditTrIdx(null)} style={{ padding: "14px 20px", background: "rgba(255,255,255,0.05)", color: T3, border: "none", borderRadius: 12, fontSize: 16, cursor: "pointer", fontFamily: F }}>Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </SortableContext>
           </DndContext>
 

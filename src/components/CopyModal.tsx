@@ -118,8 +118,8 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, ins
     if (beatdownName) qpText += "Q: " + (qName || "Q") + "\n";
     if (inspiredBy) qpText += "Inspired by: " + inspiredBy + "\n";
     secs.forEach(s => {
-      qpText += "\n── " + _sLabel(s) + " ──\n";
-      if (_sNotes(s)) qpText += "> " + _sNotes(s) + "\n";
+      qpText += "\n── " + _sLabel(s) + " ──\n\n";
+      if (_sNotes(s)) qpText += _sNotes(s).split("\n").map((ln: string) => "> " + ln).join("\n") + "\n\n";
       s.exercises.forEach(e => {
         if (e.type === "transition") {
           qpText += "↗ " + _exName(e) + "\n";
@@ -160,8 +160,8 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, ins
   if (bb.cnt) bbText += "Total PAX: " + bb.cnt + "\n";
   bbText += "\nWorkout:\n";
   secs.forEach(s => {
-    bbText += "\n── " + _sLabel(s) + " ──\n";
-    if (_sNotes(s)) bbText += "> " + _sNotes(s) + "\n";
+    bbText += "\n── " + _sLabel(s) + " ──\n\n";
+    if (_sNotes(s)) bbText += _sNotes(s).split("\n").map((ln: string) => "> " + ln).join("\n") + "\n\n";
     s.exercises.forEach(e => {
       if (e.type === "transition") {
         bbText += "↗ " + _exName(e) + "\n";
