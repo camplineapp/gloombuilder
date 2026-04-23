@@ -327,7 +327,11 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
           )}
           {/* HOW MUCH */}
           <div style={{ color: T2, fontSize: 12, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8, fontFamily: F }}>HOW MUCH?</div>
-          <input value={amountText} onChange={e => setAmountText(e.target.value)} placeholder="20 · 45 sec · 50 yds..." style={{ width: "100%", background: "rgba(255,255,255,0.06)", border: `2px solid ${sectionColor}66`, borderRadius: 12, color: T1, padding: "16px 18px", fontSize: 17, fontWeight: 500, outline: "none", boxSizing: "border-box", fontFamily: F }} />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button onClick={() => { const num = parseInt(amountText); if (!isNaN(num) && num > 5) setAmountText(String(num - 5)); }} style={{ fontFamily: F, width: 56, height: 56, borderRadius: 12, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: T2, fontSize: 18, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>−5</button>
+            <input value={amountText} onChange={e => setAmountText(e.target.value)} placeholder="20 · 45 sec · 50 yds..." style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: `2px solid ${sectionColor}66`, borderRadius: 12, color: T1, padding: "16px 18px", fontSize: 17, fontWeight: 500, outline: "none", boxSizing: "border-box", fontFamily: F, textAlign: "center" }} />
+            <button onClick={() => { const num = parseInt(amountText); if (!isNaN(num)) setAmountText(String(num + 5)); else setAmountText("5"); }} style={{ fontFamily: F, width: 56, height: 56, borderRadius: 12, background: G + "12", border: "1px solid " + G + "30", color: G, fontSize: 18, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>+5</button>
+          </div>
           {classification && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}><span style={{ fontSize: 18 }}>{classification.icon}</span><span style={{ color: classification.color, fontSize: 15, fontWeight: 700, fontFamily: F }}>{classification.text}</span></div>}
           <div style={{ color: T4, fontSize: 14, fontStyle: "italic", marginTop: 6, marginBottom: 22, fontFamily: F }}>Try: 20 · 45 sec · 50 yds · 3 laps</div>
           {/* CADENCE */}
