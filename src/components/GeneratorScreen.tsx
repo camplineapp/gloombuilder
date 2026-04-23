@@ -232,7 +232,7 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
           });
         }} />
 
-        {/* Save + Run This + Copy for Slack */}
+        {/* Save + Run This + Backblast */}
         <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
           <button disabled={saving} onClick={() => {
             if (saving) return; setSaving(true);
@@ -252,7 +252,7 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
                 <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M5 3L17 10L5 17V3Z" fill={G} /></svg>
                 Run This
               </button>
-              <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, flex: 1, padding: "16px 0", borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: "pointer", background: A + "12", border: "1px solid " + A + "25", color: A }}>Copy for Slack</button>
+              <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, flex: 1, padding: "16px 0", borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: "pointer", background: A + "12", border: "1px solid " + A + "25", color: A }}>Backblast</button>
             </div>
           )}
         </div>

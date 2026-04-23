@@ -168,8 +168,9 @@ function ExerciseCard({ ex, sectionColor, onTap, onDelete, onInfo, onLock, isLoc
 }) {
   const isTransition = ex.type === "transition";
   const exName = ex.name || ex.n || "";
-  const isCustom = allEx ? !allEx.some(x => x.n.toLowerCase() === exName.toLowerCase()) : false;
-  const hasInfo = !isCustom && allEx && allEx.some(x => x.n.toLowerCase() === exName.toLowerCase());
+  const matchedEx = allEx ? allEx.find(x => x.n.toLowerCase() === exName.toLowerCase()) : null;
+  const isCustom = allEx ? !matchedEx : false;
+  const hasInfo = !!(matchedEx && matchedEx.h);
   const amountStr = fmtAmount(ex);
   const cadStr = fmtCadence(ex);
 

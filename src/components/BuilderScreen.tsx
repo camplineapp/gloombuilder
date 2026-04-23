@@ -158,7 +158,7 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
           {editData ? "← Locker" : "← Home"}
         </button>
         <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, background: A + "26", border: "1px solid " + A + "4D", color: A, fontSize: 15, fontWeight: 700, padding: "10px 16px", borderRadius: 10, cursor: "pointer" }}>
-          Copy for Slack
+          Backblast
         </button>
       </div>
 

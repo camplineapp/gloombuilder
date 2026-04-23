@@ -549,6 +549,7 @@ export default function App() {
           duration={liveBd.tg.find(t => t.includes("min")) || "45 min"}
           sections={liveBd.secs}
           inspiredBy={liveBd.inspiredBy}
+          userExercises={lkEx}
           onClose={() => { setVw(null); setLiveBd(null); }}
         />}
         {toastEl}

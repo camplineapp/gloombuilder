@@ -30,7 +30,7 @@ interface CopyModalProps {
 }
 
 export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, inspiredBy, onClose, onToast }: CopyModalProps) {
-  const [step, setStep] = useState<"pick" | "quickpreview" | "bb">("pick");
+  const [step, setStep] = useState<"bb">("bb");
 
   // ═══ TASK 2: Body scroll lock when modal is open ═══
   useEffect(() => {
@@ -72,26 +72,6 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, ins
     ann: "",
   });
 
-  // ════ PICK ════
-  if (step === "pick") {
-    return (
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-        <div onClick={e => e.stopPropagation()} style={{ background: "#111318", borderRadius: "24px 24px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 430, border: "1px solid " + BD, borderBottom: "none" }}>
-          <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, margin: "0 auto 20px" }} />
-          <div style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: T1, textAlign: "center", marginBottom: 24 }}>Copy for Slack</div>
-          <button onClick={() => setStep("quickpreview")} style={{ width: "100%", padding: 20, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.12)", borderRadius: 16, cursor: "pointer", textAlign: "left", marginBottom: 12 }}>
-            <div style={{ fontFamily: F, fontSize: 17, fontWeight: 700, color: G }}>Quick copy</div>
-            <div style={{ fontFamily: F, color: T4, fontSize: 14, marginTop: 5 }}>Just the exercises. Paste anywhere.</div>
-          </button>
-          <button onClick={() => setStep("bb")} style={{ width: "100%", padding: 20, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.12)", borderRadius: 16, cursor: "pointer", textAlign: "left" }}>
-            <div style={{ fontFamily: F, fontSize: 17, fontWeight: 700, color: A }}>Full backblast</div>
-            <div style={{ fontFamily: F, color: T4, fontSize: 14, marginTop: 5 }}>AO, PAX, conditions — the full post.</div>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   // ── Helpers for dual-format (old: n/r/c/nt/label/note, new: name/value/cadence/note/name/qNotes)
   const _sLabel = (s: Section) => (s as any).name || s.label || "Section";
   const _sNotes = (s: Section) => (s as any).qNotes || s.note || "";
@@ -111,43 +91,28 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, ins
     return cad;
   };
 
-  // ════ QUICK PREVIEW ════
-  if (step === "quickpreview") {
-    let qpText = "";
-    if (beatdownName) qpText += beatdownName + "\n";
-    if (beatdownName) qpText += "Q: " + (qName || "Q") + "\n";
-    if (inspiredBy) qpText += "Inspired by: " + inspiredBy + "\n";
-    secs.forEach(s => {
-      qpText += "\n── " + _sLabel(s) + " ──\n\n";
-      if (_sNotes(s)) qpText += _sNotes(s).split("\n").map((ln: string) => "> " + ln).join("\n") + "\n\n";
-      s.exercises.forEach(e => {
-        if (e.type === "transition") {
-          qpText += "↗ " + _exName(e) + "\n";
-        } else {
-          const reps = _exReps(e);
-          const cad = _exCad(e);
-          qpText += (reps ? reps + " " : "") + _exName(e) + (cad ? " " + cad : "") + "\n";
-          if (_exNote(e)) qpText += "  > " + _exNote(e) + "\n";
-        }
-      });
+  // ═══ Build exercise-only text (for Copy Exercise Only button) ═══
+  let exOnlyText = "";
+  if (beatdownName) exOnlyText += beatdownName + "\n";
+  if (beatdownName) exOnlyText += "Q: " + (qName || "Q") + "\n";
+  if (inspiredBy) exOnlyText += "Inspired by: " + inspiredBy + "\n";
+  secs.forEach(s => {
+    exOnlyText += "\n── " + _sLabel(s) + " ──\n\n";
+    if (_sNotes(s)) exOnlyText += _sNotes(s).split("\n").map((ln: string) => "> " + ln).join("\n") + "\n\n";
+    s.exercises.forEach(e => {
+      if (e.type === "transition") {
+        exOnlyText += "↗ " + _exName(e) + "\n";
+      } else {
+        const reps = _exReps(e);
+        const cad = _exCad(e);
+        exOnlyText += (reps ? reps + " " : "") + _exName(e) + (cad ? " " + cad : "") + "\n";
+        if (_exNote(e)) exOnlyText += "  > " + _exNote(e) + "\n";
+      }
     });
-    qpText += "\nBuilt with GloomBuilder · gloombuilder.app";
+  });
+  exOnlyText += "\nBuilt with GloomBuilder · gloombuilder.app";
 
-    return (
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
-        <div onClick={e => e.stopPropagation()} style={{ background: "#111318", borderRadius: "24px 24px 0 0", padding: "28px 24px 40px", width: "100%", maxWidth: 430, maxHeight: "85vh", overflowY: "auto", border: "1px solid " + BD, borderBottom: "none" }}>
-          <div style={{ width: 40, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, margin: "0 auto 20px" }} />
-          <div style={{ fontFamily: F, fontSize: 22, fontWeight: 800, color: T1, textAlign: "center", marginBottom: 6 }}>Quick copy</div>
-          <div style={{ fontFamily: F, fontSize: 14, color: T4, textAlign: "center", marginBottom: 20 }}>Preview what gets copied</div>
-          <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid " + BD, borderRadius: 14, padding: "16px 18px", fontFamily: "monospace", fontSize: 13, color: T3, lineHeight: 1.7, whiteSpace: "pre-wrap", marginBottom: 16 }}>{qpText}</div>
-          <button onClick={() => handleCopy(qpText, "Copied!")} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Copy to clipboard</button>
-          <div style={{ textAlign: "center", marginTop: 10, fontFamily: F, fontSize: 13, color: T5 }}>Paste in Slack, WhatsApp, or anywhere</div>
-        </div>
-      </div>
-    );
-  }
-
-  // ════ FULL BACKBLAST — TASK 1: No asterisks, clean plain text ════
+  // ════ FULL BACKBLAST ════
   let bbText = "";
   if (beatdownName) bbText += beatdownName + "\n";
   bbText += "\nAO: " + bb.ao + "\nDate: " + bb.date + "\n";
@@ -180,7 +145,7 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, ins
   return (
     <div style={{ position: "fixed", inset: 0, background: BG, zIndex: 200, display: "flex", flexDirection: "column" }}>
       <div style={{ padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid " + BD }}>
-        <button onClick={() => setStep("pick")} style={{ color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14, fontFamily: F }}>← Back</button>
+        <div style={{ width: 40 }} />
         <div style={{ fontFamily: F, fontSize: 18, fontWeight: 800, color: A }}>Backblast</div>
         <span onClick={onClose} style={{ color: T4, cursor: "pointer", fontSize: 20 }}>✕</span>
       </div>
@@ -247,7 +212,8 @@ export default function CopyModal({ secs, beatdownName, beatdownDesc, qName, ins
           <div style={{ fontFamily: F, fontSize: 15, fontWeight: 700, color: T1, marginBottom: 4 }}>Preview</div>
           <div style={{ fontFamily: F, fontSize: 13, color: T5, marginBottom: 14 }}>Clean text — works in any app</div>
           <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid " + BD, borderRadius: 14, padding: "16px 18px", fontFamily: "monospace", fontSize: 12, color: T3, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{bbText}</div>
-          <button onClick={() => handleCopy(bbText, "Backblast copied!")} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none", marginTop: 16 }}>Copy backblast</button>
+          <button onClick={() => handleCopy(bbText, "Full backblast copied!")} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none", marginTop: 16 }}>Copy Full Backblast</button>
+          <button onClick={() => handleCopy(exOnlyText, "Exercises copied!")} style={{ fontFamily: F, width: "100%", padding: "14px 0", borderRadius: 12, fontSize: 15, fontWeight: 600, cursor: "pointer", background: "rgba(255,255,255,0.04)", color: T3, border: "1px solid " + BD, marginTop: 10 }}>Copy Exercise Only</button>
           <div style={{ textAlign: "center", marginTop: 10, fontFamily: F, fontSize: 13, color: T5 }}>Paste into #backblasts or any chat</div>
         </div>
       </div>
