@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { EX, DIFFS, SITES, EQUIP, mapSupabaseExercise, normalizeSection } from "@/lib/exercises";
 import type { Section, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
@@ -84,26 +84,30 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [unshareConfirm, setUnshareConfirm] = useState(false);
 
+  const userExRef = useRef(userExercises);
+  const commExRef = useRef(communityExercises);
+  userExRef.current = userExercises;
+  commExRef.current = communityExercises;
+
   useEffect(() => {
     loadSeedExercises().then(rows => {
       if (rows.length > 0) {
         const mapped = rows.map(r => mapSupabaseExercise(r as Record<string, unknown>));
         const seedNames = new Set(mapped.map(e => e.n.toLowerCase()));
-        // Merge user's custom exercises (from Locker)
-        const userMapped: ExerciseData[] = (userExercises || []).map(ux => ({
+        const userMapped: ExerciseData[] = (userExRef.current || []).map(ux => ({
           n: ux.nm, f: ux.nm, t: ux.tags || [], s: [], h: ux.how || "", d: ux.desc || "",
         }));
         const uniqueUser = userMapped.filter(u => !seedNames.has(u.n.toLowerCase()));
-        // Merge community-shared exercises
         const allNames = new Set([...seedNames, ...uniqueUser.map(u => u.n.toLowerCase())]);
-        const communityMapped: ExerciseData[] = (communityExercises || []).map(ce => ({
+        const communityMapped: ExerciseData[] = (commExRef.current || []).map(ce => ({
           n: ce.nm, f: ce.nm, t: ce.tags || [], s: [], h: ce.how || "", d: ce.desc || "",
         }));
         const uniqueCommunity = communityMapped.filter(c => !allNames.has(c.n.toLowerCase()));
         setAllEx([...mapped, ...uniqueUser, ...uniqueCommunity]);
       }
     });
-  }, [userExercises, communityExercises]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 

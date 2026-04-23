@@ -161,9 +161,9 @@ function ExerciseInfoSheet({ exData, onClose }: { exData: ExerciseData; onClose:
 }
 
 // ── EXERCISE CARD ─────────────────────────────────────────────────────────────
-function ExerciseCard({ ex, sectionColor, onTap, onDelete, onInfo, dragListeners, isDragging, allEx }: {
+function ExerciseCard({ ex, sectionColor, onTap, onDelete, onInfo, onLock, isLocked, dragListeners, isDragging, allEx }: {
   ex: SectionExercise; sectionColor: string; onTap: () => void; onDelete?: () => void;
-  onInfo?: () => void;
+  onInfo?: () => void; onLock?: () => void; isLocked?: boolean;
   dragListeners?: Record<string, unknown>; isDragging?: boolean; allEx?: ExerciseData[];
 }) {
   const isTransition = ex.type === "transition";
@@ -190,7 +190,7 @@ function ExerciseCard({ ex, sectionColor, onTap, onDelete, onInfo, dragListeners
   }
 
   return (
-    <div onClick={onTap} style={{ background: EX_BG, borderRadius: 14, marginBottom: 6, display: "flex", alignItems: "stretch", cursor: "pointer", userSelect: "none", opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s", overflow: "hidden" }}>
+    <div onClick={onTap} style={{ background: EX_BG, borderRadius: 14, marginBottom: 6, display: "flex", alignItems: "stretch", cursor: "pointer", userSelect: "none", opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s", overflow: "hidden", border: isLocked ? `1px solid ${G}25` : "1px solid transparent" }}>
       {/* Wide drag strip — 44px left edge, full height of the card */}
       <div {...dragListeners} onClick={e => e.stopPropagation()} style={{ ...dragHandleStyle, width: 44, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: sectionColor + "50", fontSize: 22, borderRight: "1px solid rgba(255,255,255,0.04)" }}>≡</div>
       <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, padding: "13px 12px 13px 10px", minWidth: 0 }}>
@@ -210,22 +210,28 @@ function ExerciseCard({ ex, sectionColor, onTap, onDelete, onInfo, dragListeners
         {hasInfo && onInfo && (
           <button onClick={e => { e.stopPropagation(); onInfo(); }} style={{ width: 28, height: 28, borderRadius: 8, background: P + "15", border: "1px solid " + P + "30", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: P, fontSize: 14, fontWeight: 700, fontFamily: F }}>?</button>
         )}
+        {/* Lock toggle — only on generator screen */}
+        {onLock && (
+          <button onClick={e => { e.stopPropagation(); onLock(); }} style={{ width: 28, height: 28, borderRadius: 8, background: isLocked ? G + "15" : "transparent", border: isLocked ? "1px solid " + G + "30" : "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: isLocked ? G : T5 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" />{isLocked ? <path d="M7 11V7a5 5 0 0 1 10 0v4" /> : <path d="M7 11V7a5 5 0 0 1 9.9-1" />}</svg>
+          </button>
+        )}
         {onDelete && (
-          <button onClick={e => { e.stopPropagation(); onDelete(); }} style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(239,68,68,0.07)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0, color: T5, fontSize: 13, fontFamily: F }}>✕</button>
+          <button onClick={e => { e.stopPropagation(); if (!isLocked) onDelete(); }} style={{ width: 28, height: 28, borderRadius: 8, background: isLocked ? "transparent" : "rgba(239,68,68,0.07)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: isLocked ? "default" : "pointer", flexShrink: 0, color: isLocked ? "rgba(255,255,255,0.08)" : T5, fontSize: 13, fontFamily: F }}>✕</button>
         )}
       </div>
     </div>
   );
 }
 
-function SortableExerciseCard({ ex, exKey, sectionColor, onTap, onDelete, onInfo, allEx }: {
+function SortableExerciseCard({ ex, exKey, sectionColor, onTap, onDelete, onInfo, onLock, isLocked, allEx }: {
   ex: SectionExercise; exKey?: string; sectionColor: string;
-  onTap: () => void; onDelete?: () => void; onInfo?: () => void; allEx?: ExerciseData[];
+  onTap: () => void; onDelete?: () => void; onInfo?: () => void; onLock?: () => void; isLocked?: boolean; allEx?: ExerciseData[];
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: exKey || ex.id || ex.n || "x" });
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} {...attributes}>
-      <ExerciseCard ex={ex} sectionColor={sectionColor} onTap={onTap} onDelete={onDelete} onInfo={onInfo} dragListeners={listeners as Record<string, unknown>} isDragging={isDragging} allEx={allEx} />
+      <ExerciseCard ex={ex} sectionColor={sectionColor} onTap={onTap} onDelete={onDelete} onInfo={onInfo} onLock={onLock} isLocked={isLocked} dragListeners={listeners as Record<string, unknown>} isDragging={isDragging} allEx={allEx} />
     </div>
   );
 }
@@ -370,7 +376,7 @@ function SortableSectionBlock({
   onEditSheet, onSetEditLabel, onSetQaSec, onSetQaQ, onSetTrSec, onSetTrText,
   onUpdate, onDeleteSec, onAddExercise, onAddTransition,
   onOpenPicker, onExDragEnd, onAddSection, onQNotesChange,
-  onShowInfo, onSectionReroll,
+  onShowInfo, onSectionReroll, onExerciseLock,
 }: {
   sec: Section; si: number; sections: Section[]; allEx: ExerciseData[];
   sensors: ReturnType<typeof useSensors>;
@@ -392,6 +398,7 @@ function SortableSectionBlock({
   onQNotesChange: (text: string) => void;
   onShowInfo: (exName: string) => void;
   onSectionReroll?: (mode: "core" | "rogue") => void;
+  onExerciseLock?: (exerciseIdx: number) => void;
 }) {
   const secId = sec.id || sec.label || String(si);
   const sColor = sec.color;
@@ -457,7 +464,7 @@ function SortableSectionBlock({
                     {secLabel}
                   </div>
                 )}
-                <div style={{ color: T4, fontSize: 13, marginTop: 3, fontFamily: F, fontWeight: 500 }}>{exCount} {exCount === 1 ? "exercise" : "exercises"}</div>
+                <div style={{ color: T4, fontSize: 13, marginTop: 3, fontFamily: F, fontWeight: 500 }}>{exCount} {exCount === 1 ? "exercise" : "exercises"}{onExerciseLock && (() => { const lc = sec.exercises.filter(e => (e as any).locked).length; return lc > 0 ? ` · ${lc} locked` : ""; })()}</div>
               </div>
             </div>
             {/* Right: reroll toggle + delete button */}
@@ -537,10 +544,13 @@ function SortableSectionBlock({
                     }
                   }}
                   onDelete={() => {
+                    if ((ex as any).locked) return;
                     const exId = ex.id; const exName = ex.n || "";
                     onUpdate(sections.map((s, i) => i !== si ? s : { ...s, exercises: s.exercises.filter(e => exId ? e.id !== exId : e.n !== exName) }));
                   }}
                   onInfo={() => onShowInfo(ex.name || ex.n || "")}
+                  onLock={onExerciseLock ? () => onExerciseLock(exIdx) : undefined}
+                  isLocked={(ex as any).locked || false}
                 />
               ))}
               {/* Transition inline edit */}
@@ -652,9 +662,10 @@ export interface SectionEditorProps {
   onSectionsChange: (sections: Section[]) => void;
   allEx: ExerciseData[];
   onSectionReroll?: (sectionIdx: number, mode: "core" | "rogue") => void;
+  onExerciseLock?: (sectionIdx: number, exerciseIdx: number) => void;
 }
 
-export default function SectionEditor({ sections, onSectionsChange, allEx, onSectionReroll }: SectionEditorProps) {
+export default function SectionEditor({ sections, onSectionsChange, allEx, onSectionReroll, onExerciseLock }: SectionEditorProps) {
   const [editSheet, setEditSheet] = useState<{ sectionIdx: number; exercise: SectionExercise } | null>(null);
   const [editLabel, setEditLabel] = useState<number | null>(null);
   const [qaQ, setQaQ] = useState("");
@@ -818,6 +829,7 @@ export default function SectionEditor({ sections, onSectionsChange, allEx, onSec
               onQNotesChange={(text) => update(sections.map((s, i) => i !== si ? s : { ...s, qNotes: text, note: text }))}
               onShowInfo={handleShowInfo}
               onSectionReroll={onSectionReroll ? (mode: "core" | "rogue") => onSectionReroll(si, mode) : undefined}
+              onExerciseLock={onExerciseLock ? (exIdx: number) => onExerciseLock(si, exIdx) : undefined}
             />
           ))}
         </SortableContext>

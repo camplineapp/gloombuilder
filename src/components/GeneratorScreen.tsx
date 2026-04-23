@@ -108,14 +108,22 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
             <span style={{ color: T4, fontSize: 12, fontFamily: F }}>Tap to reroll</span>
             <button onClick={() => {
               const fresh = generate(gc, allEx).map(s => normalizeSection(s as unknown as Record<string,unknown>));
-              setGr(prev => prev ? prev.map((sec, i) => ({ ...sec, exercises: fresh[i] ? fresh[i].exercises : sec.exercises })) : fresh);
+              setGr(prev => prev ? prev.map((sec, i) => {
+                const f = fresh[i]; if (!f) return sec;
+                let ni = 0;
+                return { ...sec, exercises: sec.exercises.map(ex => (ex as any).locked ? ex : (ni < f.exercises.length ? f.exercises[ni++] : ex)) };
+              }) : fresh);
             }} style={{ fontFamily: F, background: G + "12", border: "1px solid " + G + "30", borderRadius: 12, padding: "10px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: G, fontSize: 13, fontWeight: 600 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={G} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 4v6h6" /><path d="M23 20v-6h-6" /><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10" /><path d="M3.51 15A9 9 0 0 0 18.36 18.36L23 14" /></svg>
               Classics
             </button>
             <button onClick={() => {
               const fresh = generate(gc, allEx, true).map(s => normalizeSection(s as unknown as Record<string,unknown>));
-              setGr(prev => prev ? prev.map((sec, i) => ({ ...sec, exercises: fresh[i] ? fresh[i].exercises : sec.exercises })) : fresh);
+              setGr(prev => prev ? prev.map((sec, i) => {
+                const f = fresh[i]; if (!f) return sec;
+                let ni = 0;
+                return { ...sec, exercises: sec.exercises.map(ex => (ex as any).locked ? ex : (ni < f.exercises.length ? f.exercises[ni++] : ex)) };
+              }) : fresh);
             }} style={{ fontFamily: F, background: P + "12", border: "1px solid " + P + "30", borderRadius: 12, padding: "10px 14px", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, color: P, fontSize: 13, fontWeight: 600 }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={P} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M1 4v6h6" /><path d="M23 20v-6h-6" /><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10" /><path d="M3.51 15A9 9 0 0 0 18.36 18.36L23 14" /></svg>
               Full Library
@@ -181,15 +189,22 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
             else exCount = 15;                       // Thang/custom default
           }
           // Generate batches until we have enough unique exercises
+          // Exclude locked exercises from the pool and only fill unlocked slots
+          const lockedNames = sec.exercises.filter(e => (e as any).locked).map(e => ((e as any).name || e.n || "").toLowerCase());
+          const unlockedCount = exCount - lockedNames.length;
+          if (unlockedCount <= 0 && exCount > 0) {
+            // All exercises locked, nothing to reroll
+          } else {
           const collected: typeof sec.exercises = [];
-          const seen = new Set<string>();
-          for (let attempt = 0; attempt < 5 && collected.length < exCount; attempt++) {
+          const seen = new Set<string>(lockedNames);
+          const target = unlockedCount > 0 ? unlockedCount : exCount;
+          for (let attempt = 0; attempt < 5 && collected.length < target; attempt++) {
             const fresh = generate(gc, allEx, goRogue).map(s => normalizeSection(s as unknown as Record<string,unknown>));
             const sourceSec = fresh[sourceIdx];
             if (sourceSec) {
               for (const ex of sourceSec.exercises) {
                 const name = (ex as any).name || ex.n || "";
-                if (!seen.has(name.toLowerCase()) && collected.length < exCount) {
+                if (!seen.has(name.toLowerCase()) && collected.length < target) {
                   seen.add(name.toLowerCase());
                   collected.push(ex);
                 }
@@ -197,8 +212,24 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
             }
           }
           if (collected.length > 0) {
-            setGr(prev => prev ? prev.map((s, i) => i !== sectionIdx ? s : { ...s, exercises: collected }) : prev);
+            // Rebuild: locked stay in place, unlocked get replaced
+            let newIdx = 0;
+            const finalExercises = sec.exercises.map(ex => {
+              if ((ex as any).locked) return ex;
+              if (newIdx < collected.length) return collected[newIdx++];
+              return ex;
+            });
+            setGr(prev => prev ? prev.map((s, i) => i !== sectionIdx ? s : { ...s, exercises: finalExercises }) : prev);
           }
+          } // end else (has unlocked exercises)
+        }} onExerciseLock={(sectionIdx, exerciseIdx) => {
+          setGr(prev => {
+            if (!prev) return prev;
+            return prev.map((s, i) => i !== sectionIdx ? s : {
+              ...s,
+              exercises: s.exercises.map((ex, j) => j !== exerciseIdx ? ex : { ...ex, locked: !(ex as any).locked } as any),
+            });
+          });
         }} />
 
         {/* Save + Run This + Copy for Slack */}
