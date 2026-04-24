@@ -710,7 +710,7 @@ function ReviewScreen({ sections, exercises, elapsedTime, qName, beatdownTitle, 
             background: C.green, color: "#000",
             boxShadow: `0 0 30px ${C.green}44`,
           }}>
-            Copy for Slack
+            Backblast
           </button>
         </div>
       </div>
@@ -742,10 +742,11 @@ interface LiveModeScreenProps {
   duration: string;
   sections: Section[];
   inspiredBy?: string;
+  userExercises?: { nm: string; desc: string; tags: string[]; how: string }[];
   onClose: () => void;
 }
 
-export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sections, inspiredBy, onClose }: LiveModeScreenProps) {
+export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sections, inspiredBy, userExercises, onClose }: LiveModeScreenProps) {
   const [seedEx, setSeedEx] = useState<ExerciseData[]>(EX);
   const exercises = flattenBeatdown(sections, seedEx);
   const [screen, setScreen] = useState<"prelaunch" | "exercise" | "complete" | "review">("prelaunch");
@@ -763,14 +764,20 @@ export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sec
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 
-  // Load seed exercises for how-to lookup
+  // Load seed exercises + merge user custom exercises for how-to lookup
   useEffect(() => {
     loadSeedExercises().then(rows => {
       if (rows.length > 0) {
         const mapped = rows.map(r => mapSupabaseExercise(r as Record<string, unknown>));
-        setSeedEx(mapped);
+        const seedNames = new Set(mapped.map(e => e.n.toLowerCase()));
+        const userMapped: ExerciseData[] = (userExercises || []).filter(ux => ux.how).map(ux => ({
+          n: ux.nm, f: ux.nm, t: ux.tags || [], s: [], h: ux.how, d: ux.desc || "",
+        }));
+        const uniqueUser = userMapped.filter(u => !seedNames.has(u.n.toLowerCase()));
+        setSeedEx([...mapped, ...uniqueUser]);
       }
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Elapsed timer
