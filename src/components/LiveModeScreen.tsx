@@ -348,7 +348,7 @@ function ExerciseScreen({ exercise, exercises, currentIndex, totalExercises, onN
                 }}
               >
                 <div style={{ fontFamily: F, fontSize: 12, fontWeight: 800, color: "rgba(167,139,250,0.7)", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 12 }}>How to execute</div>
-                {exercise.howTo.split(/(?=\d+\.\s)/).filter(Boolean).map((step, i) => {
+                {exercise.howTo.split(/\s(?=(?:[1-9]|1\d|20)\.\s[A-Z])/).filter(Boolean).map((step, i) => {
                   const stepText = step.replace(/^\d+\.\s*/, "").trim();
                   const stepNum = step.match(/^(\d+)\./)?.[1];
                   return (
@@ -710,7 +710,7 @@ function ReviewScreen({ sections, exercises, elapsedTime, qName, beatdownTitle, 
             background: C.green, color: "#000",
             boxShadow: `0 0 30px ${C.green}44`,
           }}>
-            Backblast
+            Copy for Slack
           </button>
         </div>
       </div>
@@ -742,11 +742,10 @@ interface LiveModeScreenProps {
   duration: string;
   sections: Section[];
   inspiredBy?: string;
-  userExercises?: { nm: string; desc: string; tags: string[]; how: string }[];
   onClose: () => void;
 }
 
-export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sections, inspiredBy, userExercises, onClose }: LiveModeScreenProps) {
+export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sections, inspiredBy, onClose }: LiveModeScreenProps) {
   const [seedEx, setSeedEx] = useState<ExerciseData[]>(EX);
   const exercises = flattenBeatdown(sections, seedEx);
   const [screen, setScreen] = useState<"prelaunch" | "exercise" | "complete" | "review">("prelaunch");
@@ -764,20 +763,14 @@ export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sec
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 
-  // Load seed exercises + merge user custom exercises for how-to lookup
+  // Load seed exercises for how-to lookup
   useEffect(() => {
     loadSeedExercises().then(rows => {
       if (rows.length > 0) {
         const mapped = rows.map(r => mapSupabaseExercise(r as Record<string, unknown>));
-        const seedNames = new Set(mapped.map(e => e.n.toLowerCase()));
-        const userMapped: ExerciseData[] = (userExercises || []).filter(ux => ux.how).map(ux => ({
-          n: ux.nm, f: ux.nm, t: ux.tags || [], s: [], h: ux.how, d: ux.desc || "",
-        }));
-        const uniqueUser = userMapped.filter(u => !seedNames.has(u.n.toLowerCase()));
-        setSeedEx([...mapped, ...uniqueUser]);
+        setSeedEx(mapped);
       }
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Elapsed timer

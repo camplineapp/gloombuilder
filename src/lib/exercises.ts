@@ -338,6 +338,14 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[], goRogue?: b
     "Relay Race", "Wheel & Spoke", "EMOM", "Tabata",
     "Stations", "Four Corners", "AMRAP", "BOMBS",
     "Bear Crawl Bonanza", "VQ Special",
+    // Circuits — named beatdowns, not individual exercises (April 23 s20)
+    "Dirty Mac Deuce", "1st & 10", "Four Corners Escalator", "Wilt Chamberlains",
+    "Santa's Ladder", "Mary In The Middle", "Vicious circle", "Doracides",
+    "Stink B.O.M.B.S.", "Millenial", "TYFBAF (Thank You For Being A Friend)",
+    "Hindenburg BLIMPS", "Doc Ock's Octogon of Pain",
+    // Games — require props or aren't real exercises (April 23 s20)
+    "Duck Jousting", "Ultimate Frisburpee", "Ultimate Football",
+    "Pinochle",
   ]);
 
   // Base filter: no transport, no format exercises
@@ -380,8 +388,9 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[], goRogue?: b
   const mCore = mP.filter(e => CORE_THANG.has(e.n));  // Thang-specific core exercises
 
   // ════ THANG EXERCISE SELECTION ════
-  // ALL difficulties use 100% core thang exercises. No exceptions. No exotic exercises ever.
-  // UNLESS goRogue=true — then use the full thang pool (all exercises minus warmup/mary/transport/format)
+  // Default ("Classics"): 80% core thang exercises + 20% full library for variety
+  // goRogue ("Full Library"): 100% full thang pool (all exercises minus warmup/mary/transport/format)
+  // Warmup and Mary are always 100% core (never affected by this mix)
   let thangPicks: ExerciseData[];
 
   const thangSource = goRogue ? mP : mCore;
@@ -410,13 +419,36 @@ export function generate(cfg: GenConfig, exercises?: ExerciseData[], goRogue?: b
     }
   }
 
-  // 3. Fill remaining slots — 100% core for ALL difficulties (or full pool if goRogue)
+  // 3. Fill remaining slots — 80/20 core/full mix (or 100% full if goRogue)
   if (remaining > 0) {
-    // Exclude exercises already in warmup to prevent duplicates
     const warmupNames = new Set(w.map(e => e.n));
     const unused = (e: ExerciseData) => !picks.some(p => p.n === e.n) && !warmupNames.has(e.n);
-    const fillPicks = pk(thangSource.filter(unused), remaining);
-    picks.push(...fillPicks);
+
+    if (goRogue) {
+      // Full Library mode: 100% from full pool
+      const fillPicks = pk(mP.filter(unused), remaining);
+      picks.push(...fillPicks);
+    } else {
+      // Classics mode: 70% core + 30% full library for variety
+      const rogueCount = Math.max(1, Math.round(remaining * 0.3));
+      const coreCount = remaining - rogueCount;
+
+      // Pick core exercises first
+      const coreFill = pk(mCore.filter(unused), coreCount);
+      picks.push(...coreFill);
+
+      // Pick rogue exercises from full pool (excluding core to guarantee novelty)
+      const unusedAfterCore = (e: ExerciseData) => !picks.some(p => p.n === e.n) && !warmupNames.has(e.n) && !CORE_THANG.has(e.n);
+      const rogueFill = pk(mP.filter(unusedAfterCore), rogueCount);
+      picks.push(...rogueFill);
+
+      // If not enough rogue exercises, backfill with more core
+      if (picks.length < tC) {
+        const stillUnused = (e: ExerciseData) => !picks.some(p => p.n === e.n) && !warmupNames.has(e.n);
+        const backfill = pk(mCore.filter(stillUnused), tC - picks.length);
+        picks.push(...backfill);
+      }
+    }
   }
 
   // Shuffle final order for natural feel

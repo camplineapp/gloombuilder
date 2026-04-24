@@ -49,20 +49,34 @@ function classifyInput(input: string): { icon: string; text: string; color: stri
     return { icon: "⏱", color: A, text: human };
   }
   if (parsed.mode === "distance") return { icon: "📏", color: P, text: `Distance: ${parsed.value} ${parsed.unit}` };
-  return { icon: "🔢", color: T3, text: `${parsed.value} reps` };
+  const val = String(parsed.value);
+  return { icon: "🔢", color: T3, text: /^\d+$/.test(val.trim()) ? `${val} reps` : val };
 }
 
 function fmtAmount(ex: SectionExercise): string {
   if (ex.mode === "time") return `${ex.value} ${ex.unit}`;
   if (ex.mode === "distance") return `${ex.value} ${ex.unit}`;
-  if (ex.mode === "reps" && ex.value !== undefined && ex.value !== "") return `${ex.value} reps`;
-  if (ex.r) return `x${ex.r}`;
+  const cad = ex.cadence || ex.c || "";
+  const isCustomCad = cad !== "IC" && cad !== "OYO";
+  if (ex.mode === "reps" && ex.value !== undefined && ex.value !== "") {
+    const val = String(ex.value);
+    if (isCustomCad || !/^\d+$/.test(val.trim())) return val;
+    return `${val} reps`;
+  }
+  if (ex.r) {
+    const rVal = String(ex.r);
+    if (isCustomCad || !/^\d+$/.test(rVal.trim())) return rVal;
+    return `${rVal} reps`;
+  }
   return "";
 }
 
 function fmtCadence(ex: SectionExercise): string {
   const cad = ex.cadence || ex.c || "";
   if (ex.mode === "time" || ex.mode === "distance") return "";
+  if (!cad) return "";
+  const val = String(ex.value ?? ex.r ?? "");
+  if (val && !/^\d+$/.test(val.trim())) return "";
   return cad;
 }
 
@@ -131,7 +145,7 @@ function ExerciseInfoSheet({ exData, onClose }: { exData: ExerciseData; onClose:
             <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 16 }}>
               <div style={{ color: T4, fontSize: 11, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 10, fontFamily: F }}>How to do it</div>
               <div>
-                {exData.h.split(/(?=\d+\.\s)/).filter(Boolean).map((step, i) => (
+                {exData.h.split(/\s(?=(?:[1-9]|1\d|20)\.\s[A-Z])/).filter(Boolean).map((step, i) => (
                   <div key={i} style={{ color: T3, fontSize: 18, lineHeight: 1.7, marginBottom: 5, fontFamily: F }}>{step.trim()}</div>
                 ))}
               </div>
@@ -168,9 +182,8 @@ function ExerciseCard({ ex, sectionColor, onTap, onDelete, onInfo, onLock, isLoc
 }) {
   const isTransition = ex.type === "transition";
   const exName = ex.name || ex.n || "";
-  const matchedEx = allEx ? allEx.find(x => x.n.toLowerCase() === exName.toLowerCase()) : null;
-  const isCustom = allEx ? !matchedEx : false;
-  const hasInfo = !!(matchedEx && matchedEx.h);
+  const isCustom = allEx ? !allEx.some(x => x.n.toLowerCase() === exName.toLowerCase()) : false;
+  const hasInfo = !isCustom && allEx && allEx.some(x => x.n.toLowerCase() === exName.toLowerCase());
   const amountStr = fmtAmount(ex);
   const cadStr = fmtCadence(ex);
 
@@ -246,10 +259,9 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
   const origName = exercise.name || exercise.n || "";
   const [exName, setExName] = useState(origName);
   const [amountText, setAmountText] = useState(exerciseToAmountString(exercise));
-  const initCad = exercise.cadence || exercise.c || "IC";
-  const isInitCustom = initCad !== "IC" && initCad !== "OYO" && initCad !== "";
-  const [cadence, setCadence] = useState(isInitCustom ? "Custom" : (initCad || "IC"));
-  const [customCadence, setCustomCadence] = useState(isInitCustom ? initCad : "");
+  const initCad = exercise.cadence ?? exercise.c ?? "IC";
+  const isInitCustom = initCad !== "IC" && initCad !== "OYO";
+  const [cadence, setCadence] = useState(isInitCustom ? "Custom" : initCad);
   const [note, setNote] = useState(exercise.note || exercise.nt || "");
   const [showHowTo, setShowHowTo] = useState(false);
   const [transitionText, setTransitionText] = useState("");
@@ -277,7 +289,7 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
 
   const handleSave = () => {
     const parsed = parseSmartText(amountText);
-    const finalCadence = cadence === "Custom" ? (customCadence.trim() || "OYO") : cadence;
+    const finalCadence = cadence === "Custom" ? "" : cadence;
     const mode = parsed?.mode || "reps";
     const value = parsed?.value ?? amountText;
     const unit = parsed?.unit;
@@ -323,7 +335,7 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
                 <span style={{ color: T2, fontSize: 15, fontWeight: 600, fontFamily: F, flex: 1 }}>How to do this exercise</span>
                 <span style={{ color: T4 }}>{showHowTo ? "▲" : "›"}</span>
               </div>
-              {showHowTo && <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>{exData.h.split(/(?=\d+\.\s)/).filter(Boolean).map((step, i) => <div key={i} style={{ color: T3, fontSize: 17, lineHeight: 1.7, marginBottom: 4, fontFamily: F }}>{step.trim()}</div>)}</div>}
+              {showHowTo && <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "14px 16px", marginBottom: 20 }}>{exData.h.split(/\s(?=(?:[1-9]|1\d|20)\.\s[A-Z])/).filter(Boolean).map((step, i) => <div key={i} style={{ color: T3, fontSize: 17, lineHeight: 1.7, marginBottom: 4, fontFamily: F }}>{step.trim()}</div>)}</div>}
             </>
           )}
           {/* HOW MUCH */}
@@ -333,18 +345,17 @@ function ExerciseEditSheet({ exercise, sectionColor, allEx, onSave, onDelete, on
             <input value={amountText} onChange={e => setAmountText(e.target.value)} placeholder="20 · 45 sec · 50 yds..." style={{ flex: 1, background: "rgba(255,255,255,0.06)", border: `2px solid ${sectionColor}66`, borderRadius: 12, color: T1, padding: "16px 18px", fontSize: 17, fontWeight: 500, outline: "none", boxSizing: "border-box", fontFamily: F, textAlign: "center" }} />
             <button onClick={() => { const num = parseInt(amountText); if (!isNaN(num)) setAmountText(String(num + 5)); else setAmountText("5"); }} style={{ fontFamily: F, width: 56, height: 56, borderRadius: 12, background: G + "12", border: "1px solid " + G + "30", color: G, fontSize: 18, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>+5</button>
           </div>
-          {classification && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}><span style={{ fontSize: 18 }}>{classification.icon}</span><span style={{ color: classification.color, fontSize: 15, fontWeight: 700, fontFamily: F }}>{classification.text}</span></div>}
+          {classification && <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}><span style={{ fontSize: 18 }}>{classification.icon}</span><span style={{ color: classification.color, fontSize: 15, fontWeight: 700, fontFamily: F }}>{cadence === "Custom" ? amountText : classification.text}</span></div>}
           <div style={{ color: T4, fontSize: 14, fontStyle: "italic", marginTop: 6, marginBottom: 22, fontFamily: F }}>Try: 20 · 45 sec · 50 yds · 3 laps</div>
           {/* CADENCE */}
           <div style={{ color: T2, fontSize: 12, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8, fontFamily: F }}>CADENCE</div>
-          <div style={{ display: "flex", gap: 8, marginBottom: cadence === "Custom" ? 10 : 22 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 22 }}>
             {["IC", "OYO", "Custom"].map(opt => {
               const sel = cadence === opt;
               const cc = opt === "IC" ? G : opt === "OYO" ? A : T3;
               return <button key={opt} onClick={() => setCadence(opt)} style={{ flex: 1, height: 48, background: sel ? `${cc}20` : "rgba(255,255,255,0.04)", border: `${sel ? 2 : 1}px solid ${sel ? cc : BD}`, color: sel ? cc : T3, fontSize: 15, fontWeight: sel ? 700 : 500, borderRadius: 12, cursor: "pointer", fontFamily: F }}>{opt}</button>;
             })}
           </div>
-          {cadence === "Custom" && <input value={customCadence} onChange={e => setCustomCadence(e.target.value)} placeholder="e.g., 30-20-10 pyramid" autoFocus style={{ ...ist, marginBottom: 22 }} />}
           {/* NOTE */}
           <div style={{ color: T2, fontSize: 12, fontWeight: 800, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 8, fontFamily: F }}>NOTE (optional)</div>
           <textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Add a note..." rows={2} style={{ ...ist, resize: "vertical" as const, marginBottom: 22 }} />

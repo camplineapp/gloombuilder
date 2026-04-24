@@ -100,7 +100,7 @@ function ExerciseDetailSheet({ exData, onClose }: { exData: ExerciseData; onClos
           {exData.d ? <><div style={{ fontFamily: F, marginTop: 20, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2 }}>Description</div><div style={{ fontFamily: F, color: T3, fontSize: 17, lineHeight: 1.65, marginTop: 8 }}>{exData.d}</div></> : null}
           <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", marginTop: 20, paddingTop: 16 }}>
             <div style={{ fontFamily: F, color: T4, fontSize: 11, fontWeight: 700, letterSpacing: "1.5px", textTransform: "uppercase", marginBottom: 10 }}>How to do it</div>
-            <div>{exData.h.split(/(?=\d+\.\s)/).filter(Boolean).map((step: string, i: number) => <div key={i} style={{ color: T3, fontSize: 18, lineHeight: 1.7, marginBottom: 5, fontFamily: F }}>{step.trim()}</div>)}</div>
+            <div>{exData.h.split(/\s(?=(?:[1-9]|1\d|20)\.\s[A-Z])/).filter(Boolean).map((step: string, i: number) => <div key={i} style={{ color: T3, fontSize: 18, lineHeight: 1.7, marginBottom: 5, fontFamily: F }}>{step.trim()}</div>)}</div>
           </div>
           {exData.t && exData.t.length > 0 && (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 16 }}>
