@@ -558,6 +558,7 @@ export default function App() {
             userId={user.id}
             currentUserId={user.id}
             onClose={() => setVw(null)}
+            onOpenSettings={() => { setVw(null); setTab("profile"); }}
           />
         )}
         {toastEl}

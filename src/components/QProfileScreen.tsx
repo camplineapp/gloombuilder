@@ -14,7 +14,6 @@ const BG = "#0E0E10";
 const CARD_BG = "#111114";
 const BD = "rgba(255,255,255,0.07)";
 const G = "#22c55e";
-const A = "#f59e0b";
 const T1 = "#F0EDE8";
 const T2 = "#D0C8BC";
 const T3 = "#C0B8AC";
@@ -22,10 +21,14 @@ const T4 = "#928982";
 const T5 = "#7A7268";
 const F = "'Outfit', system-ui, sans-serif";
 
-// Avatar color palette (deterministic by user id hash — same Q always same color)
-const AVATAR_COLORS = ["#22c55e", "#f59e0b", "#ef4444", "#a78bfa", "#3b82f6", "#ec4899", "#06b6d4", "#E8A820"];
+// Avatar color palette for OTHER HIMs (own profile is always green for brand consistency)
+// Trimmed to 5 brand-aligned colors — pink/red removed, deeper warmer tones kept
+const AVATAR_COLORS = ["#f59e0b", "#a78bfa", "#3b82f6", "#06b6d4", "#E8A820"];
 
-function colorForUserId(id: string): string {
+function colorForUserId(id: string, isOwn: boolean): string {
+  // Own profile: always green (matches Home avatar)
+  if (isOwn) return G;
+  // Others: deterministic hash-based color from the brand-aligned palette
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
     hash = (hash << 5) - hash + id.charCodeAt(i);
@@ -145,7 +148,7 @@ export default function QProfileScreen({
     );
   }
 
-  const avatarColor = colorForUserId(profile.id);
+  const avatarColor = colorForUserId(profile.id, isOwn);
   const initials = getInitials(profile.f3_name);
 
   return (
