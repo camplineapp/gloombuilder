@@ -50,6 +50,7 @@ export interface SharedItem {
   src: string;
   nm: string;
   au: string;
+  auId?: string;  // V2-4: author user UUID for profile navigation
   ao: string;
   reg: string;
   d: string;
@@ -98,6 +99,7 @@ function dbToShared(row: Record<string, unknown>): SharedItem {
     id: row.id as string,
     nm: (row.name as string) || "",
     au: (profile?.f3_name as string) || "Unknown",
+    auId: (row.created_by as string) || undefined,  // V2-4: extract author UUID
     ao: ((profile?.ao as string) || "") + ((profile?.state as string) ? ", " + (profile?.state as string) : ""),
     reg: (profile?.region as string) || "",
     d: (row.difficulty as string) || "medium",
@@ -164,6 +166,9 @@ export default function App() {
   const [profile, setProfile] = useState<{ f3_name: string; ao: string; state: string; region: string } | null>(null);
   const [toast, setToast] = useState("");
 
+  // V2-4: which Q's profile is being viewed (null = own profile)
+  const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+
   // Locker state — loaded from Supabase
   const [lk, setLk] = useState<LockerBeatdown[]>([]);
   const [lkEx, setLkEx] = useState<LockerExercise[]>([]);
@@ -211,6 +216,7 @@ export default function App() {
         id: row.id as string,
         nm: (row.name as string) || "",
         au: (p?.f3_name as string) || "Unknown",
+        auId: (row.created_by as string) || undefined,  // V2-4: author UUID
         ao: ((p?.ao as string) || "") + ((p?.state as string) ? ", " + (p?.state as string) : ""),
         reg: (p?.region as string) || "",
         d: "medium",
@@ -278,6 +284,16 @@ export default function App() {
   const toastEl = toast ? (
     <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: "#22c55e", color: "#0E0E10", padding: "10px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: "'Outfit', system-ui, sans-serif", zIndex: 300 }}>{toast}</div>
   ) : null;
+
+  // V2-4: open someone's Q Profile (null userId = own profile)
+  const handleOpenProfile = (targetUserId?: string | null) => {
+    if (targetUserId && targetUserId !== user.id) {
+      setViewingUserId(targetUserId);
+    } else {
+      setViewingUserId(null);  // own profile
+    }
+    setVw("q-profile");
+  };
 
   const handleSaveBeatdown = async (bd: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean }) => {
     const result = await saveBeatdown({
@@ -498,6 +514,19 @@ export default function App() {
     }
   };
 
+  // V2-4: Q Profile beatdown card tap → open in Library detail flow
+  // Switches to Library tab and finds/opens the beatdown
+  const handleOpenBeatdownDetail = (beatdownId: string) => {
+    setVw(null);
+    setViewingUserId(null);
+    setTab("library");
+    // Note: Library doesn't currently expose a way to programmatically open
+    // a specific beatdown's detail. For V2-4, we just navigate to Library tab.
+    // V2-5: thread a `selectedBeatdownId` prop to LibraryScreen for direct
+    // navigation to the detail view.
+    fl("Opening in Library…");
+  };
+
   // ===== FULL-SCREEN VIEWS =====
   if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "live" || vw === "q-profile") {
     return (
@@ -555,10 +584,11 @@ export default function App() {
         />}
         {vw === "q-profile" && user && (
           <QProfileScreen
-            userId={user.id}
+            userId={viewingUserId || user.id}
             currentUserId={user.id}
-            onClose={() => setVw(null)}
-            onOpenSettings={() => { setVw(null); setTab("profile"); }}
+            onClose={() => { setVw(null); setViewingUserId(null); }}
+            onOpenSettings={viewingUserId ? undefined : () => { setVw(null); setTab("profile"); }}
+            onOpenBeatdownDetail={handleOpenBeatdownDetail}
           />
         )}
         {toastEl}
@@ -571,13 +601,13 @@ export default function App() {
       {tab === "home" && (
         <HomeScreen
           profName={profName}
-          onProfileTap={() => setVw("q-profile")}
+          onProfileTap={() => handleOpenProfile(null)}
           onGenerate={() => setVw("gen")}
           onBuild={() => setVw("build")}
           onCreateEx={() => setVw("create-ex")}
         />
       )}
-      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} onSteal={handleSteal} onRunBeatdown={handleRunLibraryBeatdown} onRefresh={loadLibrary} />}
+      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} onSteal={handleSteal} onRunBeatdown={handleRunLibraryBeatdown} onRefresh={loadLibrary} onOpenProfile={handleOpenProfile} currentUserId={user.id} />}
       {tab === "locker" && (
         <LockerScreen
           lk={lk}

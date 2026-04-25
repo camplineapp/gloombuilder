@@ -35,7 +35,7 @@ interface Comment { au: string; ao: string; txt: string; dt: string }
 interface Exercise { n: string; r: string; c: string; nt: string }
 interface Section { label: string; color: string; exercises: Exercise[]; note: string }
 interface FeedItem {
-  id: number | string; src: string; nm: string; au: string; ao: string; reg: string;
+  id: number | string; src: string; nm: string; au: string; auId?: string; ao: string; reg: string;
   d: string; dur: string | null; aoT: string[]; v: number; u: number; cm: number;
   ds: string; dt: string; tp: string; tg?: string[]; et?: string[];
   howTo?: string; inspiredBy?: string; comments: Comment[]; secs?: Section[];
@@ -64,6 +64,9 @@ interface LibraryScreenProps {
   onSteal?: (id: string, itemType: "beatdown" | "exercise") => void;
   onRunBeatdown?: (item: FeedItem) => void;
   onRefresh?: () => void;
+  // V2-4: tap author name → open their Q Profile
+  onOpenProfile?: (userId: string | null) => void;
+  currentUserId?: string;
 }
 
 // ═══ EXERCISE DETAIL SHEET (with scroll lock) ═══
@@ -122,7 +125,7 @@ function ExerciseDetailSheet({ exData, onClose }: { exData: ExerciseData; onClos
   );
 }
 
-export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote, onSteal, onRunBeatdown, onRefresh }: LibraryScreenProps) {
+export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote, onSteal, onRunBeatdown, onRefresh, onOpenProfile, currentUserId }: LibraryScreenProps) {
   const [libDet, setLibDet] = useState<FeedItem | null>(null);
   const [libSearch, setLibSearch] = useState("");
   const [libT, setLibT] = useState("beatdowns");
@@ -206,6 +209,18 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     <button key={label} onClick={onClick} style={{ fontFamily: F, background: sel ? G + "20" : "rgba(255,255,255,0.04)", color: sel ? G : T4, border: "1px solid " + (sel ? G + "30" : BD), padding: "7px 14px", borderRadius: 10, fontSize: 12, cursor: "pointer", fontWeight: sel ? 700 : 500 }}>{label}</button>
   );
 
+  // V2-4: handler for tapping an author name → open their Q Profile
+  // Stops propagation so it doesn't trigger card-click. If author is current user, opens own profile.
+  const handleAuthorTap = (e: React.MouseEvent, authorId: string | undefined) => {
+    e.stopPropagation();
+    if (!authorId || !onOpenProfile) return;
+    if (authorId === currentUserId) {
+      onOpenProfile(null);  // own profile
+    } else {
+      onOpenProfile(authorId);
+    }
+  };
+
   // ═══ DETAIL VIEW ═══
   if (libDet) {
     const bd = libDet;
@@ -222,7 +237,14 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 24, fontWeight: 800, color: T1 }}>{bd.nm}</div>
             {bd.src && bd.tp !== "exercise" ? (() => { const sb = srcBadge(bd.src); return <div style={{ marginTop: 8 }}><span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 6, fontWeight: 700, background: sb.bg, color: sb.c }}>{sb.l}</span></div>; })() : null}
-            <div style={{ fontSize: 15, color: T4, marginTop: 6 }}>{bd.au} · {bd.ao}</div>
+            <div style={{ fontSize: 15, color: T4, marginTop: 6, display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+              {bd.auId && onOpenProfile ? (
+                <span onClick={e => handleAuthorTap(e, bd.auId)} style={{ color: G, fontWeight: 600, cursor: "pointer", padding: "4px 0", textDecoration: "underline", textUnderlineOffset: 3, textDecorationColor: G + "60" }}>{bd.au}</span>
+              ) : (
+                <span>{bd.au}</span>
+              )}
+              <span>· {bd.ao}</span>
+            </div>
             {bd.inspiredBy ? <div style={{ fontSize: 12, color: A, marginTop: 4 }}>Inspired by {bd.inspiredBy}</div> : null}
             <div style={{ fontSize: 13, color: T5, marginTop: 3 }}>{bd.dt}</div>
           </div>
@@ -563,7 +585,15 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
                 <div style={{ fontSize: 18, fontWeight: 700, color: T2 }}>{bd.nm}</div>
                 {bd.src && bd.tp !== "exercise" ? (() => { const sb = srcBadge(bd.src); return <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, fontWeight: 700, background: sb.bg, color: sb.c }}>{sb.l}</span>; })() : null}
               </div>
-              <div style={{ fontSize: 14, color: T4, marginTop: 5 }}>{bd.au} · {bd.ao}{bd.au === profName ? <span style={{ color: G, fontSize: 11, marginLeft: 6 }}>· You</span> : null}</div>
+              <div style={{ fontSize: 14, color: T4, marginTop: 5, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+                {bd.auId && onOpenProfile ? (
+                  <span onClick={e => handleAuthorTap(e, bd.auId)} style={{ color: G, fontWeight: 700, cursor: "pointer", padding: "4px 2px", textDecoration: "underline", textUnderlineOffset: 3, textDecorationColor: G + "60" }}>{bd.au}</span>
+                ) : (
+                  <span>{bd.au}</span>
+                )}
+                <span>· {bd.ao}</span>
+                {bd.au === profName ? <span style={{ color: G, fontSize: 11, marginLeft: 2 }}>· You</span> : null}
+              </div>
               {bd.inspiredBy ? <div style={{ fontSize: 11, color: A, marginTop: 3 }}>Inspired by {bd.inspiredBy}</div> : null}
               <div style={{ fontSize: 12, color: T5, marginTop: 3 }}>{bd.dt}</div>
             </div>

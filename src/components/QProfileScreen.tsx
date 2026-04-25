@@ -64,6 +64,8 @@ interface QProfileScreenProps {
   currentUserId: string;
   onClose: () => void;
   onOpenSettings?: () => void;
+  // V2-4: tap a beatdown card → open it elsewhere (Library detail)
+  onOpenBeatdownDetail?: (beatdownId: string) => void;
 }
 
 interface ProfileData {
@@ -104,6 +106,7 @@ export default function QProfileScreen({
   currentUserId,
   onClose,
   onOpenSettings,
+  onOpenBeatdownDetail,
 }: QProfileScreenProps) {
   const isOwn = userId === currentUserId;
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -349,22 +352,21 @@ export default function QProfileScreen({
       <div style={{ marginBottom: 24 }}>
         {tab === "beatdowns" && (
           beatdowns.length === 0 ? (
-            <EmptyState
-              isOwn={isOwn}
-              type="beatdowns"
-            />
+            <EmptyState isOwn={isOwn} type="beatdowns" />
           ) : (
             beatdowns.map((bd) => (
-              <BeatdownCard key={bd.id} bd={bd} isOwn={isOwn} />
+              <BeatdownCard
+                key={bd.id}
+                bd={bd}
+                isOwn={isOwn}
+                onTap={onOpenBeatdownDetail ? () => onOpenBeatdownDetail(bd.id) : undefined}
+              />
             ))
           )
         )}
         {tab === "exercises" && (
           exercises.length === 0 ? (
-            <EmptyState
-              isOwn={isOwn}
-              type="exercises"
-            />
+            <EmptyState isOwn={isOwn} type="exercises" />
           ) : (
             exercises.map((ex) => (
               <ExerciseCard key={ex.id} ex={ex} isOwn={isOwn} />
@@ -428,22 +430,27 @@ function TabBtn({ label, count, active, onClick }: { label: string; count: numbe
   );
 }
 
-// Beatdown card — light inline metadata, no heavy buttons
-function BeatdownCard({ bd, isOwn: _isOwn }: { bd: BeatdownRow; isOwn: boolean }) {
+// Beatdown card — light inline metadata, V2-4: tappable when onTap is provided
+function BeatdownCard({ bd, isOwn: _isOwn, onTap }: { bd: BeatdownRow; isOwn: boolean; onTap?: () => void }) {
   const diff = difficultyColor(bd.difficulty);
   const votes = bd.vote_count || 0;
   const steals = bd.steal_count || 0;
   const date = new Date(bd.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
 
   return (
-    <div style={{
-      background: CARD_BG,
-      border: `1px solid ${BD}`,
-      borderLeft: `3px solid ${A}`,
-      borderRadius: 12,
-      padding: "13px 15px",
-      marginBottom: 10,
-    }}>
+    <div
+      onClick={onTap}
+      style={{
+        background: CARD_BG,
+        border: `1px solid ${BD}`,
+        borderLeft: `3px solid ${A}`,
+        borderRadius: 12,
+        padding: "13px 15px",
+        marginBottom: 10,
+        cursor: onTap ? "pointer" : "default",
+        transition: "background 0.15s ease",
+      }}
+    >
       {/* Title + difficulty pill */}
       <div style={{
         display: "flex",
