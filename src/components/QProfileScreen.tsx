@@ -6,29 +6,33 @@ import {
   isFollowing,
   followUser,
   unfollowUser,
+  getUserSharedBeatdowns,
+  getUserSharedExercises,
   type ProfileStats,
 } from "@/lib/db";
+import ThumbsUpIcon from "@/components/ThumbsUpIcon";
 
 // Design tokens (matches Bible v14 + existing screens)
 const BG = "#0E0E10";
 const CARD_BG = "#111114";
+const EX_BG = "#1a1a1f";
 const BD = "rgba(255,255,255,0.07)";
 const G = "#22c55e";
+const A = "#f59e0b";
+const R = "#ef4444";
 const T1 = "#F0EDE8";
 const T2 = "#D0C8BC";
 const T3 = "#C0B8AC";
 const T4 = "#928982";
 const T5 = "#7A7268";
+const GOLD = "#E8A820";
 const F = "'Outfit', system-ui, sans-serif";
 
-// Avatar color palette for OTHER HIMs (own profile is always green for brand consistency)
-// Trimmed to 5 brand-aligned colors — pink/red removed, deeper warmer tones kept
+// Avatar palette for OTHER HIMs (own profile is always green for brand consistency)
 const AVATAR_COLORS = ["#f59e0b", "#a78bfa", "#3b82f6", "#06b6d4", "#E8A820"];
 
 function colorForUserId(id: string, isOwn: boolean): string {
-  // Own profile: always green (matches Home avatar)
   if (isOwn) return G;
-  // Others: deterministic hash-based color from the brand-aligned palette
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
     hash = (hash << 5) - hash + id.charCodeAt(i);
@@ -45,11 +49,21 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
+// Difficulty pill colors per Bible v14
+function difficultyColor(d: string): { bg: string; fg: string; border: string; label: string } {
+  const norm = (d || "medium").toLowerCase();
+  if (norm === "easy" || norm === "warm-up") return { bg: G + "1a", fg: G, border: G + "40", label: "EASY" };
+  if (norm === "medium") return { bg: A + "1a", fg: A, border: A + "40", label: "MEDIUM" };
+  if (norm === "hard") return { bg: R + "1a", fg: R, border: R + "40", label: "HARD" };
+  if (norm === "beast") return { bg: "#dc262620", fg: "#dc2626", border: "#dc262640", label: "BEAST" };
+  return { bg: A + "1a", fg: A, border: A + "40", label: norm.toUpperCase() };
+}
+
 interface QProfileScreenProps {
-  userId: string;             // which Q's profile to show
-  currentUserId: string;      // the logged-in user (for self-vs-visitor logic)
+  userId: string;
+  currentUserId: string;
   onClose: () => void;
-  onOpenSettings?: () => void; // only used in self view
+  onOpenSettings?: () => void;
 }
 
 interface ProfileData {
@@ -58,6 +72,31 @@ interface ProfileData {
   ao: string;
   state: string;
   region: string;
+}
+
+interface BeatdownRow {
+  id: string;
+  name: string;
+  difficulty: string;
+  description: string;
+  duration: number | null;
+  vote_count: number | null;
+  steal_count: number | null;
+  created_at: string;
+  generated: boolean;
+  tags: string[] | null;
+  inspired_profile: { f3_name: string } | null;
+}
+
+interface ExerciseRow {
+  id: string;
+  name: string;
+  description: string;
+  how_to: string;
+  vote_count: number | null;
+  created_at: string;
+  body_part: string[] | null;
+  inspired_profile: { f3_name: string } | null;
 }
 
 export default function QProfileScreen({
@@ -69,6 +108,8 @@ export default function QProfileScreen({
   const isOwn = userId === currentUserId;
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [stats, setStats] = useState<ProfileStats | null>(null);
+  const [beatdowns, setBeatdowns] = useState<BeatdownRow[]>([]);
+  const [exercises, setExercises] = useState<ExerciseRow[]>([]);
   const [following, setFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
   const [tab, setTab] = useState<"beatdowns" | "exercises">("beatdowns");
@@ -76,14 +117,18 @@ export default function QProfileScreen({
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [p, s, f] = await Promise.all([
+    const [p, s, f, bds, exs] = await Promise.all([
       getProfileById(userId),
       getProfileStats(userId),
       isOwn ? Promise.resolve(false) : isFollowing(userId),
+      getUserSharedBeatdowns(userId),
+      getUserSharedExercises(userId),
     ]);
     setProfile(p as ProfileData | null);
     setStats(s);
     setFollowing(f);
+    setBeatdowns(bds as BeatdownRow[]);
+    setExercises(exs as ExerciseRow[]);
     setLoading(false);
   }, [userId, isOwn]);
 
@@ -97,8 +142,7 @@ export default function QProfileScreen({
     const optimistic = !following;
     setFollowing(optimistic);
     const ok = optimistic ? await followUser(userId) : await unfollowUser(userId);
-    if (!ok) setFollowing(!optimistic); // revert on failure
-    // Refresh stats so follower count updates
+    if (!ok) setFollowing(!optimistic);
     const newStats = await getProfileStats(userId);
     setStats(newStats);
     setFollowLoading(false);
@@ -218,7 +262,7 @@ export default function QProfileScreen({
         </div>
       </div>
 
-      {/* Follow + Share row — visitor view only */}
+      {/* Follow button — visitor view only */}
       {!isOwn && (
         <div style={{
           display: "flex",
@@ -278,7 +322,7 @@ export default function QProfileScreen({
         marginBottom: 10,
       }}>{isOwn ? "Your body of work" : "Body of work"}</div>
 
-      {/* Tabs: Beatdowns / Exercises */}
+      {/* Tabs */}
       <div style={{
         display: "flex",
         background: CARD_BG,
@@ -301,42 +345,34 @@ export default function QProfileScreen({
         />
       </div>
 
-      {/* Tab content — V2-2 placeholder; V2-3 will fill these in */}
-      <div style={{
-        background: CARD_BG,
-        border: `1px solid ${BD}`,
-        borderRadius: 14,
-        padding: "32px 20px",
-        textAlign: "center",
-        marginBottom: 24,
-      }}>
+      {/* Tab content */}
+      <div style={{ marginBottom: 24 }}>
         {tab === "beatdowns" && (
-          <div>
-            <div style={{ fontSize: 14, color: T3, fontWeight: 600, marginBottom: 6 }}>
-              {(stats?.beatdowns ?? 0) === 0
-                ? (isOwn ? "You haven't shared any beatdowns yet." : "No shared beatdowns yet.")
-                : `${stats?.beatdowns} shared beatdown${(stats?.beatdowns ?? 0) === 1 ? "" : "s"}`}
-            </div>
-            <div style={{ fontSize: 12, color: T5, fontStyle: "italic" }}>
-              Beatdown cards coming in V2-3.
-            </div>
-          </div>
+          beatdowns.length === 0 ? (
+            <EmptyState
+              isOwn={isOwn}
+              type="beatdowns"
+            />
+          ) : (
+            beatdowns.map((bd) => (
+              <BeatdownCard key={bd.id} bd={bd} isOwn={isOwn} />
+            ))
+          )
         )}
         {tab === "exercises" && (
-          <div>
-            <div style={{ fontSize: 14, color: T3, fontWeight: 600, marginBottom: 6 }}>
-              {(stats?.exercises ?? 0) === 0
-                ? (isOwn ? "You haven't shared any exercises yet." : "No shared exercises yet.")
-                : `${stats?.exercises} shared exercise${(stats?.exercises ?? 0) === 1 ? "" : "s"}`}
-            </div>
-            <div style={{ fontSize: 12, color: T5, fontStyle: "italic" }}>
-              Exercise cards coming in V2-3.
-            </div>
-          </div>
+          exercises.length === 0 ? (
+            <EmptyState
+              isOwn={isOwn}
+              type="exercises"
+            />
+          ) : (
+            exercises.map((ex) => (
+              <ExerciseCard key={ex.id} ex={ex} isOwn={isOwn} />
+            ))
+          )
         )}
       </div>
 
-      {/* Bottom padding so content isn't hidden by bottom nav */}
       <div style={{ height: 100 }} />
     </div>
   );
@@ -389,5 +425,239 @@ function TabBtn({ label, count, active, onClick }: { label: string; count: numbe
       }}>
       {label} <span style={{ opacity: 0.65, fontSize: 12, fontWeight: 700 }}>· {count}</span>
     </button>
+  );
+}
+
+// Beatdown card — light inline metadata, no heavy buttons
+function BeatdownCard({ bd, isOwn: _isOwn }: { bd: BeatdownRow; isOwn: boolean }) {
+  const diff = difficultyColor(bd.difficulty);
+  const votes = bd.vote_count || 0;
+  const steals = bd.steal_count || 0;
+  const date = new Date(bd.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+
+  return (
+    <div style={{
+      background: CARD_BG,
+      border: `1px solid ${BD}`,
+      borderLeft: `3px solid ${A}`,
+      borderRadius: 12,
+      padding: "13px 15px",
+      marginBottom: 10,
+    }}>
+      {/* Title + difficulty pill */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        marginBottom: 8,
+      }}>
+        <div style={{
+          fontSize: 17,
+          fontWeight: 800,
+          color: T1,
+          letterSpacing: -0.3,
+          flex: 1,
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}>{bd.name}</div>
+        <span style={{
+          fontSize: 11,
+          fontWeight: 800,
+          color: diff.fg,
+          background: diff.bg,
+          border: `1px solid ${diff.border}`,
+          padding: "3px 8px",
+          borderRadius: 6,
+          letterSpacing: 0.5,
+          whiteSpace: "nowrap",
+        }}>{diff.label}</span>
+      </div>
+
+      {/* Description (2-line clamp) */}
+      {bd.description && (
+        <div style={{
+          fontSize: 13,
+          color: T3,
+          lineHeight: 1.45,
+          marginBottom: 10,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+        }}>{bd.description}</div>
+      )}
+
+      {/* Light inline metadata — Strava/LinkedIn style */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        fontSize: 12,
+        color: T4,
+        fontWeight: 600,
+        flexWrap: "wrap",
+      }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <ThumbsUpIcon size={13} filled />
+          <span>{votes}</span>
+        </span>
+        {steals > 0 && (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <span>{steals} {steals === 1 ? "steal" : "steals"}</span>
+          </span>
+        )}
+        {bd.duration && (
+          <span>{bd.duration} min</span>
+        )}
+        <span>{date}</span>
+        {bd.generated && (
+          <span style={{
+            fontSize: 10,
+            color: T5,
+            background: "rgba(255,255,255,0.04)",
+            padding: "2px 7px",
+            borderRadius: 4,
+            letterSpacing: 0.5,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            border: `1px solid ${BD}`,
+          }}>AI</span>
+        )}
+        {!bd.generated && (
+          <span style={{
+            fontSize: 10,
+            color: GOLD,
+            background: `${GOLD}14`,
+            padding: "2px 7px",
+            borderRadius: 4,
+            letterSpacing: 0.5,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            border: `1px solid ${GOLD}40`,
+          }}>HAND BUILT</span>
+        )}
+        {bd.inspired_profile && (
+          <span style={{ color: T5, fontStyle: "italic" }}>
+            inspired by {bd.inspired_profile.f3_name}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Exercise card — same pattern, slightly different content
+function ExerciseCard({ ex, isOwn: _isOwn }: { ex: ExerciseRow; isOwn: boolean }) {
+  const votes = ex.vote_count || 0;
+  const date = new Date(ex.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+  const bodyParts = (ex.body_part || []).slice(0, 3);
+
+  return (
+    <div style={{
+      background: CARD_BG,
+      border: `1px solid ${BD}`,
+      borderLeft: `3px solid #a78bfa`,
+      borderRadius: 12,
+      padding: "13px 15px",
+      marginBottom: 10,
+    }}>
+      <div style={{
+        fontSize: 17,
+        fontWeight: 800,
+        color: T1,
+        letterSpacing: -0.3,
+        marginBottom: 6,
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}>{ex.name}</div>
+
+      {(ex.description || ex.how_to) && (
+        <div style={{
+          fontSize: 13,
+          color: T3,
+          lineHeight: 1.45,
+          marginBottom: 10,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
+        }}>{ex.description || ex.how_to}</div>
+      )}
+
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        fontSize: 12,
+        color: T4,
+        fontWeight: 600,
+        flexWrap: "wrap",
+      }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <ThumbsUpIcon size={13} filled />
+          <span>{votes}</span>
+        </span>
+        <span>{date}</span>
+        {bodyParts.length > 0 && (
+          <span style={{ color: T5 }}>
+            {bodyParts.map(bp => bp.charAt(0).toUpperCase() + bp.slice(1)).join(" · ")}
+          </span>
+        )}
+        {ex.inspired_profile && (
+          <span style={{ color: T5, fontStyle: "italic" }}>
+            inspired by {ex.inspired_profile.f3_name}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Empty state — motivating CTA for own view, neutral for visitor
+function EmptyState({ isOwn, type }: { isOwn: boolean; type: "beatdowns" | "exercises" }) {
+  const noun = type === "beatdowns" ? "beatdown" : "exercise";
+  return (
+    <div style={{
+      background: CARD_BG,
+      border: `1px solid ${BD}`,
+      borderRadius: 14,
+      padding: "32px 24px",
+      textAlign: "center",
+    }}>
+      {isOwn ? (
+        <>
+          <div style={{
+            fontSize: 14,
+            color: T2,
+            fontWeight: 700,
+            marginBottom: 6,
+            letterSpacing: -0.2,
+          }}>
+            Your shared {noun}s will live here
+          </div>
+          <div style={{
+            fontSize: 12,
+            color: T5,
+            fontWeight: 500,
+            lineHeight: 1.5,
+          }}>
+            Build a {noun} and share it to start your portfolio.
+          </div>
+        </>
+      ) : (
+        <div style={{
+          fontSize: 13,
+          color: T4,
+          fontWeight: 500,
+        }}>
+          No shared {noun}s yet.
+        </div>
+      )}
+    </div>
   );
 }

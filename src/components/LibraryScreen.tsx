@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { loadSeedExercises, addComment, loadComments, deleteComment, updateComment } from "@/lib/db";
 import { mapSupabaseExercise } from "@/lib/exercises";
 import type { ExerciseData } from "@/lib/exercises";
+import ThumbsUpIcon from "@/components/ThumbsUpIcon";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -65,7 +66,7 @@ interface LibraryScreenProps {
   onRefresh?: () => void;
 }
 
-// ════ EXERCISE DETAIL SHEET (with scroll lock) ════
+// ═══ EXERCISE DETAIL SHEET (with scroll lock) ═══
 function ExerciseDetailSheet({ exData, onClose }: { exData: ExerciseData; onClose: () => void }) {
   useEffect(() => {
     const orig = document.body.style.overflow;
@@ -205,7 +206,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     <button key={label} onClick={onClick} style={{ fontFamily: F, background: sel ? G + "20" : "rgba(255,255,255,0.04)", color: sel ? G : T4, border: "1px solid " + (sel ? G + "30" : BD), padding: "7px 14px", borderRadius: 10, fontSize: 12, cursor: "pointer", fontWeight: sel ? 700 : 500 }}>{label}</button>
   );
 
-  // ════ DETAIL VIEW ════
+  // ═══ DETAIL VIEW ═══
   if (libDet) {
     const bd = libDet;
     const voted = userVotes.has(String(bd.id));
@@ -215,7 +216,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     return (
       <div style={{ padding: "0 24px" }}>
         {exDetailModal}
-        
+
         <button onClick={() => { setLibDet(null); setShowAllCmt(false); }} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14, marginBottom: 20 }}>← Library</button>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ flex: 1 }}>
@@ -231,7 +232,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
         {bd.tp === "exercise" && bd.howTo && bd.howTo !== bd.ds ? <div style={{ marginTop: 16 }}><div style={{ fontFamily: F, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>How to execute</div><div style={{ fontSize: 15, color: T3, lineHeight: 1.7 }}>{bd.howTo}</div></div> : null}
         {(bd.tg || bd.et) ? <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>{(bd.tg || bd.et || []).filter(t => t !== bd.dur && !["Easy","Medium","Hard","Beast"].includes(t)).map(t => <span key={t} style={{ background: "rgba(255,255,255,0.05)", color: T4, fontSize: 12, padding: "3px 10px", borderRadius: 6, fontFamily: F }}>{t}</span>)}</div> : null}
         <div style={{ display: "flex", gap: 14, marginTop: 20, alignItems: "center" }}>
-          <button onClick={() => onToggleVote?.(String(bd.id), bd.tp === "exercise" ? "exercise" : "beatdown")} style={{ fontFamily: F, background: voted ? G + "15" : "rgba(255,255,255,0.04)", color: voted ? G : T4, border: "1px solid " + (voted ? G + "30" : BD), padding: "8px 16px", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 600 }}>▲ {bd.v}</button>
+          <button onClick={() => onToggleVote?.(String(bd.id), bd.tp === "exercise" ? "exercise" : "beatdown")} style={{ fontFamily: F, background: voted ? G + "15" : "rgba(255,255,255,0.04)", color: voted ? G : T4, border: "1px solid " + (voted ? G + "30" : BD), padding: "8px 16px", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}><ThumbsUpIcon size={14} filled={voted} /> {bd.v}</button>
           <span style={{ fontSize: 13, color: T5 }}>Stolen {bd.u}x</span>
         </div>
         {bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? <div style={{ marginTop: 24 }}>{bd.secs.map((sec, si) => {
@@ -395,7 +396,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     );
   }
 
-  // ════ FILTERS ════
+  // ═══ FILTERS ═══
   if (libF) {
     return (
       <div style={{ padding: "0 24px" }}>
@@ -431,7 +432,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     );
   }
 
-  // ════ FEED LIST ════
+  // ═══ FEED LIST ═══
   let feed = [...sharedItems];
   if (libSearch.trim()) {
     const q = libSearch.toLowerCase();
@@ -461,7 +462,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
   return (
     <div style={{ padding: "0 24px" }}>
       {exDetailModal}
-        
+
       <div style={{ fontSize: 28, fontWeight: 800, color: T1, marginBottom: 12 }}>Library</div>
       {!(libT === "exercises" && exMode === "database") ? <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Search by title, Q name, AO..." style={{ ...ist, marginBottom: 14 }} /> : null}
       <div style={{ display: "flex", gap: 0, background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid " + BD, padding: 3, marginBottom: 16 }}>
@@ -543,7 +544,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
           })()}
 
           {exDetailModal}
-        
+
         </div>
       ) : (
       <>
@@ -572,7 +573,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
           {(bd.tg || bd.et || bd.dur) ? <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>{bd.dur ? <span style={{ background: G + "12", color: G, fontSize: 12, padding: "3px 10px", borderRadius: 6, fontFamily: F, fontWeight: 600 }}>{bd.dur}</span> : null}{(bd.tg || bd.et || []).filter(t => t !== bd.dur && !["Easy","Medium","Hard","Beast"].includes(t)).map(t => <span key={t} style={{ background: "rgba(255,255,255,0.05)", color: T4, fontSize: 12, padding: "3px 10px", borderRadius: 6, fontFamily: F }}>{t}</span>)}</div> : null}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
             <div style={{ display: "flex", gap: 14, fontSize: 14, color: T4 }}>
-              {bd.tp === "beatdown" ? <span onClick={e => { e.stopPropagation(); onToggleVote?.(String(bd.id), "beatdown"); }} style={{ color: userVotes.has(String(bd.id)) ? G : T4, fontWeight: 600, cursor: "pointer" }}>▲ {bd.v}</span> : <span onClick={e => { e.stopPropagation(); onToggleVote?.(String(bd.id), "exercise"); }} style={{ color: userVotes.has(String(bd.id)) ? G : T4, fontWeight: 600, cursor: "pointer" }}>▲ {bd.v}</span>}
+              {bd.tp === "beatdown" ? <span onClick={e => { e.stopPropagation(); onToggleVote?.(String(bd.id), "beatdown"); }} style={{ color: userVotes.has(String(bd.id)) ? G : T4, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}><ThumbsUpIcon size={14} filled={userVotes.has(String(bd.id))} /> {bd.v}</span> : <span onClick={e => { e.stopPropagation(); onToggleVote?.(String(bd.id), "exercise"); }} style={{ color: userVotes.has(String(bd.id)) ? G : T4, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}><ThumbsUpIcon size={14} filled={userVotes.has(String(bd.id))} /> {bd.v}</span>}
               <span>Stolen {bd.u}x</span>
               {bd.cm > 0 ? <span>{bd.cm} comments</span> : null}
             </div>

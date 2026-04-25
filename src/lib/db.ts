@@ -795,3 +795,48 @@ export async function getProfileStats(userId: string): Promise<ProfileStats> {
   };
 }
 
+
+// ═══ V2-3 SHARED CONTENT FETCHERS (April 24, 2026) ═══
+
+/**
+ * Fetch all SHARED (public) beatdowns for a given user.
+ * Returns raw Supabase rows; caller should map them to display format.
+ * Sorted by vote_count DESC (top-voted first) per UX decision for Q Profile portfolio.
+ * Falls back to created_at DESC for ties.
+ */
+export async function getUserSharedBeatdowns(userId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("beatdowns")
+    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
+    .eq("created_by", userId)
+    .eq("is_public", true)
+    .order("vote_count", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("Get user shared beatdowns error:", error);
+    return [];
+  }
+  return data || [];
+}
+
+/**
+ * Fetch all SHARED (public) exercises for a given user.
+ * Same sort logic as beatdowns: top-voted first, newest as tiebreaker.
+ */
+export async function getUserSharedExercises(userId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("exercises")
+    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
+    .eq("created_by", userId)
+    .eq("is_public", true)
+    .order("vote_count", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("Get user shared exercises error:", error);
+    return [];
+  }
+  return data || [];
+}
+
