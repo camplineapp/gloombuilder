@@ -16,6 +16,7 @@ import GeneratorScreen from "@/components/GeneratorScreen";
 import BuilderScreen from "@/components/BuilderScreen";
 import CreateExerciseScreen from "@/components/CreateExerciseScreen";
 import LiveModeScreen from "@/components/LiveModeScreen";
+import QProfileScreen from "@/components/QProfileScreen";
 
 export interface LockerBeatdown {
   id: string;
@@ -497,8 +498,8 @@ export default function App() {
     }
   };
 
-  // ════ FULL-SCREEN VIEWS ════
-  if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "live") {
+  // ===== FULL-SCREEN VIEWS =====
+  if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "live" || vw === "q-profile") {
     return (
       <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: vw === "live" ? 0 : 20, paddingBottom: vw === "live" ? 0 : 100, position: "relative" }}>
         {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onRunThis={async (secs, title, dur, saveData) => {
@@ -552,6 +553,13 @@ export default function App() {
           userExercises={lkEx}
           onClose={() => { setVw(null); setLiveBd(null); }}
         />}
+        {vw === "q-profile" && user && (
+          <QProfileScreen
+            userId={user.id}
+            currentUserId={user.id}
+            onClose={() => setVw(null)}
+          />
+        )}
         {toastEl}
       </div>
     );
@@ -562,7 +570,7 @@ export default function App() {
       {tab === "home" && (
         <HomeScreen
           profName={profName}
-          onProfileTap={() => setTab("profile")}
+          onProfileTap={() => setVw("q-profile")}
           onGenerate={() => setVw("gen")}
           onBuild={() => setVw("build")}
           onCreateEx={() => setVw("create-ex")}

@@ -618,3 +618,180 @@ export async function updateBeatdown(id: string, data: {
   }
   return true;
 }
+
+// ═══ V2 SHOUT SYSTEM HELPERS (Session V2-2, April 24, 2026) ═══
+
+// ─── PROFILES ───
+
+export async function getProfileById(userId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+  if (error) {
+    console.error("Get profile error:", error);
+    return null;
+  }
+  return data;
+}
+
+export async function getMyProfile() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  return getProfileById(user.id);
+}
+
+// ─── FOLLOWS ───
+
+export async function followUser(followedId: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  if (user.id === followedId) return false; // can't follow self (also enforced by DB CHECK)
+  const { error } = await supabase
+    .from("follows")
+    .insert({ follower_id: user.id, followed_id: followedId });
+  if (error) {
+    // 23505 = unique violation = already following, treat as success
+    if (error.code === "23505") return true;
+    console.error("Follow error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function unfollowUser(followedId: string) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { error } = await supabase
+    .from("follows")
+    .delete()
+    .eq("follower_id", user.id)
+    .eq("followed_id", followedId);
+  if (error) {
+    console.error("Unfollow error:", error);
+    return false;
+  }
+  return true;
+}
+
+export async function isFollowing(followedId: string): Promise<boolean> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data, error } = await supabase
+    .from("follows")
+    .select("id")
+    .eq("follower_id", user.id)
+    .eq("followed_id", followedId)
+    .maybeSingle();
+  if (error) {
+    console.error("Is following check error:", error);
+    return false;
+  }
+  return !!data;
+}
+
+export async function getFollowerCount(userId: string): Promise<number> {
+  const supabase = createClient();
+  const { count, error } = await supabase
+    .from("follows")
+    .select("*", { count: "exact", head: true })
+    .eq("followed_id", userId);
+  if (error) {
+    console.error("Follower count error:", error);
+    return 0;
+  }
+  return count || 0;
+}
+
+export async function getFollowingCount(userId: string): Promise<number> {
+  const supabase = createClient();
+  const { count, error } = await supabase
+    .from("follows")
+    .select("*", { count: "exact", head: true })
+    .eq("follower_id", userId);
+  if (error) {
+    console.error("Following count error:", error);
+    return 0;
+  }
+  return count || 0;
+}
+
+// ─── PROFILE STATS (aggregates for the Q Profile screen) ───
+
+export interface ProfileStats {
+  beatdowns: number;
+  upvotes: number;
+  steals: number;
+  followers: number;
+  exercises: number;
+}
+
+export async function getProfileStats(userId: string): Promise<ProfileStats> {
+  const supabase = createClient();
+  // All counts are SHARED-only per spec (is_public = true)
+  // 1. Count of shared beatdowns by this user
+  const { count: bdCount } = await supabase
+    .from("beatdowns")
+    .select("*", { count: "exact", head: true })
+    .eq("created_by", userId)
+    .eq("is_public", true);
+  // 2. Count of shared exercises by this user
+  const { count: exCount } = await supabase
+    .from("exercises")
+    .select("*", { count: "exact", head: true })
+    .eq("created_by", userId)
+    .eq("is_public", true);
+  // 3. Total upvotes received on shared content
+  // Get IDs of shared beatdowns + exercises by this user, then count votes against those IDs
+  const { data: sharedBds } = await supabase
+    .from("beatdowns")
+    .select("id")
+    .eq("created_by", userId)
+    .eq("is_public", true);
+  const { data: sharedExs } = await supabase
+    .from("exercises")
+    .select("id")
+    .eq("created_by", userId)
+    .eq("is_public", true);
+  const ownedIds = [
+    ...(sharedBds || []).map((b: { id: string }) => b.id),
+    ...(sharedExs || []).map((e: { id: string }) => e.id),
+  ];
+  let upvotes = 0;
+  if (ownedIds.length > 0) {
+    const { count: voteCount } = await supabase
+      .from("votes")
+      .select("*", { count: "exact", head: true })
+      .in("item_id", ownedIds)
+      .eq("vote_type", "up");
+    upvotes = voteCount || 0;
+  }
+  // 4. Steal count: how many times someone else's beatdowns/exercises had this user as inspired_by
+  const { count: stealBd } = await supabase
+    .from("beatdowns")
+    .select("*", { count: "exact", head: true })
+    .eq("inspired_by", userId)
+    .neq("created_by", userId);
+  const { count: stealEx } = await supabase
+    .from("exercises")
+    .select("*", { count: "exact", head: true })
+    .eq("inspired_by", userId)
+    .neq("created_by", userId);
+  const steals = (stealBd || 0) + (stealEx || 0);
+  // 5. Followers
+  const followers = await getFollowerCount(userId);
+  return {
+    beatdowns: bdCount || 0,
+    upvotes,
+    steals,
+    followers,
+    exercises: exCount || 0,
+  };
+}
+
