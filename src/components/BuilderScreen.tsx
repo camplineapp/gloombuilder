@@ -31,6 +31,7 @@ const eqLabel = (id: string) => EQUIP.find(e => e.id === id)?.l || id;
 
 interface BuilderScreenProps {
   onClose: () => void;
+  backLabel?: string;
   onSave: (beatdown: {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
@@ -63,7 +64,7 @@ function defaultSections(): Section[] {
   ].map(s => normalizeSection(s as Record<string, unknown>));
 }
 
-export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onRunThis, onRunBeatdown, onShareBeatdown, onUnshareBeatdown, onDeleteBeatdown, userExercises, communityExercises }: BuilderScreenProps) {
+export default function BuilderScreen({ onClose, backLabel, onSave, editData, onUpdate, onRunThis, onRunBeatdown, onShareBeatdown, onUnshareBeatdown, onDeleteBeatdown, userExercises, communityExercises }: BuilderScreenProps) {
   const [bT, setBT] = useState(editData?.nm || "");
   const [bD, setBD] = useState(editData?.desc || "");
   const [bDur, setBDur] = useState<string | null>(editData?.dur || null);
@@ -155,7 +156,7 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid " + BD }}>
         <button onClick={onClose} style={{ fontFamily: F, color: T3, background: "none", border: "none", cursor: "pointer", fontSize: 17, fontWeight: 600, padding: "8px 0" }}>
-          {editData ? "← Locker" : "← Home"}
+          {backLabel || (editData ? "← Locker" : "← Home")}
         </button>
         <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, background: A + "26", border: "1px solid " + A + "4D", color: A, fontSize: 15, fontWeight: 700, padding: "10px 16px", borderRadius: 10, cursor: "pointer" }}>
           Backblast

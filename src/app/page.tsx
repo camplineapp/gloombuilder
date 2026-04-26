@@ -168,6 +168,8 @@ export default function App() {
 
   // V2-4: which Q's profile is being viewed (null = own profile)
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
+  // V2-4.5: tracks whether edit-bd was opened from Q Profile (back button returns there)
+  const [editFromQProfile, setEditFromQProfile] = useState(false);
 
   // Locker state — loaded from Supabase
   const [lk, setLk] = useState<LockerBeatdown[]>([]);
@@ -514,17 +516,22 @@ export default function App() {
     }
   };
 
-  // V2-4: Q Profile beatdown card tap → open in Library detail flow
-  // Switches to Library tab and finds/opens the beatdown
+  // V2-4.5: Q Profile beatdown card tap → open Edit Beatdown form (own only)
+  // Visitor-flow (other Q's beatdowns) deferred to V2-5 when there's content to test against.
   const handleOpenBeatdownDetail = (beatdownId: string) => {
-    setVw(null);
-    setViewingUserId(null);
-    setTab("library");
-    // Note: Library doesn't currently expose a way to programmatically open
-    // a specific beatdown's detail. For V2-4, we just navigate to Library tab.
-    // V2-5: thread a `selectedBeatdownId` prop to LibraryScreen for direct
-    // navigation to the detail view.
-    fl("Opening in Library…");
+    if (viewingUserId !== null) {
+      // Visitor profile — not yet wired in V2-4.5
+      fl("Coming soon");
+      return;
+    }
+    const bd = lk.find(b => b.id === beatdownId);
+    if (!bd) {
+      fl("Beatdown not found");
+      return;
+    }
+    setEditingBd(bd);
+    setEditFromQProfile(true);
+    setVw("edit-bd");
   };
 
   // ===== FULL-SCREEN VIEWS =====
@@ -550,7 +557,19 @@ export default function App() {
         }} />}
         {vw === "create-ex" && <CreateExerciseScreen onClose={() => setVw(null)} onSave={handleSaveExercise} />}
         {vw === "edit-bd" && editingBd && <BuilderScreen
-          onClose={() => { setVw(null); setEditingBd(null); }}
+          onClose={() => {
+            if (editFromQProfile) {
+              // Came from Q Profile — return there
+              setEditFromQProfile(false);
+              setEditingBd(null);
+              setVw("q-profile");
+            } else {
+              // Came from Locker — return there (existing behavior)
+              setVw(null);
+              setEditingBd(null);
+            }
+          }}
+          backLabel={editFromQProfile ? ("← " + (profName || "profile") + "'s profile") : undefined}
           onSave={handleSaveBeatdown}
           editData={{
             id: editingBd.id,
