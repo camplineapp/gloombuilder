@@ -1045,3 +1045,58 @@ export async function getMyAllExercises(userId: string) {
   }
   return data || [];
 }
+// ═══ V2-5 EDIT SHOUT HELPER (April 28, 2026) ═══
+// APPEND THIS TO src/lib/db.ts
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Update an existing Shout. Only the author can update (RLS).
+ * Sets edited_at to now() so the UI can show an "edited" indicator if desired.
+ * Returns the updated row, or null on error.
+ */
+export async function updateShout(
+  shoutId: string,
+  data: {
+    text: string;
+    type: string;
+    beatdownId?: string | null;
+    whenText?: string | null;
+    whenAt?: string | null;
+    locationText?: string | null;
+  }
+): Promise<ShoutRow | null> {
+  const supabase = createClient();
+
+  // Compute expires_at = when_at + 12 hours, if when_at provided
+  let expiresAt: string | null = null;
+  if (data.whenAt) {
+    const whenDate = new Date(data.whenAt);
+    if (!isNaN(whenDate.getTime())) {
+      expiresAt = new Date(whenDate.getTime() + 12 * 60 * 60 * 1000).toISOString();
+    }
+  }
+
+  const updatePayload = {
+    text: data.text,
+    type: data.type,
+    beatdown_id: data.beatdownId || null,
+    when_text: data.whenText || null,
+    when_at: data.whenAt || null,
+    location_text: data.locationText || null,
+    expires_at: expiresAt,
+    edited_at: new Date().toISOString(),
+  };
+
+  const { data: row, error } = await supabase
+    .from("shouts")
+    .update(updatePayload)
+    .eq("id", shoutId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("updateShout error:", error);
+    return null;
+  }
+  return row as ShoutRow;
+}

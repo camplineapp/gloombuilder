@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
-import { postShout, type ShoutRow } from "@/lib/db";
+import { useState, useEffect } from "react";
+import { postShout, updateShout, type ShoutRow } from "@/lib/db";
 
 const BG = "#0E0E10";
 const CARD_BG = "#111114";
@@ -39,6 +39,9 @@ interface ShoutComposerProps {
   onClose: () => void;
   onPosted: (shout: ShoutRow) => void;
   attachedBeatdown?: AttachedBeatdown | null;
+  // EDIT MODE: when provided, the composer prefills with this shout's values
+  // and saving calls updateShout instead of postShout
+  editingShout?: ShoutRow | null;
 }
 
 function formatWhen(isoLocal: string): string {
@@ -59,21 +62,51 @@ function formatWhen(isoLocal: string): string {
   return `${day} · ${mo} ${dt} · ${h}:${mm}${ampm}`;
 }
 
-export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: ShoutComposerProps) {
-  const [type, setType] = useState<string>(DEFAULT_TYPE);
-  const [customType, setCustomType] = useState<string>("");
+// Convert an ISO datetime string back to the value format used by datetime-local input
+// ("YYYY-MM-DDTHH:mm")
+function isoToLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => (n < 10 ? "0" + n : "" + n);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+export default function ShoutComposer({
+  onClose,
+  onPosted,
+  attachedBeatdown,
+  editingShout,
+}: ShoutComposerProps) {
+  const isEditing = !!editingShout;
+
+  // Determine if the editing shout's type is a custom (non-standard) one
+  const editingTypeIsCustom = isEditing && editingShout && !SHOUT_TYPES.includes(editingShout.type);
+
+  // Initialize state from editingShout if in edit mode, else defaults
+  const [type, setType] = useState<string>(() => {
+    if (!editingShout) return DEFAULT_TYPE;
+    if (editingTypeIsCustom) return editingShout.type;
+    return editingShout.type;
+  });
+  const [customType, setCustomType] = useState<string>(() =>
+    editingTypeIsCustom && editingShout ? editingShout.type : ""
+  );
   const [showTypeGrid, setShowTypeGrid] = useState(false);
   const [editingCustom, setEditingCustom] = useState(false);
-  const [message, setMessage] = useState("");
-  const [whenIso, setWhenIso] = useState<string | null>(null);
-  const [locationText, setLocationText] = useState<string | null>(null);
-  const [locationInput, setLocationInput] = useState("");
+  const [message, setMessage] = useState(() => editingShout?.text || "");
+  const [whenIso, setWhenIso] = useState<string | null>(() => {
+    if (editingShout?.when_at) return isoToLocalInput(editingShout.when_at);
+    return null;
+  });
+  const [locationText, setLocationText] = useState<string | null>(() =>
+    editingShout?.location_text || null
+  );
+  const [locationInput, setLocationInput] = useState(() =>
+    editingShout?.location_text || ""
+  );
   const [bdAttached, setBdAttached] = useState<AttachedBeatdown | null>(attachedBeatdown || null);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Ref for the hidden datetime input — used to programmatically open the picker
-  const dateInputRef = useRef<HTMLInputElement>(null);
 
   const effectiveType = editingCustom ? customType.trim() : type;
   const canPost = !!effectiveType && !editingCustom && message.trim().length > 0 && message.length <= 240 && !posting;
@@ -106,39 +139,24 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
     }
   }
 
-  // Open native date/time picker — robust across browsers
-  function openDatePicker() {
-    const el = dateInputRef.current;
-    if (!el) return;
-    // Use showPicker() if available (modern Chrome/Edge/Safari)
-    if (typeof el.showPicker === "function") {
-      try {
-        el.showPicker();
-        return;
-      } catch {
-        // Fall through to focus/click fallback
-      }
-    }
-    // Fallback: focus + click — works on iOS Safari and older browsers
-    el.focus();
-    el.click();
-  }
-
-  async function handlePost() {
+  async function handleSubmit() {
     if (!canPost) return;
     setPosting(true);
     setError(null);
-    const result = await postShout({
+    const payload = {
       text: message.trim(),
       type: effectiveType,
       beatdownId: bdAttached?.id || null,
       whenText: whenIso ? formatWhen(whenIso) : null,
       whenAt: whenIso ? new Date(whenIso).toISOString() : null,
       locationText: locationText || null,
-    });
+    };
+    const result = isEditing && editingShout
+      ? await updateShout(editingShout.id, payload)
+      : await postShout(payload);
     setPosting(false);
     if (!result) {
-      setError("Couldn't post. Try again.");
+      setError("Couldn't save. Try again.");
       return;
     }
     onPosted(result);
@@ -178,26 +196,6 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
           zIndex: 100,
         }}
       >
-        {/* Hidden datetime input — placed at the top so the spawned picker
-            anchors near the top of the sheet, regardless of the icon location.
-            Truly hidden but functionally activatable via showPicker(). */}
-        <input
-          ref={dateInputRef}
-          type="datetime-local"
-          value={whenIso || ""}
-          onChange={(e) => setWhenIso(e.target.value || null)}
-          aria-label="Pick date and time"
-          style={{
-            position: "absolute",
-            opacity: 0,
-            pointerEvents: "none",
-            width: 1,
-            height: 1,
-            top: 0,
-            left: 0,
-          }}
-        />
-
         {/* Grab handle */}
         <div
           style={{
@@ -209,7 +207,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
           }}
         />
 
-        {/* Title */}
+        {/* Title — different in edit mode */}
         <div
           style={{
             fontSize: 22,
@@ -219,7 +217,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
             color: T1,
           }}
         >
-          New Shout
+          {isEditing ? "Edit Shout" : "New Shout"}
         </div>
 
         {/* TYPE LABEL */}
@@ -443,13 +441,16 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
         </div>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          {/* 📅 When — entire button is clickable, opens picker programmatically */}
-          <button
-            type="button"
-            onClick={openDatePicker}
-            aria-label="Pick date and time"
+          {/*
+            📅 When — input absolutely covers the entire button.
+            On iOS Safari, tapping the input opens the native rolodex picker.
+            On desktop, clicking anywhere on the button area triggers the input's
+            native picker affordance.
+          */}
+          <label
             style={{
               flex: 1,
+              position: "relative",
               background: whenIso
                 ? "rgba(34,197,94,0.10)"
                 : "rgba(255,255,255,0.03)",
@@ -462,7 +463,6 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
               alignItems: "center",
               gap: 3,
               color: whenIso ? G : T4,
-              fontFamily: F,
             }}
           >
             <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}>📅</span>
@@ -472,11 +472,34 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: 0.5,
+                fontFamily: F,
               }}
             >
               When
             </span>
-          </button>
+            <input
+              type="datetime-local"
+              value={whenIso || ""}
+              onChange={(e) => setWhenIso(e.target.value || null)}
+              aria-label="Pick date and time"
+              style={{
+                position: "absolute",
+                inset: 0,
+                width: "100%",
+                height: "100%",
+                opacity: 0,
+                cursor: "pointer",
+                // Critical for iOS: input must be tappable, not pointer-events:none
+                // Make it large enough to cover the entire label
+                margin: 0,
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                color: "transparent",
+                fontFamily: "inherit",
+              }}
+            />
+          </label>
 
           {/* 📍 Location */}
           <button
@@ -660,7 +683,6 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
           </div>
         )}
 
-        {/* Attached beatdown chip (V2-6) */}
         {bdAttached && (
           <div
             style={{
@@ -761,7 +783,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
             Cancel
           </button>
           <button
-            onClick={handlePost}
+            onClick={handleSubmit}
             disabled={!canPost}
             style={{
               flex: 1,
@@ -776,7 +798,9 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
               cursor: canPost ? "pointer" : "not-allowed",
             }}
           >
-            {posting ? "Posting..." : "Post Shout"}
+            {posting
+              ? (isEditing ? "Saving..." : "Posting...")
+              : (isEditing ? "Save Changes" : "Post Shout")}
           </button>
         </div>
       </div>

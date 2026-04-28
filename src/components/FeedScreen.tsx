@@ -17,6 +17,9 @@ interface FeedScreenProps {
   onOpenComposer: () => void;
   onOpenProfile: (targetUserId: string) => void;
   onOpenBeatdown: (beatdownId: string) => void;
+  // V2-5: own-shout actions
+  onEditShout?: (shout: ShoutRow) => void;
+  onDeleteShout?: (shout: ShoutRow) => void;
 }
 
 export default function FeedScreen({
@@ -25,6 +28,8 @@ export default function FeedScreen({
   onOpenComposer,
   onOpenProfile,
   onOpenBeatdown,
+  onEditShout,
+  onDeleteShout,
 }: FeedScreenProps) {
   const [shouts, setShouts] = useState<ShoutRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +48,6 @@ export default function FeedScreen({
 
   return (
     <>
-      {/* Main content area */}
       <div
         style={{
           minHeight: "100vh",
@@ -162,6 +166,8 @@ export default function FeedScreen({
                   currentUserId={currentUserId}
                   onAuthorTap={onOpenProfile}
                   onBeatdownTap={onOpenBeatdown}
+                  onEditTap={onEditShout}
+                  onDeleteTap={onDeleteShout}
                   variant="feed"
                 />
               ))
@@ -170,12 +176,7 @@ export default function FeedScreen({
         )}
       </div>
 
-      {/*
-        FAB wrapper — centered same as BottomNav (max-width 430px).
-        Inside it, the actual button is positioned at right:20px relative to the wrapper.
-        On mobile (< 430px) the wrapper IS full width, button sits at right edge.
-        On desktop, wrapper centers itself and button sits at the right edge of the centered column.
-      */}
+      {/* Floating compose FAB - centered to 430px column */}
       <div
         style={{
           position: "fixed",

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
-import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, unshareBeatdown, unshareExercise, addVote, removeVote, loadUserVotes, stealBeatdown, stealExercise, updateExercise, updateBeatdown } from "@/lib/db";
+import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, unshareBeatdown, unshareExercise, addVote, removeVote, loadUserVotes, stealBeatdown, stealExercise, updateExercise, updateBeatdown , archiveShout } from "@/lib/db";
 import type { User } from "@supabase/supabase-js";
 import { normalizeSection } from "@/lib/exercises";
 import type { Section } from "@/lib/exercises";
@@ -173,6 +173,8 @@ export default function App() {
   const [editFromQProfile, setEditFromQProfile] = useState(false);
   // V2-5: bumped after a Shout is posted to trigger Feed re-fetch
   const [feedRefreshKey, setFeedRefreshKey] = useState(0);
+  // V2-5: when set, ShoutComposer opens in EDIT mode prefilled with this shout
+  const [editingShout, setEditingShout] = useState<import("@/lib/db").ShoutRow | null>(null);
 
   // Locker state — loaded from Supabase
   const [lk, setLk] = useState<LockerBeatdown[]>([]);
@@ -634,20 +636,33 @@ export default function App() {
         <FeedScreen
           currentUserId={user.id}
           refreshKey={feedRefreshKey}
-          onOpenComposer={() => setVw("compose-shout")}
+          onOpenComposer={() => { setEditingShout(null); setVw("compose-shout"); }}
           onOpenProfile={(targetUserId) => handleOpenProfile(targetUserId)}
           onOpenBeatdown={(beatdownId) => handleOpenBeatdownDetail(beatdownId)}
+          onEditShout={(shout) => { setEditingShout(shout); setVw("compose-shout"); }}
+          onDeleteShout={async (shout) => {
+            const ok = await archiveShout(shout.id);
+            if (ok) {
+              setFeedRefreshKey((k) => k + 1);
+              fl("Shout deleted");
+            } else {
+              fl("Couldn't delete - try again");
+            }
+          }}
         />
       )}
       {tab === "profile" && <ProfileScreen onProfileSaved={checkUser} />}
       {vw === "compose-shout" && (
         <ShoutComposer
-          onClose={() => setVw(null)}
+          editingShout={editingShout}
+          onClose={() => { setVw(null); setEditingShout(null); }}
           onPosted={() => {
+            const wasEditing = editingShout !== null;
             setVw(null);
+            setEditingShout(null);
             setFeedRefreshKey((k) => k + 1);
             setTab("feed");
-            fl("Shout posted!");
+            fl(wasEditing ? "Shout updated!" : "Shout posted!");
           }}
         />
       )}

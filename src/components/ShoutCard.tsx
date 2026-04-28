@@ -42,7 +42,6 @@ function relativeTime(iso: string): string {
   return `${Math.floor(diffSec / 86400)}d`;
 }
 
-// Map URL detection — return a clean label or null if not a recognized map URL
 function detectMapService(url: string): { service: string; label: string } | null {
   const u = url.toLowerCase();
   if (u.includes("google.com/maps") || u.includes("goo.gl/maps") || u.includes("maps.app.goo.gl")) {
@@ -62,6 +61,9 @@ interface ShoutCardProps {
   currentUserId: string;
   onAuthorTap?: (authorId: string) => void;
   onBeatdownTap?: (beatdownId: string) => void;
+  // V2-5: own-shout actions
+  onEditTap?: (shout: ShoutRow) => void;
+  onDeleteTap?: (shout: ShoutRow) => void;
   variant?: "feed" | "profile";
 }
 
@@ -70,6 +72,8 @@ export default function ShoutCard({
   currentUserId,
   onAuthorTap,
   onBeatdownTap,
+  onEditTap,
+  onDeleteTap,
   variant = "feed",
 }: ShoutCardProps) {
   const authorName = shout.profiles?.f3_name || "Unknown";
@@ -79,10 +83,9 @@ export default function ShoutCard({
   const initials = getInitials(authorName);
   const beatdown = shout.beatdown;
 
-  // Hide post-time entirely when an event-time (when_text) is set — Q1(a)
   const showPostTime = !shout.when_text;
+  const wasEdited = !!shout.edited_at;
 
-  // Native share — Q2(b)
   async function handleShare(e: React.MouseEvent) {
     e.stopPropagation();
     const shareText = `${authorName} (${authorAo}): ${shout.text}`;
@@ -94,23 +97,28 @@ export default function ShoutCard({
       try {
         await navigator.share(shareData);
       } catch (err) {
-        // User cancelled or share failed — silent
         if ((err as Error).name !== "AbortError") {
           console.warn("Share failed:", err);
         }
       }
     } else {
-      // Fallback: copy text to clipboard
       try {
         await navigator.clipboard.writeText(shareText);
-        // Brief feedback via title attribute (no toast system in this scope)
-        const target = e.currentTarget as HTMLButtonElement;
-        const original = target.getAttribute("data-tooltip") || "";
-        target.setAttribute("data-tooltip", "Copied!");
-        setTimeout(() => target.setAttribute("data-tooltip", original), 1500);
       } catch {
         console.warn("Clipboard unavailable");
       }
+    }
+  }
+
+  function handleEdit(e: React.MouseEvent) {
+    e.stopPropagation();
+    onEditTap?.(shout);
+  }
+
+  function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (confirm("Delete this Shout? This can't be undone.")) {
+      onDeleteTap?.(shout);
     }
   }
 
@@ -124,7 +132,6 @@ export default function ShoutCard({
           marginBottom: 14,
         }
       : {
-          // Stronger visual break between cards
           padding: "16px 0",
           borderBottom: "1px solid " + BD_STRONG,
         };
@@ -180,7 +187,6 @@ export default function ShoutCard({
           {initials}
         </button>
 
-        {/* Body */}
         <div style={{ flex: 1, minWidth: 0 }}>
           {variant === "feed" && (
             <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
@@ -202,16 +208,19 @@ export default function ShoutCard({
               >
                 {authorName}
               </button>
-              {/* Show post-time only when no event-time is present */}
               {showPostTime && (
                 <span style={{ fontFamily: F, fontSize: 11, color: T5 }}>
                   · {relativeTime(shout.created_at)}
                 </span>
               )}
+              {wasEdited && (
+                <span style={{ fontFamily: F, fontSize: 10, color: T5, fontStyle: "italic" }}>
+                  · edited
+                </span>
+              )}
             </div>
           )}
 
-          {/* Meta row: AO + type pill */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
             {authorAo && <span style={{ fontFamily: F, fontSize: 11, color: T4 }}>{authorAo}</span>}
             <span
@@ -232,7 +241,6 @@ export default function ShoutCard({
             </span>
           </div>
 
-          {/* Event when (the prominent date/time when set) */}
           {shout.when_text && (
             <div
               style={{
@@ -251,7 +259,6 @@ export default function ShoutCard({
             </div>
           )}
 
-          {/* Location — clean label for known map services, larger tap target */}
           {shout.location_text && (() => {
             const isUrl = /^https?:\/\//i.test(shout.location_text);
             const mapService = isUrl ? detectMapService(shout.location_text) : null;
@@ -310,7 +317,6 @@ export default function ShoutCard({
                 </a>
               );
             }
-            // Plain text address — no link
             return (
               <div style={{ ...sharedStyles, color: T2, cursor: "default" }}>
                 <span aria-hidden="true">📍</span>
@@ -319,7 +325,6 @@ export default function ShoutCard({
             );
           })()}
 
-          {/* Message text — improved line-height for readability */}
           <div
             style={{
               fontFamily: F,
@@ -334,7 +339,6 @@ export default function ShoutCard({
             {shout.text}
           </div>
 
-          {/* Attached beatdown */}
           {beatdown && (
             <button
               onClick={(e) => {
@@ -365,7 +369,7 @@ export default function ShoutCard({
             </button>
           )}
 
-          {/* Reactions row */}
+          {/* Actions row */}
           <div
             style={{
               display: "flex",
@@ -374,6 +378,7 @@ export default function ShoutCard({
               fontSize: 12,
               color: T4,
               fontFamily: F,
+              flexWrap: "wrap",
             }}
           >
             <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
@@ -382,7 +387,51 @@ export default function ShoutCard({
             {shout.when_text && (
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>HC 0</span>
             )}
-            {/* Share — wired to native share API with clipboard fallback */}
+
+            {/* Own-shout actions: Edit + Delete */}
+            {isOwn && variant === "feed" && (
+              <>
+                <button
+                  onClick={handleEdit}
+                  aria-label="Edit this Shout"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: T4,
+                    fontFamily: F,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    padding: "4px 6px",
+                    borderRadius: 4,
+                    textDecoration: "underline",
+                  }}
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={handleDelete}
+                  aria-label="Delete this Shout"
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#ef4444",
+                    fontFamily: F,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    padding: "4px 6px",
+                    borderRadius: 4,
+                    textDecoration: "underline",
+                    opacity: 0.75,
+                  }}
+                >
+                  Delete
+                </button>
+              </>
+            )}
+
+            {/* Share */}
             <button
               onClick={handleShare}
               aria-label="Share this Shout"
