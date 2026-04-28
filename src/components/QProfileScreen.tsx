@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState, useEffect, useCallback } from "react";
 import {
   getProfileById,
@@ -61,7 +61,7 @@ interface QProfileScreenProps {
   currentUserId: string;
   onClose: () => void;
   onOpenSettings?: () => void;
-  // V2-4: tap a beatdown card → open it elsewhere (Library detail)
+  // V2-4: tap a beatdown card â†’ open it elsewhere (Library detail)
   onOpenBeatdownDetail?: (beatdownId: string) => void;
 }
 
@@ -144,7 +144,7 @@ export default function QProfileScreen({
         justifyContent: "center",
         fontSize: 14,
       }}>
-        Loading profile…
+        Loading profileâ€¦
       </div>
     );
   }
@@ -168,7 +168,7 @@ export default function QProfileScreen({
           cursor: "pointer",
           padding: "4px 0",
           marginBottom: 24,
-        }}>← Back</button>
+        }}>â† Back</button>
         <div style={{ textAlign: "center", color: T4, fontSize: 14, marginTop: 60 }}>
           Profile not found.
         </div>
@@ -203,7 +203,7 @@ export default function QProfileScreen({
           fontWeight: 700,
           cursor: "pointer",
           padding: "4px 0",
-        }}>← Back</button>
+        }}>â† Back</button>
         {isOwn && onOpenSettings && (
           <button onClick={onOpenSettings} style={{
             background: "transparent",
@@ -212,7 +212,7 @@ export default function QProfileScreen({
             fontSize: 22,
             cursor: "pointer",
             padding: "4px 8px",
-          }}>⚙</button>
+          }}>âš™</button>
         )}
       </div>
 
@@ -242,39 +242,10 @@ export default function QProfileScreen({
           marginBottom: 4,
         }}>{profile.f3_name || "Anonymous"}</div>
         <div style={{ fontSize: 13, color: T4 }}>
-          {[profile.ao, profile.state, profile.region].filter(Boolean).join(" · ") || "—"}
+          {[profile.ao, profile.state, profile.region].filter(Boolean).join(" Â· ") || "â€”"}
         </div>
       </div>
 
-      {/* Follow button — visitor view only */}
-      {!isOwn && (
-        <div style={{
-          display: "flex",
-          gap: 8,
-          justifyContent: "center",
-          marginBottom: 22,
-        }}>
-          <button
-            onClick={handleFollowToggle}
-            disabled={followLoading}
-            style={{
-              background: following ? "transparent" : G,
-              border: following ? `1.5px solid ${BD}` : "none",
-              color: following ? T2 : "#0E0E10",
-              fontFamily: F,
-              fontSize: 14,
-              fontWeight: 800,
-              padding: "10px 28px",
-              borderRadius: 10,
-              cursor: followLoading ? "wait" : "pointer",
-              minHeight: 44,
-              opacity: followLoading ? 0.7 : 1,
-              letterSpacing: 0.2,
-            }}>
-            {following ? "Following" : "Follow"}
-          </button>
-        </div>
-      )}
 
       {/* 4-stat strip */}
       {stats && (
@@ -359,7 +330,7 @@ export default function QProfileScreen({
   );
 }
 
-// ─── Subcomponents ───
+// â”€â”€â”€ Subcomponents â”€â”€â”€
 
 function Stat({ label, value, accent }: { label: string; value: number; accent?: string }) {
   return (
@@ -404,12 +375,12 @@ function TabBtn({ label, count, active, onClick }: { label: string; count: numbe
         cursor: "pointer",
         letterSpacing: 0.2,
       }}>
-      {label} <span style={{ opacity: 0.65, fontSize: 12, fontWeight: 700 }}>· {count}</span>
+      {label} <span style={{ opacity: 0.65, fontSize: 12, fontWeight: 700 }}>Â· {count}</span>
     </button>
   );
 }
 
-// Beatdown card — light inline metadata, V2-4: tappable when onTap is provided
+// Beatdown card â€” light inline metadata, V2-4: tappable when onTap is provided
 function BeatdownCard({ bd, isOwn: _isOwn, onTap }: { bd: BeatdownRow; isOwn: boolean; onTap?: () => void }) {
   const diff = difficultyColor(bd.difficulty);
   const votes = bd.vote_count || 0;
@@ -476,7 +447,7 @@ function BeatdownCard({ bd, isOwn: _isOwn, onTap }: { bd: BeatdownRow; isOwn: bo
         }}>{bd.description}</div>
       )}
 
-      {/* Light inline metadata — Strava/LinkedIn style */}
+      {/* Light inline metadata â€” Strava/LinkedIn style */}
       <div style={{
         display: "flex",
         alignItems: "center",
@@ -535,7 +506,7 @@ function BeatdownCard({ bd, isOwn: _isOwn, onTap }: { bd: BeatdownRow; isOwn: bo
   );
 }
 
-// Exercise card — same pattern, slightly different content
+// Exercise card â€” same pattern, slightly different content
 function ExerciseCard({ ex, isOwn: _isOwn }: { ex: ExerciseRow; isOwn: boolean }) {
   const votes = ex.vote_count || 0;
   const date = new Date(ex.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
@@ -591,7 +562,7 @@ function ExerciseCard({ ex, isOwn: _isOwn }: { ex: ExerciseRow; isOwn: boolean }
         <span>{date}</span>
         {bodyParts.length > 0 && (
           <span style={{ color: T5 }}>
-            {bodyParts.map(bp => bp.charAt(0).toUpperCase() + bp.slice(1)).join(" · ")}
+            {bodyParts.map(bp => bp.charAt(0).toUpperCase() + bp.slice(1)).join(" Â· ")}
           </span>
         )}
         {ex.inspired_profile && (
@@ -604,7 +575,7 @@ function ExerciseCard({ ex, isOwn: _isOwn }: { ex: ExerciseRow; isOwn: boolean }
   );
 }
 
-// Empty state — motivating CTA for own view, neutral for visitor
+// Empty state â€” motivating CTA for own view, neutral for visitor
 function EmptyState({ isOwn, type }: { isOwn: boolean; type: "beatdowns" | "exercises" }) {
   const noun = type === "beatdowns" ? "beatdown" : "exercise";
   return (
