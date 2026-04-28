@@ -674,7 +674,7 @@ export async function getProfileStats(userId: string): Promise<ProfileStats> {
     .from("exercises")
     .select("*", { count: "exact", head: true })
     .eq("created_by", userId)
-    .eq("is_public", true);
+    .eq("source", "community");
   // 3. Total upvotes received on shared content
   // Get IDs of shared beatdowns + exercises by this user, then count votes against those IDs
   const { data: sharedBds } = await supabase
@@ -686,7 +686,7 @@ export async function getProfileStats(userId: string): Promise<ProfileStats> {
     .from("exercises")
     .select("id")
     .eq("created_by", userId)
-    .eq("is_public", true);
+    .eq("source", "community");
   const ownedIds = [
     ...(sharedBds || []).map((b: { id: string }) => b.id),
     ...(sharedExs || []).map((e: { id: string }) => e.id),
@@ -696,8 +696,7 @@ export async function getProfileStats(userId: string): Promise<ProfileStats> {
     const { count: voteCount } = await supabase
       .from("votes")
       .select("*", { count: "exact", head: true })
-      .in("item_id", ownedIds)
-      .eq("vote_type", "up");
+      .in("item_id", ownedIds);
     upvotes = voteCount || 0;
   }
   // 4. Steal count: how many times someone else's beatdowns/exercises had this user as inspired_by
@@ -754,7 +753,7 @@ export async function getUserSharedExercises(userId: string) {
     .from("exercises")
     .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
     .eq("created_by", userId)
-    .eq("is_public", true)
+    .eq("source", "community")
     .order("vote_count", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
   if (error) {
