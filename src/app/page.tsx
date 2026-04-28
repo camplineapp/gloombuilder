@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
@@ -171,13 +171,12 @@ export default function App() {
   const [editFromQProfile, setEditFromQProfile] = useState(false);
   // V2-5: bumped after a Shout is posted to trigger Feed re-fetch
   // V2-5: when set, ShoutComposer opens in EDIT mode prefilled with this shout
-  const [editingShout, setEditingShout] = useState<import("@/lib/db").ShoutRow | null>(null);
 
-  // Locker state — loaded from Supabase
+  // Locker state â€” loaded from Supabase
   const [lk, setLk] = useState<LockerBeatdown[]>([]);
   const [lkEx, setLkEx] = useState<LockerExercise[]>([]);
 
-  // Library shared items — loaded from Supabase
+  // Library shared items â€” loaded from Supabase
   const [sharedItems, setSharedItems] = useState<SharedItem[]>([]);
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
 
@@ -323,7 +322,7 @@ export default function App() {
         fl("Saved!");
       }
     } else {
-      fl("Error saving — try again");
+      fl("Error saving â€” try again");
     }
     setVw(null);
     setTab("home");
@@ -347,7 +346,7 @@ export default function App() {
         fl("Saved!");
       }
     } else {
-      fl("Error saving — try again");
+      fl("Error saving â€” try again");
     }
     setVw(null);
     setTab("home");
@@ -493,7 +492,7 @@ export default function App() {
     } else {
       // Revert on failure
       setUserVotes(userVotes);
-      fl("Vote failed — try again");
+      fl("Vote failed â€” try again");
     }
   };
 
@@ -518,11 +517,11 @@ export default function App() {
     }
   };
 
-  // V2-4.5: Q Profile beatdown card tap → open Edit Beatdown form (own only)
+  // V2-4.5: Q Profile beatdown card tap â†’ open Edit Beatdown form (own only)
   // Visitor-flow (other Q's beatdowns) deferred to V2-5 when there's content to test against.
   const handleOpenBeatdownDetail = (beatdownId: string) => {
     if (viewingUserId !== null) {
-      // Visitor profile — not yet wired in V2-4.5
+      // Visitor profile â€” not yet wired in V2-4.5
       fl("Coming soon");
       return;
     }
@@ -561,17 +560,17 @@ export default function App() {
         {vw === "edit-bd" && editingBd && <BuilderScreen
           onClose={() => {
             if (editFromQProfile) {
-              // Came from Q Profile — return there
+              // Came from Q Profile â€” return there
               setEditFromQProfile(false);
               setEditingBd(null);
               setVw("q-profile");
             } else {
-              // Came from Locker — return there (existing behavior)
+              // Came from Locker â€” return there (existing behavior)
               setVw(null);
               setEditingBd(null);
             }
           }}
-          backLabel={editFromQProfile ? ("← " + (profName || "profile") + "'s profile") : undefined}
+          backLabel={editFromQProfile ? ("â† " + (profName || "profile") + "'s profile") : undefined}
           onSave={handleSaveBeatdown}
           editData={{
             id: editingBd.id,
