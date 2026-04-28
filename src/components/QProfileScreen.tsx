@@ -65,6 +65,7 @@ interface QProfileScreenProps {
   onOpenSettings?: () => void;
   // V2-4: tap a beatdown card → open it elsewhere (Library detail)
   onOpenBeatdownDetail?: (beatdownId: string) => void;
+  refreshKey?: number;
 }
 
 interface ProfileData {
@@ -108,6 +109,7 @@ export default function QProfileScreen({
   onClose,
   onOpenSettings,
   onOpenBeatdownDetail,
+  refreshKey,
 }: QProfileScreenProps) {
   const isOwn = userId === currentUserId;
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -130,7 +132,7 @@ export default function QProfileScreen({
     setBeatdowns(bds as BeatdownRow[]);
     setExercises(exs as ExerciseRow[]);
     setLoading(false);
-  }, [userId, isOwn]);
+  }, [userId, isOwn, refreshKey]);
 
   useEffect(() => {
     loadAll();

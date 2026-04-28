@@ -411,7 +411,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
               Run This
             </button>
           )}
-          <button onClick={() => { onSteal?.(String(bd.id), bd.tp as "beatdown" | "exercise"); fl("Saved to locker!"); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? "rgba(255,255,255,0.04)" : G, color: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? T3 : BG, border: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? "1px solid " + BD : "none" }}>Save to Locker</button>
+          <button onClick={() => { onSteal?.(String(bd.id), bd.tp as "beatdown" | "exercise"); fl("Saved!"); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? "rgba(255,255,255,0.04)" : G, color: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? T3 : BG, border: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? "1px solid " + BD : "none" }}>Save</button>
         </div>
         {toastEl}
       </div>
@@ -607,7 +607,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
               <span>Stolen {bd.u}x</span>
               {bd.cm > 0 ? <span>{bd.cm} comments</span> : null}
             </div>
-            <span onClick={e => { e.stopPropagation(); onSteal?.(String(bd.id), bd.tp as "beatdown" | "exercise"); fl("Saved to locker!"); }} style={{ fontSize: 14, color: G, cursor: "pointer", padding: "4px 8px", fontWeight: 600 }}>Save</span>
+            <span onClick={e => { e.stopPropagation(); onSteal?.(String(bd.id), bd.tp as "beatdown" | "exercise"); fl("Saved!"); }} style={{ fontSize: 14, color: G, cursor: "pointer", padding: "4px 8px", fontWeight: 600 }}>Save</span>
           </div>
         </div>
       ))}

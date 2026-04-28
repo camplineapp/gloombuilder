@@ -174,6 +174,7 @@ export default function App() {
 
   // Locker state â€” loaded from Supabase
   const [lk, setLk] = useState<LockerBeatdown[]>([]);
+  const [profileRefreshKey, setProfileRefreshKey] = useState(0);
   const [lkEx, setLkEx] = useState<LockerExercise[]>([]);
 
   // Library shared items â€” loaded from Supabase
@@ -355,6 +356,7 @@ export default function App() {
   };
 
   const handleDeleteBeatdown = async (id: string) => {
+    setProfileRefreshKey(k => k + 1);
     const success = await deleteBeatdown(id);
     if (success) {
       setLk(lk.filter(b => b.id !== id));
@@ -611,6 +613,7 @@ export default function App() {
             onClose={() => { setVw(null); setViewingUserId(null); }}
             onOpenSettings={viewingUserId ? undefined : () => { setVw(null); setTab("profile"); }}
             onOpenBeatdownDetail={handleOpenBeatdownDetail}
+          refreshKey={profileRefreshKey}
           />
         )}
         {vw === "settings" && (
@@ -640,6 +643,7 @@ export default function App() {
           onClose={() => setTab("home")}
           onOpenSettings={() => setVw("settings")}
           onOpenBeatdownDetail={handleOpenBeatdownDetail}
+          refreshKey={profileRefreshKey}
         />
       )}
             <BottomNav active={tab} onTabChange={(t) => { setTab(t); setVw(null); }} />
