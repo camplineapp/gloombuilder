@@ -13,13 +13,9 @@ const F = "'Outfit', system-ui, sans-serif";
 
 interface FeedScreenProps {
   currentUserId: string;
-  // Bumping this number triggers a re-fetch (used by parent after a Shout is posted)
   refreshKey?: number;
-  // Open Composer
   onOpenComposer: () => void;
-  // Open a Q Profile (own or visitor)
   onOpenProfile: (targetUserId: string) => void;
-  // Open a beatdown (V2-5: visitor flow shows "Coming soon", own opens Edit)
   onOpenBeatdown: (beatdownId: string) => void;
 }
 
@@ -47,7 +43,7 @@ export default function FeedScreen({
 
   return (
     <>
-      {/* Main content area — NO position:relative wrapper to avoid stacking context issues with the FAB */}
+      {/* Main content area */}
       <div
         style={{
           minHeight: "100vh",
@@ -56,7 +52,6 @@ export default function FeedScreen({
           padding: "16px 18px 120px",
         }}
       >
-        {/* Title */}
         <div
           style={{
             fontSize: 26,
@@ -69,7 +64,6 @@ export default function FeedScreen({
           Feed
         </div>
 
-        {/* Segmented control: Following / Search */}
         <div
           style={{
             display: "flex",
@@ -118,7 +112,6 @@ export default function FeedScreen({
           </button>
         </div>
 
-        {/* Mode body */}
         {mode === "search" ? (
           <div
             style={{
@@ -136,7 +129,6 @@ export default function FeedScreen({
           </div>
         ) : (
           <>
-            {/* Status line */}
             <div style={{ fontSize: 11, color: T4, marginBottom: 14 }}>
               {loading
                 ? "Loading…"
@@ -145,7 +137,6 @@ export default function FeedScreen({
                 : `${shouts.length} active Shout${shouts.length === 1 ? "" : "s"}`}
             </div>
 
-            {/* Shout list */}
             {!loading && shouts.length === 0 ? (
               <div
                 style={{
@@ -179,38 +170,55 @@ export default function FeedScreen({
         )}
       </div>
 
-      {/* Floating compose button — rendered as SIBLING to content, not nested inside.
-          z-index 60 puts it above BottomNav (z-index 50). */}
-      <button
-        type="button"
-        onClick={onOpenComposer}
-        aria-label="New Shout"
+      {/*
+        FAB wrapper — centered same as BottomNav (max-width 430px).
+        Inside it, the actual button is positioned at right:20px relative to the wrapper.
+        On mobile (< 430px) the wrapper IS full width, button sits at right edge.
+        On desktop, wrapper centers itself and button sits at the right edge of the centered column.
+      */}
+      <div
         style={{
           position: "fixed",
-          bottom: "calc(90px + env(safe-area-inset-bottom, 8px))",
-          right: 20,
-          width: 60,
-          height: 60,
-          borderRadius: "50%",
-          background: G,
-          color: BG,
-          border: "none",
-          fontSize: 26,
-          fontWeight: 800,
-          fontFamily: F,
-          boxShadow: "0 8px 20px rgba(34,197,94,0.5), 0 4px 10px rgba(0,0,0,0.4)",
-          cursor: "pointer",
+          bottom: 0,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "100%",
+          maxWidth: 430,
+          height: 0,
+          pointerEvents: "none",
           zIndex: 60,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: 0,
-          pointerEvents: "auto",
-          touchAction: "manipulation",
         }}
       >
-        ✎
-      </button>
+        <button
+          type="button"
+          onClick={onOpenComposer}
+          aria-label="New Shout"
+          style={{
+            position: "absolute",
+            bottom: "calc(90px + env(safe-area-inset-bottom, 8px))",
+            right: 20,
+            width: 60,
+            height: 60,
+            borderRadius: "50%",
+            background: G,
+            color: BG,
+            border: "none",
+            fontSize: 26,
+            fontWeight: 800,
+            fontFamily: F,
+            boxShadow: "0 8px 20px rgba(34,197,94,0.5), 0 4px 10px rgba(0,0,0,0.4)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 0,
+            pointerEvents: "auto",
+            touchAction: "manipulation",
+          }}
+        >
+          ✎
+        </button>
+      </div>
     </>
   );
 }
