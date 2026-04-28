@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { postShout, type ShoutRow } from "@/lib/db";
 
-// Design tokens (matches Bible v14 + existing screens)
+// Design tokens (matches Bible v14)
 const BG = "#0E0E10";
 const CARD_BG = "#111114";
 const BD = "rgba(255,255,255,0.07)";
@@ -29,6 +29,9 @@ const SHOUT_TYPES = [
   "Convergence",
 ];
 
+// Default the picker to Bootcamp — most common F3 activity
+const DEFAULT_TYPE = "Bootcamp";
+
 interface AttachedBeatdown {
   id: string;
   title: string;
@@ -37,26 +40,51 @@ interface AttachedBeatdown {
 interface ShoutComposerProps {
   onClose: () => void;
   onPosted: (shout: ShoutRow) => void;
-  // Optional: pre-attached beatdown if user opened composer from a beatdown card
   attachedBeatdown?: AttachedBeatdown | null;
 }
 
+// Format a datetime-local input value (e.g. "2026-04-30T05:30") to a display string
+// like "Wed · Apr 30 · 5:30am"
+function formatWhen(isoLocal: string): string {
+  if (!isoLocal) return "";
+  const d = new Date(isoLocal);
+  if (isNaN(d.getTime())) return isoLocal;
+  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const day = days[d.getDay()];
+  const mo = months[d.getMonth()];
+  const dt = d.getDate();
+  let h = d.getHours();
+  const m = d.getMinutes();
+  const ampm = h >= 12 ? "pm" : "am";
+  h = h % 12;
+  if (h === 0) h = 12;
+  const mm = m < 10 ? "0" + m : "" + m;
+  return `${day} · ${mo} ${dt} · ${h}:${mm}${ampm}`;
+}
+
 export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: ShoutComposerProps) {
-  const [type, setType] = useState<string>("");
+  const [type, setType] = useState<string>(DEFAULT_TYPE);
   const [customType, setCustomType] = useState<string>("");
+  const [showTypeGrid, setShowTypeGrid] = useState(false);
+  const [editingCustom, setEditingCustom] = useState(false);
   const [message, setMessage] = useState("");
-  const [whenText, setWhenText] = useState<string | null>(null);
-  const [whenInput, setWhenInput] = useState("");
+
+  // When (datetime-local format: "YYYY-MM-DDTHH:mm")
+  const [whenIso, setWhenIso] = useState<string | null>(null);
+
+  // Location
   const [locationText, setLocationText] = useState<string | null>(null);
   const [locationInput, setLocationInput] = useState("");
+
   const [bdAttached, setBdAttached] = useState<AttachedBeatdown | null>(attachedBeatdown || null);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const effectiveType = type === "Custom" ? customType.trim() : type;
-  const canPost = !!effectiveType && message.trim().length > 0 && message.length <= 240 && !posting;
+  const effectiveType = editingCustom ? customType.trim() : type;
+  const canPost = !!effectiveType && !editingCustom && message.trim().length > 0 && message.length <= 240 && !posting;
 
-  // Lock background scroll when sheet is open
+  // Lock background scroll
   useEffect(() => {
     const original = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -64,6 +92,26 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
       document.body.style.overflow = original;
     };
   }, []);
+
+  function handlePickType(t: string) {
+    if (t === "Custom") {
+      setEditingCustom(true);
+      setShowTypeGrid(false);
+    } else {
+      setType(t);
+      setEditingCustom(false);
+      setCustomType("");
+      setShowTypeGrid(false);
+    }
+  }
+
+  function commitCustomType() {
+    const trimmed = customType.trim();
+    if (trimmed) {
+      setType(trimmed);
+      setEditingCustom(false);
+    }
+  }
 
   async function handlePost() {
     if (!canPost) return;
@@ -73,7 +121,8 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
       text: message.trim(),
       type: effectiveType,
       beatdownId: bdAttached?.id || null,
-      whenText: whenText || null,
+      whenText: whenIso ? formatWhen(whenIso) : null,
+      whenAt: whenIso ? new Date(whenIso).toISOString() : null,
       locationText: locationText || null,
     });
     setPosting(false);
@@ -86,7 +135,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
 
   return (
     <>
-      {/* Backdrop — covers full viewport */}
+      {/* Backdrop */}
       <div
         onClick={onClose}
         style={{
@@ -98,7 +147,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
         }}
       />
 
-      {/* Sheet — centered same as BottomNav, max-width 430px */}
+      {/* Sheet centered to 430px column */}
       <div
         style={{
           position: "fixed",
@@ -153,50 +202,24 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
             marginBottom: 7,
           }}
         >
-          Type <span style={{ color: G, fontSize: 9, marginLeft: 4 }}>REQUIRED</span>
+          {showTypeGrid ? "Type · choose one" : "Type"}
         </div>
 
-        {/* TYPE PICKER — collapsed (chip) or expanded (grid) */}
-        {type && type !== "Custom" ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
-            <span
-              style={{
-                background: G + "26",
-                border: "1px solid " + G + "66",
-                color: G,
-                fontSize: 12,
-                fontWeight: 800,
-                padding: "7px 12px",
-                borderRadius: 8,
-                textTransform: "uppercase",
-                letterSpacing: 0.8,
-              }}
-            >
-              {type}
-            </span>
-            <button
-              onClick={() => setType("")}
-              style={{
-                fontFamily: F,
-                color: T4,
-                fontSize: 11,
-                background: "none",
-                border: "none",
-                textDecoration: "underline",
-                cursor: "pointer",
-                padding: 0,
-              }}
-            >
-              Change
-            </button>
-          </div>
-        ) : type === "Custom" ? (
+        {/* TYPE — collapsed chip OR expanded grid OR custom input */}
+        {editingCustom ? (
           <div style={{ marginBottom: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
               <input
                 type="text"
                 value={customType}
                 onChange={(e) => setCustomType(e.target.value.slice(0, 20))}
+                onBlur={commitCustomType}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitCustomType();
+                  }
+                }}
                 placeholder="Custom type label..."
                 style={{
                   flex: 1,
@@ -214,8 +237,9 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
               />
               <button
                 onClick={() => {
-                  setType("");
+                  setEditingCustom(false);
                   setCustomType("");
+                  setType(DEFAULT_TYPE);
                 }}
                 style={{
                   fontFamily: F,
@@ -233,49 +257,92 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
             </div>
             <div style={{ fontSize: 10, color: T5 }}>{customType.length} / 20</div>
           </div>
-        ) : (
+        ) : showTypeGrid ? (
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              gap: 7,
+              gridTemplateColumns: "1fr 1fr 1fr 1fr",
+              gap: 5,
               marginBottom: 18,
+              border: "1px solid " + BD,
+              borderRadius: 11,
+              padding: 8,
+              background: "rgba(255,255,255,0.02)",
             }}
           >
-            {SHOUT_TYPES.map((t) => (
-              <button
-                key={t}
-                onClick={() => setType(t)}
-                style={{
-                  background: "rgba(255,255,255,0.04)",
-                  border: "1px solid " + BD,
-                  color: T2,
-                  fontFamily: F,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  padding: "9px 4px",
-                  borderRadius: 8,
-                  cursor: "pointer",
-                }}
-              >
-                {t}
-              </button>
-            ))}
+            {SHOUT_TYPES.map((t) => {
+              const selected = type === t;
+              return (
+                <button
+                  key={t}
+                  onClick={() => handlePickType(t)}
+                  style={{
+                    background: selected ? G + "26" : "rgba(255,255,255,0.04)",
+                    border: "1px solid " + (selected ? G + "66" : BD),
+                    color: selected ? G : T2,
+                    fontFamily: F,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: "8px 2px",
+                    borderRadius: 7,
+                    cursor: "pointer",
+                    textAlign: "center",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {t}
+                </button>
+              );
+            })}
             <button
-              onClick={() => setType("Custom")}
+              onClick={() => handlePickType("Custom")}
               style={{
                 background: A + "1A",
                 border: "1px dashed " + A + "66",
                 color: A,
                 fontFamily: F,
-                fontSize: 12,
+                fontSize: 10,
                 fontWeight: 700,
-                padding: "9px 4px",
-                borderRadius: 8,
+                padding: "8px 2px",
+                borderRadius: 7,
                 cursor: "pointer",
+                textAlign: "center",
               }}
             >
-              Custom...
+              Custom
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+            <span
+              style={{
+                background: G + "26",
+                border: "1px solid " + G + "66",
+                color: G,
+                fontSize: 13,
+                fontWeight: 800,
+                padding: "8px 14px",
+                borderRadius: 8,
+                textTransform: "uppercase",
+                letterSpacing: 0.8,
+              }}
+            >
+              {type}
+            </span>
+            <button
+              onClick={() => setShowTypeGrid(true)}
+              style={{
+                fontFamily: F,
+                color: T4,
+                fontSize: 12,
+                background: "none",
+                border: "none",
+                textDecoration: "underline",
+                cursor: "pointer",
+                padding: 0,
+              }}
+            >
+              Change
             </button>
           </div>
         )}
@@ -294,8 +361,8 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
           Message <span style={{ color: G, fontSize: 9, marginLeft: 4 }}>REQUIRED</span>
         </div>
 
-        {/* MESSAGE TEXTAREA */}
-        <div style={{ position: "relative", marginBottom: 18 }}>
+        {/* MESSAGE TEXTAREA — taller per user request (~5 lines) */}
+        <div style={{ position: "relative", marginBottom: 16 }}>
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value.slice(0, 240))}
@@ -308,18 +375,19 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
               color: T1,
               fontFamily: F,
               fontSize: 14,
-              padding: "10px 12px",
-              minHeight: 80,
+              padding: "12px 14px",
+              minHeight: 140,
               resize: "vertical",
               outline: "none",
+              lineHeight: 1.5,
             }}
             maxLength={240}
           />
           <div
             style={{
               position: "absolute",
-              bottom: 6,
-              right: 10,
+              bottom: 8,
+              right: 12,
               fontSize: 10,
               color: message.length > 220 ? A : T5,
               fontFamily: F,
@@ -329,7 +397,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
           </div>
         </div>
 
-        {/* OPTIONAL HEADER */}
+        {/* OPTIONAL ICON ROW — 📅 When · 📍 Location · 💪 Beatdown */}
         <div
           style={{
             fontSize: 10,
@@ -337,159 +405,190 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
             color: T5,
             letterSpacing: 1.5,
             textTransform: "uppercase",
-            margin: "14px 0 10px",
-            textAlign: "center",
+            marginBottom: 7,
           }}
         >
-          Optional · Add any that apply
+          Add details (optional)
         </div>
 
-        {/* WHEN */}
-        {whenText !== null ? (
-          <div
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          {/* 📅 When — wraps native datetime input */}
+          <label
             style={{
-              background: G + "10",
-              border: "1px solid " + G + "40",
-              borderRadius: 11,
-              padding: "9px 11px",
-              marginBottom: 7,
+              flex: 1,
+              background: whenIso
+                ? "rgba(34,197,94,0.10)"
+                : "rgba(255,255,255,0.03)",
+              border: "1px solid " + (whenIso ? "rgba(34,197,94,0.4)" : BD),
+              borderRadius: 10,
+              padding: "10px 6px",
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 3,
+              color: whenIso ? G : T4,
+              position: "relative",
             }}
           >
-            <div
+            <span style={{ fontSize: 18, lineHeight: 1 }}>📅</span>
+            <span
               style={{
                 fontSize: 9,
-                fontWeight: 800,
-                color: G,
-                letterSpacing: 1.2,
+                fontWeight: 700,
                 textTransform: "uppercase",
-                marginBottom: 4,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                letterSpacing: 0.5,
+                fontFamily: F,
               }}
             >
-              <span>When</span>
-              <button
-                onClick={() => {
-                  setWhenText(null);
-                  setWhenInput("");
-                }}
-                style={{
-                  color: T4,
-                  fontSize: 11,
-                  background: "rgba(255,255,255,0.06)",
-                  border: "none",
-                  width: 18,
-                  height: 18,
-                  borderRadius: 4,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  fontFamily: F,
-                }}
-                aria-label="Remove when"
-              >
-                ✕
-              </button>
-            </div>
+              When
+            </span>
             <input
-              type="text"
-              value={whenInput}
-              onChange={(e) => {
-                const v = e.target.value;
-                setWhenInput(v);
-                setWhenText(v);
-              }}
-              placeholder="e.g. Wed · Apr 22 · 5:30am"
-              autoFocus
+              type="datetime-local"
+              value={whenIso || ""}
+              onChange={(e) => setWhenIso(e.target.value || null)}
               style={{
+                position: "absolute",
+                inset: 0,
+                opacity: 0,
+                cursor: "pointer",
                 width: "100%",
-                background: "transparent",
-                border: "none",
-                color: T1,
-                fontFamily: F,
-                fontSize: 13,
-                outline: "none",
-                padding: 0,
+                height: "100%",
               }}
-              maxLength={100}
+              aria-label="Pick date and time"
             />
-          </div>
-        ) : (
+          </label>
+
+          {/* 📍 Location */}
           <button
             onClick={() => {
-              setWhenText("");
-              setWhenInput("");
+              if (locationText !== null) {
+                setLocationText(null);
+                setLocationInput("");
+              } else {
+                setLocationText("");
+                setLocationInput("");
+              }
             }}
             style={{
-              width: "100%",
-              padding: "10px 14px",
-              background: "rgba(255,255,255,0.02)",
-              border: "1px dashed rgba(255,255,255,0.15)",
-              borderRadius: 11,
-              color: T3,
-              fontFamily: F,
-              fontSize: 12,
-              fontWeight: 600,
-              textAlign: "left",
-              marginBottom: 6,
+              flex: 1,
+              background: locationText !== null
+                ? "rgba(34,197,94,0.10)"
+                : "rgba(255,255,255,0.03)",
+              border: "1px solid " + (locationText !== null ? "rgba(34,197,94,0.4)" : BD),
+              borderRadius: 10,
+              padding: "10px 6px",
               cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 3,
+              color: locationText !== null ? G : T4,
+              fontFamily: F,
             }}
           >
-            + Add when
-          </button>
-        )}
-
-        {/* LOCATION */}
-        {locationText !== null ? (
-          <div
-            style={{
-              background: G + "10",
-              border: "1px solid " + G + "40",
-              borderRadius: 11,
-              padding: "9px 11px",
-              marginBottom: 7,
-            }}
-          >
-            <div
+            <span style={{ fontSize: 18, lineHeight: 1 }}>📍</span>
+            <span
               style={{
                 fontSize: 9,
-                fontWeight: 800,
-                color: G,
-                letterSpacing: 1.2,
+                fontWeight: 700,
                 textTransform: "uppercase",
-                marginBottom: 4,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                letterSpacing: 0.5,
               }}
             >
-              <span>Location</span>
-              <button
-                onClick={() => {
-                  setLocationText(null);
-                  setLocationInput("");
-                }}
-                style={{
-                  color: T4,
-                  fontSize: 11,
-                  background: "rgba(255,255,255,0.06)",
-                  border: "none",
-                  width: 18,
-                  height: 18,
-                  borderRadius: 4,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  fontFamily: F,
-                }}
-                aria-label="Remove location"
-              >
-                ✕
-              </button>
-            </div>
+              Location
+            </span>
+          </button>
+
+          {/* 💪 Beatdown — dimmed (V2-6) */}
+          <button
+            disabled
+            style={{
+              flex: 1,
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid " + BD,
+              borderRadius: 10,
+              padding: "10px 6px",
+              cursor: "not-allowed",
+              opacity: 0.4,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 3,
+              color: T4,
+              fontFamily: F,
+            }}
+            title="Attaching a beatdown coming soon"
+          >
+            <span style={{ fontSize: 18, lineHeight: 1 }}>💪</span>
+            <span
+              style={{
+                fontSize: 9,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: 0.5,
+              }}
+            >
+              Beatdown
+            </span>
+          </button>
+        </div>
+
+        {/* SELECTED CHIPS — When and Location appear here when set */}
+        {whenIso && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "rgba(34,197,94,0.06)",
+              border: "1px solid rgba(34,197,94,0.25)",
+              borderRadius: 9,
+              padding: "8px 10px",
+              marginBottom: 6,
+            }}
+          >
+            <span style={{ color: G, fontSize: 14 }}>📅</span>
+            <span style={{ flex: 1, color: T1, fontSize: 12, fontWeight: 600 }}>
+              {formatWhen(whenIso)}
+            </span>
+            <button
+              onClick={() => setWhenIso(null)}
+              style={{
+                color: T4,
+                background: "rgba(255,255,255,0.06)",
+                border: "none",
+                width: 20,
+                height: 20,
+                borderRadius: 4,
+                cursor: "pointer",
+                fontSize: 11,
+                fontFamily: F,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              aria-label="Remove when"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
+        {locationText !== null && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              background: "rgba(34,197,94,0.06)",
+              border: "1px solid rgba(34,197,94,0.25)",
+              borderRadius: 9,
+              padding: "8px 10px",
+              marginBottom: 6,
+            }}
+          >
+            <span style={{ color: G, fontSize: 14 }}>📍</span>
             <input
               type="text"
               value={locationInput}
@@ -498,48 +597,49 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
                 setLocationInput(v);
                 setLocationText(v);
               }}
-              placeholder="Map URL or address"
+              placeholder="Paste map URL or address"
               autoFocus
               style={{
-                width: "100%",
+                flex: 1,
                 background: "transparent",
                 border: "none",
                 color: T1,
                 fontFamily: F,
-                fontSize: 13,
+                fontSize: 12,
+                fontWeight: 600,
                 outline: "none",
                 padding: 0,
               }}
               maxLength={500}
             />
+            <button
+              onClick={() => {
+                setLocationText(null);
+                setLocationInput("");
+              }}
+              style={{
+                color: T4,
+                background: "rgba(255,255,255,0.06)",
+                border: "none",
+                width: 20,
+                height: 20,
+                borderRadius: 4,
+                cursor: "pointer",
+                fontSize: 11,
+                fontFamily: F,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              aria-label="Remove location"
+            >
+              ✕
+            </button>
           </div>
-        ) : (
-          <button
-            onClick={() => {
-              setLocationText("");
-              setLocationInput("");
-            }}
-            style={{
-              width: "100%",
-              padding: "10px 14px",
-              background: "rgba(255,255,255,0.02)",
-              border: "1px dashed rgba(255,255,255,0.15)",
-              borderRadius: 11,
-              color: T3,
-              fontFamily: F,
-              fontSize: 12,
-              fontWeight: 600,
-              textAlign: "left",
-              marginBottom: 6,
-              cursor: "pointer",
-            }}
-          >
-            + Add location
-          </button>
         )}
 
-        {/* BEATDOWN ATTACHMENT */}
-        {bdAttached ? (
+        {/* Attached beatdown chip (when prop is supplied — V2-6) */}
+        {bdAttached && (
           <div
             style={{
               background: A + "10",
@@ -560,6 +660,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
+                fontFamily: F,
               }}
             >
               <span>Attached beatdown</span>
@@ -573,9 +674,6 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
                   width: 18,
                   height: 18,
                   borderRadius: 4,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
                   cursor: "pointer",
                   fontFamily: F,
                 }}
@@ -602,28 +700,6 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
               <span style={{ color: T4, fontSize: 16 }}>→</span>
             </div>
           </div>
-        ) : (
-          <button
-            disabled
-            style={{
-              width: "100%",
-              padding: "10px 14px",
-              background: "rgba(255,255,255,0.02)",
-              border: "1px dashed rgba(255,255,255,0.15)",
-              borderRadius: 11,
-              color: T5,
-              fontFamily: F,
-              fontSize: 12,
-              fontWeight: 600,
-              textAlign: "left",
-              marginBottom: 6,
-              cursor: "not-allowed",
-              opacity: 0.6,
-            }}
-            title="Attach a beatdown by opening composer from a beatdown card (V2-6)"
-          >
-            + Add beatdown <span style={{ color: T5, marginLeft: 6, fontSize: 10 }}>(coming soon)</span>
-          </button>
         )}
 
         {/* ERROR */}
