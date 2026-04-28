@@ -85,31 +85,28 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
   }
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 100,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "flex-end",
-      }}
-    >
-      {/* Backdrop */}
+    <>
+      {/* Backdrop — covers full viewport */}
       <div
         onClick={onClose}
         style={{
-          position: "absolute",
+          position: "fixed",
           inset: 0,
           background: "rgba(0,0,0,0.7)",
           backdropFilter: "blur(2px)",
+          zIndex: 99,
         }}
       />
 
-      {/* Sheet */}
+      {/* Sheet — centered same as BottomNav, max-width 430px */}
       <div
         style={{
-          position: "relative",
+          position: "fixed",
+          bottom: 0,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "100%",
+          maxWidth: 430,
           background: "#141416",
           borderRadius: "22px 22px 0 0",
           padding: "14px 22px 24px",
@@ -118,6 +115,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
           maxHeight: "92vh",
           overflowY: "auto",
           fontFamily: F,
+          zIndex: 100,
         }}
       >
         {/* Grab handle */}
@@ -605,8 +603,6 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
             </div>
           </div>
         ) : (
-          // V2-5: pre-attachment via "Add beatdown" picker not yet wired.
-          // For now, beatdown can only be attached if composer was opened from a beatdown context.
           <button
             disabled
             style={{
@@ -688,6 +684,6 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
