@@ -867,7 +867,7 @@ export interface ShoutRow {
     state: string | null;
     region: string | null;
   } | null;
-  beatdown?: { id: string; nm: string; } | null;
+  beatdown?: { id: string; name: string; } | null;
 }
 
 /**
@@ -939,7 +939,7 @@ export async function getActiveShoutForUser(userId: string): Promise<ShoutRow | 
   const supabase = createClient();
   const { data, error } = await supabase
     .from("shouts")
-    .select("*, profiles:author_id(f3_name, ao, state, region), beatdown:beatdown_id(id, nm)")
+    .select("*, profiles:author_id(f3_name, ao, state, region), beatdown:beatdown_id(id, name)")
     .eq("author_id", userId)
     .eq("is_archived", false)
     .order("created_at", { ascending: false })
@@ -975,7 +975,7 @@ export async function getFeedShouts(): Promise<ShoutRow[]> {
 
   const { data, error } = await supabase
     .from("shouts")
-    .select("*, profiles:author_id(f3_name, ao, state, region), beatdown:beatdown_id(id, nm)")
+    .select("*, profiles:author_id(f3_name, ao, state, region), beatdown:beatdown_id(id, name)")
     .in("author_id", authorIds)
     .eq("is_archived", false)
     .order("created_at", { ascending: false })

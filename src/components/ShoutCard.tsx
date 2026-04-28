@@ -1,7 +1,6 @@
 "use client";
 import { type ShoutRow } from "@/lib/db";
 
-// Design tokens (matches Bible v14 + existing screens)
 const CARD_BG = "#111114";
 const BD = "rgba(255,255,255,0.07)";
 const G = "#22c55e";
@@ -12,7 +11,6 @@ const T4 = "#928982";
 const T5 = "#7A7268";
 const F = "'Outfit', system-ui, sans-serif";
 
-// Avatar palette for OTHER HIMs (matches QProfileScreen)
 const AVATAR_COLORS = ["#f59e0b", "#a78bfa", "#3b82f6", "#06b6d4", "#E8A820"];
 
 function colorForUserId(id: string, isOwn: boolean): string {
@@ -102,7 +100,6 @@ export default function ShoutCard({
       )}
 
       <div style={{ display: "flex", gap: 10 }}>
-        {/* Avatar */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -130,7 +127,6 @@ export default function ShoutCard({
           {initials}
         </button>
 
-        {/* Body */}
         <div style={{ flex: 1, minWidth: 0 }}>
           {variant === "feed" && (
             <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
@@ -158,7 +154,6 @@ export default function ShoutCard({
             </div>
           )}
 
-          {/* Meta row: AO + type pill */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
             {authorAo && <span style={{ fontFamily: F, fontSize: 11, color: T4 }}>{authorAo}</span>}
             <span
@@ -237,7 +232,7 @@ export default function ShoutCard({
             {shout.text}
           </div>
 
-          {/* Attached beatdown — minimal: title + arrow only */}
+          {/* Attached beatdown — minimal: name + arrow only */}
           {beatdown && (
             <button
               onClick={(e) => {
@@ -261,7 +256,7 @@ export default function ShoutCard({
               }}
             >
               <span style={{ flex: 1, fontSize: 13, fontWeight: 800, color: T1 }}>
-                {beatdown.nm}
+                {beatdown.name}
               </span>
               <span style={{ color: T4, fontSize: 16 }}>→</span>
             </button>
