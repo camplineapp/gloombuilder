@@ -1,8 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { postShout, type ShoutRow } from "@/lib/db";
 
-// Design tokens (matches Bible v14)
 const BG = "#0E0E10";
 const CARD_BG = "#111114";
 const BD = "rgba(255,255,255,0.07)";
@@ -29,7 +28,6 @@ const SHOUT_TYPES = [
   "Convergence",
 ];
 
-// Default the picker to Bootcamp — most common F3 activity
 const DEFAULT_TYPE = "Bootcamp";
 
 interface AttachedBeatdown {
@@ -43,8 +41,6 @@ interface ShoutComposerProps {
   attachedBeatdown?: AttachedBeatdown | null;
 }
 
-// Format a datetime-local input value (e.g. "2026-04-30T05:30") to a display string
-// like "Wed · Apr 30 · 5:30am"
 function formatWhen(isoLocal: string): string {
   if (!isoLocal) return "";
   const d = new Date(isoLocal);
@@ -69,22 +65,19 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
   const [showTypeGrid, setShowTypeGrid] = useState(false);
   const [editingCustom, setEditingCustom] = useState(false);
   const [message, setMessage] = useState("");
-
-  // When (datetime-local format: "YYYY-MM-DDTHH:mm")
   const [whenIso, setWhenIso] = useState<string | null>(null);
-
-  // Location
   const [locationText, setLocationText] = useState<string | null>(null);
   const [locationInput, setLocationInput] = useState("");
-
   const [bdAttached, setBdAttached] = useState<AttachedBeatdown | null>(attachedBeatdown || null);
   const [posting, setPosting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Ref for the hidden datetime input — used to programmatically open the picker
+  const dateInputRef = useRef<HTMLInputElement>(null);
+
   const effectiveType = editingCustom ? customType.trim() : type;
   const canPost = !!effectiveType && !editingCustom && message.trim().length > 0 && message.length <= 240 && !posting;
 
-  // Lock background scroll
   useEffect(() => {
     const original = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -111,6 +104,24 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
       setType(trimmed);
       setEditingCustom(false);
     }
+  }
+
+  // Open native date/time picker — robust across browsers
+  function openDatePicker() {
+    const el = dateInputRef.current;
+    if (!el) return;
+    // Use showPicker() if available (modern Chrome/Edge/Safari)
+    if (typeof el.showPicker === "function") {
+      try {
+        el.showPicker();
+        return;
+      } catch {
+        // Fall through to focus/click fallback
+      }
+    }
+    // Fallback: focus + click — works on iOS Safari and older browsers
+    el.focus();
+    el.click();
   }
 
   async function handlePost() {
@@ -167,6 +178,26 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
           zIndex: 100,
         }}
       >
+        {/* Hidden datetime input — placed at the top so the spawned picker
+            anchors near the top of the sheet, regardless of the icon location.
+            Truly hidden but functionally activatable via showPicker(). */}
+        <input
+          ref={dateInputRef}
+          type="datetime-local"
+          value={whenIso || ""}
+          onChange={(e) => setWhenIso(e.target.value || null)}
+          aria-label="Pick date and time"
+          style={{
+            position: "absolute",
+            opacity: 0,
+            pointerEvents: "none",
+            width: 1,
+            height: 1,
+            top: 0,
+            left: 0,
+          }}
+        />
+
         {/* Grab handle */}
         <div
           style={{
@@ -361,7 +392,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
           Message <span style={{ color: G, fontSize: 9, marginLeft: 4 }}>REQUIRED</span>
         </div>
 
-        {/* MESSAGE TEXTAREA — taller per user request (~5 lines) */}
+        {/* MESSAGE TEXTAREA — 5 lines */}
         <div style={{ position: "relative", marginBottom: 16 }}>
           <textarea
             value={message}
@@ -397,7 +428,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
           </div>
         </div>
 
-        {/* OPTIONAL ICON ROW — 📅 When · 📍 Location · 💪 Beatdown */}
+        {/* OPTIONAL ICON ROW */}
         <div
           style={{
             fontSize: 10,
@@ -412,8 +443,11 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
         </div>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-          {/* 📅 When — wraps native datetime input */}
-          <label
+          {/* 📅 When — entire button is clickable, opens picker programmatically */}
+          <button
+            type="button"
+            onClick={openDatePicker}
+            aria-label="Pick date and time"
             style={{
               flex: 1,
               background: whenIso
@@ -428,39 +462,25 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
               alignItems: "center",
               gap: 3,
               color: whenIso ? G : T4,
-              position: "relative",
+              fontFamily: F,
             }}
           >
-            <span style={{ fontSize: 18, lineHeight: 1 }}>📅</span>
+            <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}>📅</span>
             <span
               style={{
                 fontSize: 9,
                 fontWeight: 700,
                 textTransform: "uppercase",
                 letterSpacing: 0.5,
-                fontFamily: F,
               }}
             >
               When
             </span>
-            <input
-              type="datetime-local"
-              value={whenIso || ""}
-              onChange={(e) => setWhenIso(e.target.value || null)}
-              style={{
-                position: "absolute",
-                inset: 0,
-                opacity: 0,
-                cursor: "pointer",
-                width: "100%",
-                height: "100%",
-              }}
-              aria-label="Pick date and time"
-            />
-          </label>
+          </button>
 
           {/* 📍 Location */}
           <button
+            type="button"
             onClick={() => {
               if (locationText !== null) {
                 setLocationText(null);
@@ -470,6 +490,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
                 setLocationInput("");
               }
             }}
+            aria-label={locationText !== null ? "Remove location" : "Add location"}
             style={{
               flex: 1,
               background: locationText !== null
@@ -487,7 +508,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
               fontFamily: F,
             }}
           >
-            <span style={{ fontSize: 18, lineHeight: 1 }}>📍</span>
+            <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}>📍</span>
             <span
               style={{
                 fontSize: 9,
@@ -500,9 +521,10 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
             </span>
           </button>
 
-          {/* 💪 Beatdown — dimmed (V2-6) */}
+          {/* 💪 Beatdown — V2-6 */}
           <button
             disabled
+            aria-label="Attach beatdown (coming soon)"
             style={{
               flex: 1,
               background: "rgba(255,255,255,0.03)",
@@ -520,7 +542,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
             }}
             title="Attaching a beatdown coming soon"
           >
-            <span style={{ fontSize: 18, lineHeight: 1 }}>💪</span>
+            <span aria-hidden="true" style={{ fontSize: 18, lineHeight: 1 }}>💪</span>
             <span
               style={{
                 fontSize: 9,
@@ -534,7 +556,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
           </button>
         </div>
 
-        {/* SELECTED CHIPS — When and Location appear here when set */}
+        {/* SELECTED CHIPS */}
         {whenIso && (
           <div
             style={{
@@ -548,7 +570,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
               marginBottom: 6,
             }}
           >
-            <span style={{ color: G, fontSize: 14 }}>📅</span>
+            <span aria-hidden="true" style={{ color: G, fontSize: 14 }}>📅</span>
             <span style={{ flex: 1, color: T1, fontSize: 12, fontWeight: 600 }}>
               {formatWhen(whenIso)}
             </span>
@@ -588,7 +610,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
               marginBottom: 6,
             }}
           >
-            <span style={{ color: G, fontSize: 14 }}>📍</span>
+            <span aria-hidden="true" style={{ color: G, fontSize: 14 }}>📍</span>
             <input
               type="text"
               value={locationInput}
@@ -638,7 +660,7 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
           </div>
         )}
 
-        {/* Attached beatdown chip (when prop is supplied — V2-6) */}
+        {/* Attached beatdown chip (V2-6) */}
         {bdAttached && (
           <div
             style={{
@@ -697,12 +719,11 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
               <span style={{ flex: 1, fontSize: 13, fontWeight: 800, color: T1 }}>
                 {bdAttached.title}
               </span>
-              <span style={{ color: T4, fontSize: 16 }}>→</span>
+              <span aria-hidden="true" style={{ color: T4, fontSize: 16 }}>→</span>
             </div>
           </div>
         )}
 
-        {/* ERROR */}
         {error && (
           <div
             style={{
@@ -720,7 +741,6 @@ export default function ShoutComposer({ onClose, onPosted, attachedBeatdown }: S
           </div>
         )}
 
-        {/* ACTIONS */}
         <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
           <button
             onClick={onClose}
