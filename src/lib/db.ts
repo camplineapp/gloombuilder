@@ -867,10 +867,7 @@ export interface ShoutRow {
     state: string | null;
     region: string | null;
   } | null;
-  beatdown?: {
-    id: string;
-    title: string;
-  } | null;
+  beatdown?: { id: string; nm: string; } | null;
 }
 
 /**
