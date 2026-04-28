@@ -10,8 +10,9 @@ import AuthScreen from "@/components/AuthScreen";
 import BottomNav from "@/components/BottomNav";
 import HomeScreen from "@/components/HomeScreen";
 import LibraryScreen from "@/components/LibraryScreen";
-import LockerScreen from "@/components/LockerScreen";
 import ProfileScreen from "@/components/ProfileScreen";
+import FeedScreen from "@/components/FeedScreen";
+import ShoutComposer from "@/components/ShoutComposer";
 import GeneratorScreen from "@/components/GeneratorScreen";
 import BuilderScreen from "@/components/BuilderScreen";
 import CreateExerciseScreen from "@/components/CreateExerciseScreen";
@@ -157,7 +158,7 @@ function dbToExercise(row: Record<string, unknown>): LockerExercise {
 }
 
 export default function App() {
-  const [tab, setTab] = useState<"home" | "library" | "locker" | "profile">("home");
+  const [tab, setTab] = useState<"home" | "library" | "feed" | "profile">("home");
   const [vw, setVw] = useState<string | null>(null);
   const [editingBd, setEditingBd] = useState<LockerBeatdown | null>(null);
   const [liveBd, setLiveBd] = useState<LockerBeatdown | null>(null);
@@ -170,6 +171,8 @@ export default function App() {
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   // V2-4.5: tracks whether edit-bd was opened from Q Profile (back button returns there)
   const [editFromQProfile, setEditFromQProfile] = useState(false);
+  // V2-5: bumped after a Shout is posted to trigger Feed re-fetch
+  const [feedRefreshKey, setFeedRefreshKey] = useState(0);
 
   // Locker state — loaded from Supabase
   const [lk, setLk] = useState<LockerBeatdown[]>([]);
@@ -316,15 +319,15 @@ export default function App() {
       await loadLocker();
       if (bd.share) {
         await loadLibrary();
-        fl("Saved to locker! Shared to community!");
+        fl("Saved! Shared to community!");
       } else {
-        fl("Saved to locker!");
+        fl("Saved!");
       }
     } else {
       fl("Error saving — try again");
     }
     setVw(null);
-    setTab("locker");
+    setTab("home");
   };
 
   const handleSaveExercise = async (ex: { nm: string; tags: string[]; how: string; desc: string; share: boolean }) => {
@@ -340,15 +343,15 @@ export default function App() {
       await loadLocker();
       if (ex.share) {
         await loadLibrary();
-        fl("Saved to locker! Shared to community!");
+        fl("Saved! Shared to community!");
       } else {
-        fl("Saved to locker!");
+        fl("Saved!");
       }
     } else {
       fl("Error saving — try again");
     }
     setVw(null);
-    setTab("locker");
+    setTab("home");
   };
 
   const handleDeleteBeatdown = async (id: string) => {
@@ -469,7 +472,7 @@ export default function App() {
     }
     setVw(null);
     setEditingBd(null);
-    setTab("locker");
+    setTab("home");
   };
 
   const handleToggleVote = async (itemId: string, itemType: "beatdown" | "exercise" = "beatdown") => {
@@ -501,7 +504,7 @@ export default function App() {
       if (copy) {
         await loadLocker();
         await loadLibrary();
-        fl("Stolen to locker!");
+        fl("Stolen!");
       } else {
         fl("Steal failed");
       }
@@ -509,7 +512,7 @@ export default function App() {
       const copy = await stealExercise(itemId);
       if (copy) {
         await loadLocker();
-        fl("Stolen to locker!");
+        fl("Stolen!");
       } else {
         fl("Steal failed");
       }
@@ -542,7 +545,7 @@ export default function App() {
           // Save to locker WITHOUT resetting view
           if (saveData) {
             const result = await saveBeatdown({ nm: saveData.nm, desc: saveData.desc, d: saveData.d, secs: saveData.secs, tg: saveData.tg, src: saveData.src, dur: saveData.dur, sites: saveData.sites, eq: saveData.eq, isPublic: saveData.share || false });
-            if (result) { await loadLocker(); if (saveData.share) await loadLibrary(); fl("Saved to locker!"); }
+            if (result) { await loadLocker(); if (saveData.share) await loadLibrary(); fl("Saved!"); }
           }
           setLiveBd({ id: "temp", nm: title, dt: "", src: "Generated", d: "medium", desc: "", secs, tg: [dur], isPublic: false });
           setVw("live");
@@ -550,7 +553,7 @@ export default function App() {
         {vw === "build" && <BuilderScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} userExercises={lkEx} communityExercises={communityExercises} onRunThis={async (secs, title, dur, saveData) => {
           if (saveData) {
             const result = await saveBeatdown({ nm: saveData.nm, desc: saveData.desc, d: saveData.d, secs: saveData.secs, tg: saveData.tg, src: saveData.src, dur: saveData.dur, sites: saveData.sites, eq: saveData.eq, isPublic: saveData.share || false });
-            if (result) { await loadLocker(); if (saveData.share) await loadLibrary(); fl("Saved to locker!"); }
+            if (result) { await loadLocker(); if (saveData.share) await loadLibrary(); fl("Saved!"); }
           }
           setLiveBd({ id: "temp", nm: title, dt: "", src: "Manual", d: "medium", desc: "", secs, tg: [dur], isPublic: false });
           setVw("live");
@@ -627,25 +630,27 @@ export default function App() {
         />
       )}
       {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} onSteal={handleSteal} onRunBeatdown={handleRunLibraryBeatdown} onRefresh={loadLibrary} onOpenProfile={handleOpenProfile} currentUserId={user.id} />}
-      {tab === "locker" && (
-        <LockerScreen
-          lk={lk}
-          setLk={setLk}
-          lkEx={lkEx}
-          setLkEx={setLkEx}
-          onNavigate={(view) => setVw(view)}
-          onDeleteBeatdown={handleDeleteBeatdown}
-          onDeleteExercise={handleDeleteExercise}
-          onShareBeatdown={handleShareBeatdown}
-          onShareExercise={handleShareExercise}
-          onUnshareBeatdown={handleUnshareBeatdown}
-          onUnshareExercise={handleUnshareExercise}
-          onUpdateExercise={handleUpdateExercise}
-          onEditBeatdown={handleEditBeatdown}
-          onRunBeatdown={handleRunBeatdown}
+      {tab === "feed" && (
+        <FeedScreen
+          currentUserId={user.id}
+          refreshKey={feedRefreshKey}
+          onOpenComposer={() => setVw("compose-shout")}
+          onOpenProfile={(targetUserId) => handleOpenProfile(targetUserId)}
+          onOpenBeatdown={(beatdownId) => handleOpenBeatdownDetail(beatdownId)}
         />
       )}
       {tab === "profile" && <ProfileScreen onProfileSaved={checkUser} />}
+      {vw === "compose-shout" && (
+        <ShoutComposer
+          onClose={() => setVw(null)}
+          onPosted={() => {
+            setVw(null);
+            setFeedRefreshKey((k) => k + 1);
+            setTab("feed");
+            fl("Shout posted!");
+          }}
+        />
+      )}
       <BottomNav active={tab} onTabChange={(t) => { setTab(t); setVw(null); }} />
       {toastEl}
     </div>
