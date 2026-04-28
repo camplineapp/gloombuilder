@@ -88,9 +88,42 @@ export default function ShoutCard({
 
   async function handleShare(e: React.MouseEvent) {
     e.stopPropagation();
-    const shareText = `${authorName} (${authorAo}): ${shout.text}`;
+
+    // Build a rich share message with all available context.
+    // Format example:
+    //   BOOTCAMP shout from The Bishop Â· F3 Essex
+    //
+    //   When: Sat Â· Apr 11 Â· 9:00am
+    //   Where: https://maps.app.goo.gl/...
+    //
+    //   Jjdjdndjj
+    //
+    //   --
+    //   Posted on GloomBuilder
+    //   https://gloombuilder.app
+    const lines: string[] = [];
+    const typeLabel = shout.type.toUpperCase();
+    const aoSuffix = authorAo ? ` Â· ${authorAo}` : "";
+    lines.push(`${typeLabel} shout from ${authorName}${aoSuffix}`);
+    lines.push("");
+    if (shout.when_text) {
+      lines.push(`When: ${shout.when_text}`);
+    }
+    if (shout.location_text) {
+      lines.push(`Where: ${shout.location_text}`);
+    }
+    if (shout.when_text || shout.location_text) {
+      lines.push("");
+    }
+    lines.push(shout.text);
+    lines.push("");
+    lines.push("--");
+    lines.push("Posted on GloomBuilder");
+    lines.push("https://gloombuilder.app");
+    const shareText = lines.join("\n");
+
     const shareData: ShareData = {
-      title: `Shout from ${authorName}`,
+      title: `${typeLabel} from ${authorName}`,
       text: shareText,
     };
     if (typeof navigator !== "undefined" && navigator.share) {
