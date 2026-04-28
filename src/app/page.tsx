@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase";
@@ -292,10 +292,12 @@ export default function App() {
   const handleOpenProfile = (targetUserId?: string | null) => {
     if (targetUserId && targetUserId !== user.id) {
       setViewingUserId(targetUserId);
+      setVw("q-profile");
     } else {
-      setViewingUserId(null);  // own profile
+      setViewingUserId(null);
+      setVw(null);
+      setTab("profile");
     }
-    setVw("q-profile");
   };
 
   const handleSaveBeatdown = async (bd: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean }) => {
@@ -536,7 +538,7 @@ export default function App() {
   };
 
   // ===== FULL-SCREEN VIEWS =====
-  if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "live" || vw === "q-profile") {
+  if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "live" || vw === "q-profile" || vw === "settings") {
     return (
       <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: vw === "live" ? 0 : 20, paddingBottom: vw === "live" ? 0 : 100, position: "relative" }}>
         {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onRunThis={async (secs, title, dur, saveData) => {
@@ -610,6 +612,9 @@ export default function App() {
             onOpenSettings={viewingUserId ? undefined : () => { setVw(null); setTab("profile"); }}
             onOpenBeatdownDetail={handleOpenBeatdownDetail}
           />
+        )}
+        {vw === "settings" && (
+          <ProfileScreen onProfileSaved={() => { checkUser(); setVw(null); }} />
         )}
         {toastEl}
       </div>

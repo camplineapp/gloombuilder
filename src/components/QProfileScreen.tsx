@@ -5,6 +5,8 @@ import {
   getProfileStats,
   getUserSharedBeatdowns,
   getUserSharedExercises,
+  getMyAllBeatdowns,
+  getMyAllExercises,
   type ProfileStats,
 } from "@/lib/db";
 import ThumbsUpIcon from "@/components/ThumbsUpIcon";
@@ -83,6 +85,7 @@ interface BeatdownRow {
   steal_count: number | null;
   created_at: string;
   generated: boolean;
+  is_public: boolean;
   tags: string[] | null;
   inspired_profile: { f3_name: string } | null;
 }
@@ -94,6 +97,7 @@ interface ExerciseRow {
   how_to: string;
   vote_count: number | null;
   created_at: string;
+  is_public: boolean;
   body_part: string[] | null;
   inspired_profile: { f3_name: string } | null;
 }
@@ -118,8 +122,8 @@ export default function QProfileScreen({
     const [p, s, bds, exs] = await Promise.all([
       getProfileById(userId),
       getProfileStats(userId),
-      getUserSharedBeatdowns(userId),
-      getUserSharedExercises(userId),
+      isOwn ? getMyAllBeatdowns(userId) : getUserSharedBeatdowns(userId),
+      isOwn ? getMyAllExercises(userId) : getUserSharedExercises(userId),
     ]);
     setProfile(p as ProfileData | null);
     setStats(s);
@@ -382,7 +386,7 @@ function TabBtn({ label, count, active, onClick }: { label: string; count: numbe
 }
 
 // Beatdown card — light inline metadata, V2-4: tappable when onTap is provided
-function BeatdownCard({ bd, isOwn: _isOwn, onTap }: { bd: BeatdownRow; isOwn: boolean; onTap?: () => void }) {
+function BeatdownCard({ bd, isOwn, onTap }: { bd: BeatdownRow; isOwn: boolean; onTap?: () => void }) {
   const diff = difficultyColor(bd.difficulty);
   const votes = bd.vote_count || 0;
   const steals = bd.steal_count || 0;
@@ -471,6 +475,33 @@ function BeatdownCard({ bd, isOwn: _isOwn, onTap }: { bd: BeatdownRow; isOwn: bo
           <span>{bd.duration} min</span>
         )}
         <span>{date}</span>
+        {isOwn && (
+          bd.is_public ? (
+            <span style={{
+              fontSize: 10,
+              color: G,
+              background: `14`,
+              padding: `2px 7px`,
+              borderRadius: 4,
+              letterSpacing: 0.5,
+              fontWeight: 800,
+              textTransform: `uppercase`,
+              border: `1px solid 40`,
+            }}>SHARED</span>
+          ) : (
+            <span style={{
+              fontSize: 10,
+              color: T5,
+              background: `rgba(255,255,255,0.04)`,
+              padding: `2px 7px`,
+              borderRadius: 4,
+              letterSpacing: 0.5,
+              fontWeight: 700,
+              textTransform: `uppercase`,
+              border: `1px solid `,
+            }}>DRAFT</span>
+          )
+        )}
         {bd.generated && (
           <span style={{
             fontSize: 10,
@@ -508,7 +539,7 @@ function BeatdownCard({ bd, isOwn: _isOwn, onTap }: { bd: BeatdownRow; isOwn: bo
 }
 
 // Exercise card — same pattern, slightly different content
-function ExerciseCard({ ex, isOwn: _isOwn }: { ex: ExerciseRow; isOwn: boolean }) {
+function ExerciseCard({ ex, isOwn }: { ex: ExerciseRow; isOwn: boolean }) {
   const votes = ex.vote_count || 0;
   const date = new Date(ex.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
   const bodyParts = (ex.body_part || []).slice(0, 3);
@@ -561,6 +592,33 @@ function ExerciseCard({ ex, isOwn: _isOwn }: { ex: ExerciseRow; isOwn: boolean }
           <span>{votes}</span>
         </span>
         <span>{date}</span>
+        {isOwn && (
+          ex.is_public ? (
+            <span style={{
+              fontSize: 10,
+              color: G,
+              background: `14`,
+              padding: `2px 7px`,
+              borderRadius: 4,
+              letterSpacing: 0.5,
+              fontWeight: 800,
+              textTransform: `uppercase`,
+              border: `1px solid 40`,
+            }}>SHARED</span>
+          ) : (
+            <span style={{
+              fontSize: 10,
+              color: T5,
+              background: `rgba(255,255,255,0.04)`,
+              padding: `2px 7px`,
+              borderRadius: 4,
+              letterSpacing: 0.5,
+              fontWeight: 700,
+              textTransform: `uppercase`,
+              border: `1px solid `,
+            }}>DRAFT</span>
+          )
+        )}
         {bodyParts.length > 0 && (
           <span style={{ color: T5 }}>
             {bodyParts.map(bp => bp.charAt(0).toUpperCase() + bp.slice(1)).join(" · ")}
