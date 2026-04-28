@@ -617,7 +617,7 @@ export default function App() {
           />
         )}
         {vw === "settings" && (
-          <ProfileScreen onProfileSaved={() => { checkUser(); setVw(null); }} />
+          <ProfileScreen onProfileSaved={() => { checkUser(); setVw(null); }} onClose={() => setVw(null)} />
         )}
         {toastEl}
       </div>
