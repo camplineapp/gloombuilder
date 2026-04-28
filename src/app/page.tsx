@@ -361,6 +361,7 @@ export default function App() {
     if (success) {
       setLk(lk.filter(b => b.id !== id));
       await loadLibrary();
+      setProfileRefreshKey(k => k + 1);
       fl("Deleted");
     } else {
       fl("Error deleting");
@@ -372,6 +373,7 @@ export default function App() {
     if (success) {
       setLkEx(lkEx.filter(e => e.id !== id));
       await loadLibrary();
+      setProfileRefreshKey(k => k + 1);
       fl("Deleted");
     } else {
       fl("Error deleting");
