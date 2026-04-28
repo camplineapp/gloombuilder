@@ -1,4 +1,4 @@
-ï»¿"use client";
+"use client";
 import { useState, useEffect, useCallback } from "react";
 import {
   getProfileById,
@@ -61,7 +61,7 @@ interface QProfileScreenProps {
   currentUserId: string;
   onClose: () => void;
   onOpenSettings?: () => void;
-  // V2-4: tap a beatdown card Ã¢â â open it elsewhere (Library detail)
+  // V2-4: tap a beatdown card → open it elsewhere (Library detail)
   onOpenBeatdownDetail?: (beatdownId: string) => void;
 }
 
@@ -132,6 +132,7 @@ export default function QProfileScreen({
     loadAll();
   }, [loadAll]);
 
+
   if (loading) {
     return (
       <div style={{
@@ -144,7 +145,7 @@ export default function QProfileScreen({
         justifyContent: "center",
         fontSize: 14,
       }}>
-        Loading profileÃ¢â¬Â¦
+        Loading profile…
       </div>
     );
   }
@@ -168,7 +169,7 @@ export default function QProfileScreen({
           cursor: "pointer",
           padding: "4px 0",
           marginBottom: 24,
-        }}>Ã¢â Â Back</button>
+        }}>← Back</button>
         <div style={{ textAlign: "center", color: T4, fontSize: 14, marginTop: 60 }}>
           Profile not found.
         </div>
@@ -203,7 +204,7 @@ export default function QProfileScreen({
           fontWeight: 700,
           cursor: "pointer",
           padding: "4px 0",
-        }}>Ã¢â Â Back</button>
+        }}>← Back</button>
         {isOwn && onOpenSettings && (
           <button onClick={onOpenSettings} style={{
             background: "transparent",
@@ -212,7 +213,7 @@ export default function QProfileScreen({
             fontSize: 22,
             cursor: "pointer",
             padding: "4px 8px",
-          }}>Ã¢Å¡â¢</button>
+          }}>⚙</button>
         )}
       </div>
 
@@ -242,7 +243,7 @@ export default function QProfileScreen({
           marginBottom: 4,
         }}>{profile.f3_name || "Anonymous"}</div>
         <div style={{ fontSize: 13, color: T4 }}>
-          {[profile.ao, profile.state, profile.region].filter(Boolean).join(" ÃÂ· ") || "Ã¢â¬â"}
+          {[profile.ao, profile.state, profile.region].filter(Boolean).join(" · ") || "—"}
         </div>
       </div>
 
@@ -330,7 +331,7 @@ export default function QProfileScreen({
   );
 }
 
-// Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬ Subcomponents Ã¢ââ¬Ã¢ââ¬Ã¢ââ¬
+// ─── Subcomponents ───
 
 function Stat({ label, value, accent }: { label: string; value: number; accent?: string }) {
   return (
@@ -375,12 +376,12 @@ function TabBtn({ label, count, active, onClick }: { label: string; count: numbe
         cursor: "pointer",
         letterSpacing: 0.2,
       }}>
-      {label} <span style={{ opacity: 0.65, fontSize: 12, fontWeight: 700 }}>ÃÂ· {count}</span>
+      {label} <span style={{ opacity: 0.65, fontSize: 12, fontWeight: 700 }}>· {count}</span>
     </button>
   );
 }
 
-// Beatdown card Ã¢â¬â light inline metadata, V2-4: tappable when onTap is provided
+// Beatdown card — light inline metadata, V2-4: tappable when onTap is provided
 function BeatdownCard({ bd, isOwn: _isOwn, onTap }: { bd: BeatdownRow; isOwn: boolean; onTap?: () => void }) {
   const diff = difficultyColor(bd.difficulty);
   const votes = bd.vote_count || 0;
@@ -447,7 +448,7 @@ function BeatdownCard({ bd, isOwn: _isOwn, onTap }: { bd: BeatdownRow; isOwn: bo
         }}>{bd.description}</div>
       )}
 
-      {/* Light inline metadata Ã¢â¬â Strava/LinkedIn style */}
+      {/* Light inline metadata — Strava/LinkedIn style */}
       <div style={{
         display: "flex",
         alignItems: "center",
@@ -506,7 +507,7 @@ function BeatdownCard({ bd, isOwn: _isOwn, onTap }: { bd: BeatdownRow; isOwn: bo
   );
 }
 
-// Exercise card Ã¢â¬â same pattern, slightly different content
+// Exercise card — same pattern, slightly different content
 function ExerciseCard({ ex, isOwn: _isOwn }: { ex: ExerciseRow; isOwn: boolean }) {
   const votes = ex.vote_count || 0;
   const date = new Date(ex.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
@@ -562,7 +563,7 @@ function ExerciseCard({ ex, isOwn: _isOwn }: { ex: ExerciseRow; isOwn: boolean }
         <span>{date}</span>
         {bodyParts.length > 0 && (
           <span style={{ color: T5 }}>
-            {bodyParts.map(bp => bp.charAt(0).toUpperCase() + bp.slice(1)).join(" ÃÂ· ")}
+            {bodyParts.map(bp => bp.charAt(0).toUpperCase() + bp.slice(1)).join(" · ")}
           </span>
         )}
         {ex.inspired_profile && (
@@ -575,7 +576,7 @@ function ExerciseCard({ ex, isOwn: _isOwn }: { ex: ExerciseRow; isOwn: boolean }
   );
 }
 
-// Empty state Ã¢â¬â motivating CTA for own view, neutral for visitor
+// Empty state — motivating CTA for own view, neutral for visitor
 function EmptyState({ isOwn, type }: { isOwn: boolean; type: "beatdowns" | "exercises" }) {
   const noun = type === "beatdowns" ? "beatdown" : "exercise";
   return (
