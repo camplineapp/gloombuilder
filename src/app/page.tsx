@@ -633,7 +633,15 @@ export default function App() {
         />
       )}
       {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} onSteal={handleSteal} onRunBeatdown={handleRunLibraryBeatdown} onRefresh={loadLibrary} onOpenProfile={handleOpenProfile} currentUserId={user.id} />}
-            {tab === "profile" && <ProfileScreen onProfileSaved={checkUser} />}
+      {tab === "profile" && user && (
+        <QProfileScreen
+          userId={user.id}
+          currentUserId={user.id}
+          onClose={() => setTab("home")}
+          onOpenSettings={() => setVw("settings")}
+          onOpenBeatdownDetail={handleOpenBeatdownDetail}
+        />
+      )}
             <BottomNav active={tab} onTabChange={(t) => { setTab(t); setVw(null); }} />
       {toastEl}
     </div>
