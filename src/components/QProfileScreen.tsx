@@ -3,9 +3,6 @@ import { useState, useEffect, useCallback } from "react";
 import {
   getProfileById,
   getProfileStats,
-  isFollowing,
-  followUser,
-  unfollowUser,
   getUserSharedBeatdowns,
   getUserSharedExercises,
   type ProfileStats,
@@ -113,23 +110,19 @@ export default function QProfileScreen({
   const [stats, setStats] = useState<ProfileStats | null>(null);
   const [beatdowns, setBeatdowns] = useState<BeatdownRow[]>([]);
   const [exercises, setExercises] = useState<ExerciseRow[]>([]);
-  const [following, setFollowing] = useState(false);
-  const [followLoading, setFollowLoading] = useState(false);
   const [tab, setTab] = useState<"beatdowns" | "exercises">("beatdowns");
   const [loading, setLoading] = useState(true);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
-    const [p, s, f, bds, exs] = await Promise.all([
+    const [p, s, bds, exs] = await Promise.all([
       getProfileById(userId),
       getProfileStats(userId),
-      isOwn ? Promise.resolve(false) : isFollowing(userId),
       getUserSharedBeatdowns(userId),
       getUserSharedExercises(userId),
     ]);
     setProfile(p as ProfileData | null);
     setStats(s);
-    setFollowing(f);
     setBeatdowns(bds as BeatdownRow[]);
     setExercises(exs as ExerciseRow[]);
     setLoading(false);
@@ -138,18 +131,6 @@ export default function QProfileScreen({
   useEffect(() => {
     loadAll();
   }, [loadAll]);
-
-  const handleFollowToggle = async () => {
-    if (followLoading || isOwn) return;
-    setFollowLoading(true);
-    const optimistic = !following;
-    setFollowing(optimistic);
-    const ok = optimistic ? await followUser(userId) : await unfollowUser(userId);
-    if (!ok) setFollowing(!optimistic);
-    const newStats = await getProfileStats(userId);
-    setStats(newStats);
-    setFollowLoading(false);
-  };
 
   if (loading) {
     return (
@@ -310,8 +291,6 @@ export default function QProfileScreen({
           <Stat label="Upvotes" value={stats.upvotes} />
           <Sep />
           <Stat label="Steals" value={stats.steals} accent={G} />
-          <Sep />
-          <Stat label="Followers" value={stats.followers} />
         </div>
       )}
 
