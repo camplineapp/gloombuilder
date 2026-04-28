@@ -942,7 +942,7 @@ export async function getActiveShoutForUser(userId: string): Promise<ShoutRow | 
   const supabase = createClient();
   const { data, error } = await supabase
     .from("shouts")
-    .select("*, profiles:author_id(f3_name, ao, state, region), beatdown:beatdown_id(id, title)")
+    .select("*, profiles:author_id(f3_name, ao, state, region), beatdown:beatdown_id(id, nm)")
     .eq("author_id", userId)
     .eq("is_archived", false)
     .order("created_at", { ascending: false })
@@ -978,7 +978,7 @@ export async function getFeedShouts(): Promise<ShoutRow[]> {
 
   const { data, error } = await supabase
     .from("shouts")
-    .select("*, profiles:author_id(f3_name, ao, state, region), beatdown:beatdown_id(id, title)")
+    .select("*, profiles:author_id(f3_name, ao, state, region), beatdown:beatdown_id(id, nm)")
     .in("author_id", authorIds)
     .eq("is_archived", false)
     .order("created_at", { ascending: false })

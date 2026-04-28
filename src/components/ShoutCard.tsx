@@ -48,8 +48,6 @@ interface ShoutCardProps {
   currentUserId: string;
   onAuthorTap?: (authorId: string) => void;
   onBeatdownTap?: (beatdownId: string) => void;
-  // Display variant: "feed" = full card with bottom border for Feed list,
-  //                  "profile" = standalone card with green-tinted bg + 📌 pin for Q Profile
   variant?: "feed" | "profile";
 }
 
@@ -67,7 +65,6 @@ export default function ShoutCard({
   const initials = getInitials(authorName);
   const beatdown = shout.beatdown;
 
-  // Wrapper styling differs per variant
   const wrapperStyle: React.CSSProperties =
     variant === "profile"
       ? {
@@ -84,7 +81,6 @@ export default function ShoutCard({
 
   return (
     <div style={wrapperStyle}>
-      {/* Pin indicator — only on profile variant */}
       {variant === "profile" && (
         <div
           style={{
@@ -136,7 +132,6 @@ export default function ShoutCard({
 
         {/* Body */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          {/* Author row (only on feed variant — profile already shows name elsewhere) */}
           {variant === "feed" && (
             <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 2 }}>
               <button
@@ -184,7 +179,6 @@ export default function ShoutCard({
             </span>
           </div>
 
-          {/* When (if provided) */}
           {shout.when_text && (
             <div
               style={{
@@ -199,7 +193,6 @@ export default function ShoutCard({
             </div>
           )}
 
-          {/* Location (if provided) */}
           {shout.location_text && (() => {
             const isUrl = /^https?:\/\//i.test(shout.location_text);
             if (isUrl) {
@@ -230,7 +223,6 @@ export default function ShoutCard({
             );
           })()}
 
-          {/* Message text */}
           <div
             style={{
               fontFamily: F,
@@ -245,7 +237,7 @@ export default function ShoutCard({
             {shout.text}
           </div>
 
-          {/* Attached beatdown (minimal: title + arrow only, per user direction) */}
+          {/* Attached beatdown — minimal: title + arrow only */}
           {beatdown && (
             <button
               onClick={(e) => {
@@ -269,13 +261,12 @@ export default function ShoutCard({
               }}
             >
               <span style={{ flex: 1, fontSize: 13, fontWeight: 800, color: T1 }}>
-                {beatdown.title}
+                {beatdown.nm}
               </span>
               <span style={{ color: T4, fontSize: 16 }}>→</span>
             </button>
           )}
 
-          {/* Reactions row (V2-5: render only, taps non-functional per spec) */}
           <div
             style={{
               display: "flex",
@@ -287,7 +278,6 @@ export default function ShoutCard({
             }}
           >
             <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>👍 0</span>
-            {/* HC only shows if when_text is set (a "live event" Shout) */}
             {shout.when_text && (
               <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>HC 0</span>
             )}
