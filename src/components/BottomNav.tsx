@@ -1,6 +1,6 @@
 "use client";
 
-type Tab = "home" | "library" | "feed" | "profile";
+type Tab = "home" | "library" | "profile";
 
 interface BottomNavProps {
   active: Tab;
@@ -10,7 +10,6 @@ interface BottomNavProps {
 const tabs: { key: Tab; label: string }[] = [
   { key: "home", label: "Home" },
   { key: "library", label: "Library" },
-  { key: "feed", label: "Feed" },
   { key: "profile", label: "Profile" },
 ];
 

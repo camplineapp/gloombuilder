@@ -646,81 +646,10 @@ export async function getMyProfile() {
 
 // ─── FOLLOWS ───
 
-export async function followUser(followedId: string) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
-  if (user.id === followedId) return false; // can't follow self (also enforced by DB CHECK)
-  const { error } = await supabase
-    .from("follows")
-    .insert({ follower_id: user.id, followed_id: followedId });
-  if (error) {
-    // 23505 = unique violation = already following, treat as success
-    if (error.code === "23505") return true;
-    console.error("Follow error:", error);
-    return false;
-  }
-  return true;
-}
 
-export async function unfollowUser(followedId: string) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
-  const { error } = await supabase
-    .from("follows")
-    .delete()
-    .eq("follower_id", user.id)
-    .eq("followed_id", followedId);
-  if (error) {
-    console.error("Unfollow error:", error);
-    return false;
-  }
-  return true;
-}
 
-export async function isFollowing(followedId: string): Promise<boolean> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
-  const { data, error } = await supabase
-    .from("follows")
-    .select("id")
-    .eq("follower_id", user.id)
-    .eq("followed_id", followedId)
-    .maybeSingle();
-  if (error) {
-    console.error("Is following check error:", error);
-    return false;
-  }
-  return !!data;
-}
 
-export async function getFollowerCount(userId: string): Promise<number> {
-  const supabase = createClient();
-  const { count, error } = await supabase
-    .from("follows")
-    .select("*", { count: "exact", head: true })
-    .eq("followed_id", userId);
-  if (error) {
-    console.error("Follower count error:", error);
-    return 0;
-  }
-  return count || 0;
-}
 
-export async function getFollowingCount(userId: string): Promise<number> {
-  const supabase = createClient();
-  const { count, error } = await supabase
-    .from("follows")
-    .select("*", { count: "exact", head: true })
-    .eq("follower_id", userId);
-  if (error) {
-    console.error("Following count error:", error);
-    return 0;
-  }
-  return count || 0;
-}
 
 // ─── PROFILE STATS (aggregates for the Q Profile screen) ───
 
@@ -728,7 +657,6 @@ export interface ProfileStats {
   beatdowns: number;
   upvotes: number;
   steals: number;
-  followers: number;
   exercises: number;
 }
 
@@ -783,14 +711,10 @@ export async function getProfileStats(userId: string): Promise<ProfileStats> {
     .select("*", { count: "exact", head: true })
     .eq("inspired_by", userId)
     .neq("created_by", userId);
-  const steals = (stealBd || 0) + (stealEx || 0);
-  // 5. Followers
-  const followers = await getFollowerCount(userId);
-  return {
+  const steals = (stealBd || 0) + (stealEx || 0);  return {
     beatdowns: bdCount || 0,
     upvotes,
     steals,
-    followers,
     exercises: exCount || 0,
   };
 }
@@ -846,164 +770,10 @@ export async function getUserSharedExercises(userId: string) {
 
 // ─── SHOUTS ───
 
-export interface ShoutRow {
-  id: string;
-  author_id: string;
-  text: string;
-  type: string;
-  beatdown_id: string | null;
-  when_text: string | null;
-  when_at: string | null;
-  location_text: string | null;
-  expires_at: string | null;
-  is_archived: boolean;
-  created_at: string;
-  updated_at: string;
-  edited_at: string | null;
-  // Joined fields (when selected with profiles join)
-  profiles?: {
-    f3_name: string;
-    ao: string | null;
-    state: string | null;
-    region: string | null;
-  } | null;
-  beatdown?: { id: string; name: string; } | null;
-}
 
-/**
- * Post a new Shout. Archives any existing un-archived Shout for this user first
- * (only one Active Shout per user at a time).
- * Returns the new shout row, or null on error.
- */
-export async function postShout(data: {
-  text: string;
-  type: string;
-  beatdownId?: string | null;
-  whenText?: string | null;
-  whenAt?: string | null;
-  locationText?: string | null;
-}): Promise<ShoutRow | null> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    console.error("postShout: no authed user");
-    return null;
-  }
 
-  // Archive any existing active shout for this user
-  await supabase
-    .from("shouts")
-    .update({ is_archived: true })
-    .eq("author_id", user.id)
-    .eq("is_archived", false);
 
-  // Compute expires_at = when_at + 12 hours, if when_at provided
-  let expiresAt: string | null = null;
-  if (data.whenAt) {
-    const whenDate = new Date(data.whenAt);
-    if (!isNaN(whenDate.getTime())) {
-      expiresAt = new Date(whenDate.getTime() + 12 * 60 * 60 * 1000).toISOString();
-    }
-  }
 
-  const insertPayload = {
-    author_id: user.id,
-    text: data.text,
-    type: data.type,
-    beatdown_id: data.beatdownId || null,
-    when_text: data.whenText || null,
-    when_at: data.whenAt || null,
-    location_text: data.locationText || null,
-    expires_at: expiresAt,
-    is_archived: false,
-  };
-
-  const { data: row, error } = await supabase
-    .from("shouts")
-    .insert(insertPayload)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("postShout error:", error);
-    return null;
-  }
-  return row as ShoutRow;
-}
-
-/**
- * Get the single active (un-archived) Shout for a user, or null if none.
- * Joined with author profile and (if attached) beatdown title.
- */
-export async function getActiveShoutForUser(userId: string): Promise<ShoutRow | null> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from("shouts")
-    .select("*, profiles:author_id(f3_name, ao, state, region), beatdown:beatdown_id(id, name)")
-    .eq("author_id", userId)
-    .eq("is_archived", false)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    console.error("getActiveShoutForUser error:", error);
-    return null;
-  }
-  return (data as ShoutRow) || null;
-}
-
-/**
- * Get the Feed for the logged-in user: active shouts from people they follow,
- * plus their own active shout, newest first.
- * If the user follows nobody, returns just their own active shout (or empty).
- */
-export async function getFeedShouts(): Promise<ShoutRow[]> {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return [];
-
-  // Get IDs of people the user follows
-  const { data: follows } = await supabase
-    .from("follows")
-    .select("followed_id")
-    .eq("follower_id", user.id);
-
-  const followedIds = (follows || []).map((f: { followed_id: string }) => f.followed_id);
-  // Include the user's own shouts in their feed
-  const authorIds = [user.id, ...followedIds];
-
-  const { data, error } = await supabase
-    .from("shouts")
-    .select("*, profiles:author_id(f3_name, ao, state, region), beatdown:beatdown_id(id, name)")
-    .in("author_id", authorIds)
-    .eq("is_archived", false)
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  if (error) {
-    console.error("getFeedShouts error:", error);
-    return [];
-  }
-  return (data || []) as ShoutRow[];
-}
-
-/**
- * Manually archive a Shout (e.g., user deletes it).
- * Only the author can archive their own shouts (enforced by RLS).
- */
-export async function archiveShout(shoutId: string): Promise<boolean> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from("shouts")
-    .update({ is_archived: true })
-    .eq("id", shoutId);
-  if (error) {
-    console.error("archiveShout error:", error);
-    return false;
-  }
-  return true;
-}
 
 // ─── OWNER-VIEW: ALL ITEMS (V2-5 Locker→Profile merge) ───
 
@@ -1049,54 +819,3 @@ export async function getMyAllExercises(userId: string) {
 // APPEND THIS TO src/lib/db.ts
 // ─────────────────────────────────────────────────────────────────────
 
-/**
- * Update an existing Shout. Only the author can update (RLS).
- * Sets edited_at to now() so the UI can show an "edited" indicator if desired.
- * Returns the updated row, or null on error.
- */
-export async function updateShout(
-  shoutId: string,
-  data: {
-    text: string;
-    type: string;
-    beatdownId?: string | null;
-    whenText?: string | null;
-    whenAt?: string | null;
-    locationText?: string | null;
-  }
-): Promise<ShoutRow | null> {
-  const supabase = createClient();
-
-  // Compute expires_at = when_at + 12 hours, if when_at provided
-  let expiresAt: string | null = null;
-  if (data.whenAt) {
-    const whenDate = new Date(data.whenAt);
-    if (!isNaN(whenDate.getTime())) {
-      expiresAt = new Date(whenDate.getTime() + 12 * 60 * 60 * 1000).toISOString();
-    }
-  }
-
-  const updatePayload = {
-    text: data.text,
-    type: data.type,
-    beatdown_id: data.beatdownId || null,
-    when_text: data.whenText || null,
-    when_at: data.whenAt || null,
-    location_text: data.locationText || null,
-    expires_at: expiresAt,
-    edited_at: new Date().toISOString(),
-  };
-
-  const { data: row, error } = await supabase
-    .from("shouts")
-    .update(updatePayload)
-    .eq("id", shoutId)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("updateShout error:", error);
-    return null;
-  }
-  return row as ShoutRow;
-}

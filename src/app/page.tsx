@@ -11,8 +11,6 @@ import BottomNav from "@/components/BottomNav";
 import HomeScreen from "@/components/HomeScreen";
 import LibraryScreen from "@/components/LibraryScreen";
 import ProfileScreen from "@/components/ProfileScreen";
-import FeedScreen from "@/components/FeedScreen";
-import ShoutComposer from "@/components/ShoutComposer";
 import GeneratorScreen from "@/components/GeneratorScreen";
 import BuilderScreen from "@/components/BuilderScreen";
 import CreateExerciseScreen from "@/components/CreateExerciseScreen";
@@ -158,7 +156,7 @@ function dbToExercise(row: Record<string, unknown>): LockerExercise {
 }
 
 export default function App() {
-  const [tab, setTab] = useState<"home" | "library" | "feed" | "profile">("home");
+  const [tab, setTab] = useState<"home" | "library" | "profile">("home");
   const [vw, setVw] = useState<string | null>(null);
   const [editingBd, setEditingBd] = useState<LockerBeatdown | null>(null);
   const [liveBd, setLiveBd] = useState<LockerBeatdown | null>(null);
@@ -172,7 +170,6 @@ export default function App() {
   // V2-4.5: tracks whether edit-bd was opened from Q Profile (back button returns there)
   const [editFromQProfile, setEditFromQProfile] = useState(false);
   // V2-5: bumped after a Shout is posted to trigger Feed re-fetch
-  const [feedRefreshKey, setFeedRefreshKey] = useState(0);
   // V2-5: when set, ShoutComposer opens in EDIT mode prefilled with this shout
   const [editingShout, setEditingShout] = useState<import("@/lib/db").ShoutRow | null>(null);
 
@@ -632,41 +629,8 @@ export default function App() {
         />
       )}
       {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} onSteal={handleSteal} onRunBeatdown={handleRunLibraryBeatdown} onRefresh={loadLibrary} onOpenProfile={handleOpenProfile} currentUserId={user.id} />}
-      {tab === "feed" && (
-        <FeedScreen
-          currentUserId={user.id}
-          refreshKey={feedRefreshKey}
-          onOpenComposer={() => { setEditingShout(null); setVw("compose-shout"); }}
-          onOpenProfile={(targetUserId) => handleOpenProfile(targetUserId)}
-          onOpenBeatdown={(beatdownId) => handleOpenBeatdownDetail(beatdownId)}
-          onEditShout={(shout) => { setEditingShout(shout); setVw("compose-shout"); }}
-          onDeleteShout={async (shout) => {
-            const ok = await archiveShout(shout.id);
-            if (ok) {
-              setFeedRefreshKey((k) => k + 1);
-              fl("Shout deleted");
-            } else {
-              fl("Couldn't delete - try again");
-            }
-          }}
-        />
-      )}
-      {tab === "profile" && <ProfileScreen onProfileSaved={checkUser} />}
-      {vw === "compose-shout" && (
-        <ShoutComposer
-          editingShout={editingShout}
-          onClose={() => { setVw(null); setEditingShout(null); }}
-          onPosted={() => {
-            const wasEditing = editingShout !== null;
-            setVw(null);
-            setEditingShout(null);
-            setFeedRefreshKey((k) => k + 1);
-            setTab("feed");
-            fl(wasEditing ? "Shout updated!" : "Shout posted!");
-          }}
-        />
-      )}
-      <BottomNav active={tab} onTabChange={(t) => { setTab(t); setVw(null); }} />
+            {tab === "profile" && <ProfileScreen onProfileSaved={checkUser} />}
+            <BottomNav active={tab} onTabChange={(t) => { setTab(t); setVw(null); }} />
       {toastEl}
     </div>
   );
