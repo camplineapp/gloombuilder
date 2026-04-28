@@ -36,9 +36,10 @@ const ist: React.CSSProperties = {
 
 interface ProfileScreenProps {
   onProfileSaved?: () => void;
+  onClose?: () => void;
 }
 
-export default function ProfileScreen({ onProfileSaved }: ProfileScreenProps) {
+export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreenProps) {
   const [vw, setVw] = useState<null | "about">(null);
   const [profName, setProfName] = useState("");
   const [profAO, setProfAO] = useState("");
@@ -457,6 +458,24 @@ export default function ProfileScreen({ onProfileSaved }: ProfileScreenProps) {
   // ════ PROFILE MAIN ════
   return (
     <div style={{ padding: "0 24px" }}>
+        {onClose && (
+          <button
+            onClick={onClose}
+            style={{
+              fontFamily: F,
+              color: T3,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 15,
+              fontWeight: 700,
+              padding: "4px 0",
+              marginBottom: 16,
+            }}
+          >
+            ← Back
+          </button>
+        )}
       <div style={{ fontSize: 28, fontWeight: 800, color: T1, marginBottom: 24 }}>
         Profile
       </div>

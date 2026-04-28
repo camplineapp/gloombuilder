@@ -60,7 +60,7 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
         <div onClick={onCreateEx} style={{ background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: "20px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#a78bfa" }}>Create exercise</div>
-            <div style={{ fontSize: 13, color: "#928982", marginTop: 4 }}>Add your own to locker and community</div>
+            <div style={{ fontSize: 13, color: "#928982", marginTop: 4 }}>Add your own to the community library</div>
           </div>
           <div style={{ color: "#7A7268", fontSize: 20 }}>→</div>
         </div>

@@ -253,7 +253,7 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
           onClick={handleSave}
           style={{ fontFamily: F, width: "100%", padding: "20px 0", borderRadius: 14, fontSize: 18, fontWeight: 800, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}
         >
-          {saving ? "Saving..." : (editData ? "Save changes" : "Save to locker")}
+          {saving ? "Saving..." : (editData ? "Save changes" : "Save")}
         </button>
         {/* Run This — show in both new and edit mode */}
         {!saving && (editData ? onRunBeatdown : onRunThis) && (

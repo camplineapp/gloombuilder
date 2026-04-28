@@ -42,7 +42,7 @@ export default function CreateExerciseScreen({ onClose, onSave }: CreateExercise
       {toastEl}
       <button onClick={onClose} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14, marginBottom: 20 }}>← Home</button>
       <div style={{ fontSize: 24, fontWeight: 800, color: T1, marginBottom: 4 }}>Create exercise</div>
-      <div style={{ fontSize: 13, color: T4, marginBottom: 24 }}>Add your own exercise to the locker</div>
+      <div style={{ fontSize: 13, color: T4, marginBottom: 24 }}>Add your own exercise</div>
 
       {/* Exercise name */}
       <div style={{ marginBottom: 14 }}>
@@ -85,7 +85,7 @@ export default function CreateExerciseScreen({ onClose, onSave }: CreateExercise
         if (!cxN.trim()) { fl("Name required"); return; }
         setSaving(true);
         onSave({ nm: cxN, tags: cxT, how: cxH, desc: cxDesc, share: cxShare });
-      }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving..." : "Save exercise to locker"}</button>
+      }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving..." : "Save exercise"}</button>
     </div>
   );
 }

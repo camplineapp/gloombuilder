@@ -538,7 +538,7 @@ function CompletionScreen({ title, qName, ao, sections, exercises, elapsedTime, 
           </button>
         </div>
         <button onClick={onDone} style={{ fontFamily: F, width: "100%", padding: "16px 0", background: "transparent", border: "none", fontSize: 16, fontWeight: 600, color: C.t4, cursor: "pointer" }}>
-          Done — Back to Locker
+          Done
         </button>
       </div>
     </div>
