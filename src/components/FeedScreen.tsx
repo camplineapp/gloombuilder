@@ -46,164 +46,171 @@ export default function FeedScreen({
   }, [loadFeed, refreshKey]);
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: BG,
-        fontFamily: F,
-        padding: "16px 18px 100px",
-        position: "relative",
-      }}
-    >
-      {/* Title */}
+    <>
+      {/* Main content area — NO position:relative wrapper to avoid stacking context issues with the FAB */}
       <div
         style={{
-          fontSize: 26,
-          fontWeight: 800,
-          color: T1,
-          marginBottom: 14,
-          letterSpacing: -0.5,
+          minHeight: "100vh",
+          background: BG,
+          fontFamily: F,
+          padding: "16px 18px 120px",
         }}
       >
-        Feed
-      </div>
-
-      {/* Segmented control: Following / Search */}
-      <div
-        style={{
-          display: "flex",
-          background: "rgba(255,255,255,0.03)",
-          border: "1px solid " + BD,
-          borderRadius: 11,
-          padding: 3,
-          marginBottom: 12,
-        }}
-      >
-        <button
-          onClick={() => setMode("following")}
-          style={{
-            flex: 1,
-            padding: "8px 0",
-            textAlign: "center",
-            fontSize: 13,
-            fontWeight: 700,
-            color: mode === "following" ? G : T4,
-            background: mode === "following" ? "rgba(34,197,94,0.12)" : "transparent",
-            borderRadius: 8,
-            border: "none",
-            cursor: "pointer",
-            fontFamily: F,
-          }}
-        >
-          Following
-        </button>
-        <button
-          onClick={() => setMode("search")}
-          style={{
-            flex: 1,
-            padding: "8px 0",
-            textAlign: "center",
-            fontSize: 13,
-            fontWeight: 700,
-            color: mode === "search" ? G : T4,
-            background: mode === "search" ? "rgba(34,197,94,0.12)" : "transparent",
-            borderRadius: 8,
-            border: "none",
-            cursor: "pointer",
-            fontFamily: F,
-          }}
-        >
-          ⌕ Search
-        </button>
-      </div>
-
-      {/* Mode body */}
-      {mode === "search" ? (
+        {/* Title */}
         <div
           style={{
-            textAlign: "center",
-            padding: "60px 16px",
-            color: T5,
-            fontSize: 14,
+            fontSize: 26,
+            fontWeight: 800,
+            color: T1,
+            marginBottom: 14,
+            letterSpacing: -0.5,
           }}
         >
-          Search is coming soon.
-          <br />
-          <span style={{ fontSize: 12, color: T5, marginTop: 6, display: "inline-block" }}>
-            Find HIMs, AOs, and Shouts by keyword.
-          </span>
+          Feed
         </div>
-      ) : (
-        <>
-          {/* Status line */}
-          <div style={{ fontSize: 11, color: T4, marginBottom: 14 }}>
-            {loading
-              ? "Loading…"
-              : shouts.length === 0
-              ? "No Shouts yet"
-              : `${shouts.length} active Shout${shouts.length === 1 ? "" : "s"}`}
+
+        {/* Segmented control: Following / Search */}
+        <div
+          style={{
+            display: "flex",
+            background: "rgba(255,255,255,0.03)",
+            border: "1px solid " + BD,
+            borderRadius: 11,
+            padding: 3,
+            marginBottom: 12,
+          }}
+        >
+          <button
+            onClick={() => setMode("following")}
+            style={{
+              flex: 1,
+              padding: "8px 0",
+              textAlign: "center",
+              fontSize: 13,
+              fontWeight: 700,
+              color: mode === "following" ? G : T4,
+              background: mode === "following" ? "rgba(34,197,94,0.12)" : "transparent",
+              borderRadius: 8,
+              border: "none",
+              cursor: "pointer",
+              fontFamily: F,
+            }}
+          >
+            Following
+          </button>
+          <button
+            onClick={() => setMode("search")}
+            style={{
+              flex: 1,
+              padding: "8px 0",
+              textAlign: "center",
+              fontSize: 13,
+              fontWeight: 700,
+              color: mode === "search" ? G : T4,
+              background: mode === "search" ? "rgba(34,197,94,0.12)" : "transparent",
+              borderRadius: 8,
+              border: "none",
+              cursor: "pointer",
+              fontFamily: F,
+            }}
+          >
+            ⌕ Search
+          </button>
+        </div>
+
+        {/* Mode body */}
+        {mode === "search" ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "60px 16px",
+              color: T5,
+              fontSize: 14,
+            }}
+          >
+            Search is coming soon.
+            <br />
+            <span style={{ fontSize: 12, color: T5, marginTop: 6, display: "inline-block" }}>
+              Find HIMs, AOs, and Shouts by keyword.
+            </span>
           </div>
-
-          {/* Shout list */}
-          {!loading && shouts.length === 0 ? (
-            <div
-              style={{
-                textAlign: "center",
-                padding: "40px 16px",
-                color: T5,
-                fontSize: 14,
-                border: "1px dashed " + BD,
-                borderRadius: 12,
-              }}
-            >
-              No Shouts yet.
-              <br />
-              <span style={{ fontSize: 12, color: T5, marginTop: 6, display: "inline-block" }}>
-                Tap ✎ to post the first one.
-              </span>
+        ) : (
+          <>
+            {/* Status line */}
+            <div style={{ fontSize: 11, color: T4, marginBottom: 14 }}>
+              {loading
+                ? "Loading…"
+                : shouts.length === 0
+                ? "No Shouts yet"
+                : `${shouts.length} active Shout${shouts.length === 1 ? "" : "s"}`}
             </div>
-          ) : (
-            shouts.map((s) => (
-              <ShoutCard
-                key={s.id}
-                shout={s}
-                currentUserId={currentUserId}
-                onAuthorTap={onOpenProfile}
-                onBeatdownTap={onOpenBeatdown}
-                variant="feed"
-              />
-            ))
-          )}
-        </>
-      )}
 
-      {/* Floating compose button */}
+            {/* Shout list */}
+            {!loading && shouts.length === 0 ? (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "40px 16px",
+                  color: T5,
+                  fontSize: 14,
+                  border: "1px dashed " + BD,
+                  borderRadius: 12,
+                }}
+              >
+                No Shouts yet.
+                <br />
+                <span style={{ fontSize: 12, color: T5, marginTop: 6, display: "inline-block" }}>
+                  Tap ✎ to post the first one.
+                </span>
+              </div>
+            ) : (
+              shouts.map((s) => (
+                <ShoutCard
+                  key={s.id}
+                  shout={s}
+                  currentUserId={currentUserId}
+                  onAuthorTap={onOpenProfile}
+                  onBeatdownTap={onOpenBeatdown}
+                  variant="feed"
+                />
+              ))
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Floating compose button — rendered as SIBLING to content, not nested inside.
+          z-index 60 puts it above BottomNav (z-index 50). */}
       <button
+        type="button"
         onClick={onOpenComposer}
         aria-label="New Shout"
         style={{
           position: "fixed",
-          bottom: "calc(80px + env(safe-area-inset-bottom, 8px))",
+          bottom: "calc(90px + env(safe-area-inset-bottom, 8px))",
           right: 20,
-          width: 56,
-          height: 56,
+          width: 60,
+          height: 60,
           borderRadius: "50%",
           background: G,
           color: BG,
           border: "none",
-          fontSize: 24,
+          fontSize: 26,
           fontWeight: 800,
           fontFamily: F,
-          boxShadow: "0 6px 16px rgba(34,197,94,0.4), 0 4px 8px rgba(0,0,0,0.3)",
+          boxShadow: "0 8px 20px rgba(34,197,94,0.5), 0 4px 10px rgba(0,0,0,0.4)",
           cursor: "pointer",
-          zIndex: 40,
+          zIndex: 60,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
+          padding: 0,
+          pointerEvents: "auto",
+          touchAction: "manipulation",
         }}
       >
         ✎
       </button>
-    </div>
+    </>
   );
 }
