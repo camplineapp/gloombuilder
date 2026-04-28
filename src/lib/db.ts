@@ -840,3 +840,211 @@ export async function getUserSharedExercises(userId: string) {
   return data || [];
 }
 
+// ═══ V2-5 SHOUT SYSTEM + OWNER-VIEW ALL-ITEMS HELPERS (April 26, 2026) ═══
+// APPEND TO END OF src/lib/db.ts
+// ─────────────────────────────────────────────────────────────────────
+
+// ─── SHOUTS ───
+
+export interface ShoutRow {
+  id: string;
+  author_id: string;
+  text: string;
+  type: string;
+  beatdown_id: string | null;
+  when_text: string | null;
+  when_at: string | null;
+  location_text: string | null;
+  expires_at: string | null;
+  is_archived: boolean;
+  created_at: string;
+  updated_at: string;
+  edited_at: string | null;
+  // Joined fields (when selected with profiles join)
+  profiles?: {
+    f3_name: string;
+    ao: string | null;
+    state: string | null;
+    region: string | null;
+  } | null;
+  beatdown?: {
+    id: string;
+    title: string;
+  } | null;
+}
+
+/**
+ * Post a new Shout. Archives any existing un-archived Shout for this user first
+ * (only one Active Shout per user at a time).
+ * Returns the new shout row, or null on error.
+ */
+export async function postShout(data: {
+  text: string;
+  type: string;
+  beatdownId?: string | null;
+  whenText?: string | null;
+  whenAt?: string | null;
+  locationText?: string | null;
+}): Promise<ShoutRow | null> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.error("postShout: no authed user");
+    return null;
+  }
+
+  // Archive any existing active shout for this user
+  await supabase
+    .from("shouts")
+    .update({ is_archived: true })
+    .eq("author_id", user.id)
+    .eq("is_archived", false);
+
+  // Compute expires_at = when_at + 12 hours, if when_at provided
+  let expiresAt: string | null = null;
+  if (data.whenAt) {
+    const whenDate = new Date(data.whenAt);
+    if (!isNaN(whenDate.getTime())) {
+      expiresAt = new Date(whenDate.getTime() + 12 * 60 * 60 * 1000).toISOString();
+    }
+  }
+
+  const insertPayload = {
+    author_id: user.id,
+    text: data.text,
+    type: data.type,
+    beatdown_id: data.beatdownId || null,
+    when_text: data.whenText || null,
+    when_at: data.whenAt || null,
+    location_text: data.locationText || null,
+    expires_at: expiresAt,
+    is_archived: false,
+  };
+
+  const { data: row, error } = await supabase
+    .from("shouts")
+    .insert(insertPayload)
+    .select()
+    .single();
+
+  if (error) {
+    console.error("postShout error:", error);
+    return null;
+  }
+  return row as ShoutRow;
+}
+
+/**
+ * Get the single active (un-archived) Shout for a user, or null if none.
+ * Joined with author profile and (if attached) beatdown title.
+ */
+export async function getActiveShoutForUser(userId: string): Promise<ShoutRow | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("shouts")
+    .select("*, profiles:author_id(f3_name, ao, state, region), beatdown:beatdown_id(id, title)")
+    .eq("author_id", userId)
+    .eq("is_archived", false)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("getActiveShoutForUser error:", error);
+    return null;
+  }
+  return (data as ShoutRow) || null;
+}
+
+/**
+ * Get the Feed for the logged-in user: active shouts from people they follow,
+ * plus their own active shout, newest first.
+ * If the user follows nobody, returns just their own active shout (or empty).
+ */
+export async function getFeedShouts(): Promise<ShoutRow[]> {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // Get IDs of people the user follows
+  const { data: follows } = await supabase
+    .from("follows")
+    .select("followed_id")
+    .eq("follower_id", user.id);
+
+  const followedIds = (follows || []).map((f: { followed_id: string }) => f.followed_id);
+  // Include the user's own shouts in their feed
+  const authorIds = [user.id, ...followedIds];
+
+  const { data, error } = await supabase
+    .from("shouts")
+    .select("*, profiles:author_id(f3_name, ao, state, region), beatdown:beatdown_id(id, title)")
+    .in("author_id", authorIds)
+    .eq("is_archived", false)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error("getFeedShouts error:", error);
+    return [];
+  }
+  return (data || []) as ShoutRow[];
+}
+
+/**
+ * Manually archive a Shout (e.g., user deletes it).
+ * Only the author can archive their own shouts (enforced by RLS).
+ */
+export async function archiveShout(shoutId: string): Promise<boolean> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("shouts")
+    .update({ is_archived: true })
+    .eq("id", shoutId);
+  if (error) {
+    console.error("archiveShout error:", error);
+    return false;
+  }
+  return true;
+}
+
+// ─── OWNER-VIEW: ALL ITEMS (V2-5 Locker→Profile merge) ───
+
+/**
+ * Fetch ALL beatdowns for a user (shared + private + inspired-by).
+ * Used on Q Profile owner-view to replace the Locker tab.
+ * Sorted by vote_count DESC then created_at DESC (matches getUserSharedBeatdowns).
+ */
+export async function getMyAllBeatdowns(userId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("beatdowns")
+    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
+    .eq("created_by", userId)
+    .order("vote_count", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("getMyAllBeatdowns error:", error);
+    return [];
+  }
+  return data || [];
+}
+
+/**
+ * Fetch ALL exercises for a user (shared + private + inspired-by).
+ * Used on Q Profile owner-view to replace the Locker tab.
+ */
+export async function getMyAllExercises(userId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("exercises")
+    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
+    .eq("created_by", userId)
+    .order("vote_count", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("getMyAllExercises error:", error);
+    return [];
+  }
+  return data || [];
+}
