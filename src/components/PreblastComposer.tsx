@@ -92,7 +92,15 @@ function buildPreblastText(args: {
   lines.push("[*] " + type.toUpperCase() + " - " + (qName || "Q") + " - " + (ao || "F3"));
   lines.push("");
   if (whenIso) lines.push("When: " + formatWhen(whenIso));
-  if (locationText) lines.push("Where: " + locationText);
+  if (locationText) {
+    const isUrl = locationText.startsWith("http://") || locationText.startsWith("https://");
+    if (isUrl) {
+      lines.push("Where: Map link");
+      lines.push(locationText);
+    } else {
+      lines.push("Where: " + locationText);
+    }
+  }
   if (whenIso || locationText) lines.push("");
   if (message.trim()) { lines.push(message.trim()); lines.push(""); }
   if (beatdown && beatdown.sections && beatdown.sections.length > 0) {
