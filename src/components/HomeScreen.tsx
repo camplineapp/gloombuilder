@@ -68,7 +68,7 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
 
         <div onClick={onSendPreblast} style={{ background: "linear-gradient(135deg, rgba(167,139,250,0.10), rgba(167,139,250,0.02))", border: "1px solid rgba(167,139,250,0.30)", borderRadius: 18, padding: "20px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(167,139,250,0.20)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>📣</div>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(167,139,250,0.20)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg></div>
             <div>
               <div style={{ fontSize: 16, fontWeight: 700, color: "#a78bfa" }}>Send Preblast</div>
               <div style={{ fontSize: 13, color: "#928982", marginTop: 4 }}>Tell the PAX what’s coming next</div>
