@@ -89,16 +89,16 @@ function buildPreblastText(args: {
 }): string {
   const { type, message, qName, ao, whenIso, locationText, beatdown } = args;
   const lines: string[] = [];
-  lines.push("[*] " + type.toUpperCase() + " - " + (qName || "Q") + " - " + (ao || "F3"));
+  lines.push("📣 " + type.toUpperCase() + " - " + (qName || "Q") + " - " + (ao || "F3"));
   lines.push("");
-  if (whenIso) lines.push("When: " + formatWhen(whenIso));
+  if (whenIso) lines.push("📅 " + formatWhen(whenIso));
   if (locationText) {
     const isUrl = locationText.startsWith("http://") || locationText.startsWith("https://");
     if (isUrl) {
-      lines.push("Where: Map link");
+      lines.push("📍");
       lines.push(locationText);
     } else {
-      lines.push("Where: " + locationText);
+      lines.push("📍 " + locationText);
     }
   }
   if (whenIso || locationText) lines.push("");
@@ -108,7 +108,7 @@ function buildPreblastText(args: {
     if (beatdown.duration) meta.push(beatdown.duration);
     if (beatdown.difficulty) meta.push(beatdown.difficulty);
     const metaStr = meta.length > 0 ? " (" + meta.join(" - ") + ")" : "";
-    lines.push("THE PLAN: " + beatdown.title + metaStr);
+    lines.push("💪 THE PLAN: " + beatdown.title + metaStr);
     lines.push("-------------------------");
     for (const sec of beatdown.sections) {
       lines.push(sec.label.toUpperCase());
@@ -125,7 +125,7 @@ function buildPreblastText(args: {
     lines.push("Beatdown: " + beatdown.title);
     lines.push("");
   }
-  lines.push("--");
+  lines.push("—");
   lines.push("via GloomBuilder");
   lines.push("gloombuilder.app");
   return lines.join("\n");
