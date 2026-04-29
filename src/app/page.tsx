@@ -16,6 +16,7 @@ import BuilderScreen from "@/components/BuilderScreen";
 import CreateExerciseScreen from "@/components/CreateExerciseScreen";
 import LiveModeScreen from "@/components/LiveModeScreen";
 import QProfileScreen from "@/components/QProfileScreen";
+import PreblastComposer, { type AttachedBeatdown } from "@/components/PreblastComposer";
 
 export interface LockerBeatdown {
   id: string;
@@ -175,6 +176,8 @@ export default function App() {
   // Locker state â€” loaded from Supabase
   const [lk, setLk] = useState<LockerBeatdown[]>([]);
   const [profileRefreshKey, setProfileRefreshKey] = useState(0);
+  const [preblastOpen, setPreblastOpen] = useState(false);
+  const [preblastBd, setPreblastBd] = useState<AttachedBeatdown | null>(null);
   const [lkEx, setLkEx] = useState<LockerExercise[]>([]);
 
   // Library shared items â€” loaded from Supabase
@@ -621,7 +624,9 @@ export default function App() {
         {vw === "settings" && (
           <ProfileScreen onProfileSaved={() => { checkUser(); setVw(null); }} onClose={() => setVw(null)} />
         )}
-        {toastEl}
+        {preblastOpen && <PreblastComposer onClose={() => { setPreblastOpen(false); setPreblastBd(null); }} qName={profName || "Q"} ao={profAO || ""} attachedBeatdown={preblastBd} />}
+        {preblastOpen && <PreblastComposer onClose={() => { setPreblastOpen(false); setPreblastBd(null); }} qName={profName || "Q"} ao={profAO || ""} attachedBeatdown={preblastBd} />}
+      {toastEl}
       </div>
     );
   }
@@ -633,6 +638,7 @@ export default function App() {
           profName={profName}
           onProfileTap={() => handleOpenProfile(null)}
           onGenerate={() => setVw("gen")}
+          onSendPreblast={() => { setPreblastBd(null); setPreblastOpen(true); }}
           onBuild={() => setVw("build")}
           onCreateEx={() => setVw("create-ex")}
         />
@@ -649,6 +655,7 @@ export default function App() {
         />
       )}
             <BottomNav active={tab} onTabChange={(t) => { setTab(t); setVw(null); }} />
+      {preblastOpen && <PreblastComposer onClose={() => { setPreblastOpen(false); setPreblastBd(null); }} qName={profName || "Q"} ao={profAO || ""} attachedBeatdown={preblastBd} />}
       {toastEl}
     </div>
   );

@@ -6,9 +6,10 @@ interface HomeScreenProps {
   onGenerate: () => void;
   onBuild: () => void;
   onCreateEx: () => void;
+  onSendPreblast: () => void;
 }
 
-export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild, onCreateEx }: HomeScreenProps) {
+export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild, onCreateEx, onSendPreblast }: HomeScreenProps) {
   const initials = profName
     .split(" ")
     .map((w) => (w[0] || "").toUpperCase())
@@ -61,6 +62,17 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#a78bfa" }}>Create exercise</div>
             <div style={{ fontSize: 13, color: "#928982", marginTop: 4 }}>Add your own to the community library</div>
+          </div>
+          <div style={{ color: "#7A7268", fontSize: 20 }}>→</div>
+        </div>
+
+        <div onClick={onSendPreblast} style={{ background: "linear-gradient(135deg, rgba(167,139,250,0.10), rgba(167,139,250,0.02))", border: "1px solid rgba(167,139,250,0.30)", borderRadius: 18, padding: "20px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(167,139,250,0.20)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>📣</div>
+            <div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#a78bfa" }}>Send Preblast</div>
+              <div style={{ fontSize: 13, color: "#928982", marginTop: 4 }}>Tell the PAX what’s coming next</div>
+            </div>
           </div>
           <div style={{ color: "#7A7268", fontSize: 20 }}>→</div>
         </div>
