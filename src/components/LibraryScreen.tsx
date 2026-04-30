@@ -413,8 +413,8 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
           {bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 && (
             <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
               <button onClick={() => onRunBeatdown?.(bd)} style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.30)", color: G, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
-                <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>▶</span>
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Run This</span>
+                <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>▶</span>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Live</span>
               </button>
               <button
                 onClick={() => onSendPreblast?.({
@@ -430,8 +430,8 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
                 })}
                 style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.30)", color: P, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
               >
-                <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>📣</span>
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
+                <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📣</span>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
               </button>
             </div>
           )}

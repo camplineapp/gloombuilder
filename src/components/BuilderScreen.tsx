@@ -269,8 +269,8 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
                 onClick={editData ? onRunBeatdown : handleRunThis}
                 style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.30)", color: G, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
               >
-                <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>▶</span>
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Run This</span>
+                <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>▶</span>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Live</span>
               </button>
             )}
             <button
@@ -287,16 +287,16 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
               })}
               style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.30)", color: P, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
             >
-              <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>📣</span>
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
+              <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📣</span>
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
             </button>
             {editData && (
               <button
                 onClick={() => setCopyModal(true)}
                 style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.30)", color: A, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
               >
-                <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>📓</span>
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Backblast</span>
+                <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📓</span>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Backblast</span>
               </button>
             )}
           </div>
@@ -308,21 +308,21 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
             {editData.isPublic ? (
               <span
                 onClick={() => setUnshareConfirm(true)}
-                style={{ fontFamily: F, fontSize: 11, fontWeight: 400, color: "rgba(239,68,68,0.7)", cursor: "pointer" }}
+                style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: "#ef4444", cursor: "pointer" }}
               >
                 Unshare
               </span>
             ) : (
               <span
                 onClick={onShareBeatdown}
-                style={{ fontFamily: F, fontSize: 11, fontWeight: 400, color: "rgba(34,197,94,0.85)", cursor: "pointer" }}
+                style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: "#22c55e", cursor: "pointer" }}
               >
                 Share to library
               </span>
             )}
             <span
               onClick={onDeleteBeatdown}
-              style={{ fontFamily: F, fontSize: 11, fontWeight: 400, color: "rgba(239,68,68,0.7)", cursor: "pointer" }}
+              style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: "#ef4444", cursor: "pointer" }}
             >
               Delete
             </span>

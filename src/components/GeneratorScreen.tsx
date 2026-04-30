@@ -255,8 +255,8 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
                   const saveData = { nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib };
                   onRunThis(JSON.parse(JSON.stringify(gr!)), nm, gc.dur || "45 min", saveData);
                 }} style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.30)", color: G, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>▶</span>
-                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Run This</span>
+                  <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>▶</span>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Live</span>
                 </button>
               )}
               <button
@@ -273,12 +273,12 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
                 })}
                 style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.30)", color: P, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
               >
-                <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>📣</span>
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
+                <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📣</span>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
               </button>
               <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.30)", color: A, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
-                <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>📓</span>
-                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Backblast</span>
+                <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📓</span>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Backblast</span>
               </button>
             </div>
           )}
