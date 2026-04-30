@@ -160,11 +160,6 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
         <button onClick={onClose} style={{ fontFamily: F, color: T3, background: "none", border: "none", cursor: "pointer", fontSize: 17, fontWeight: 600, padding: "8px 0" }}>
           {backLabel || (editData ? "← Locker" : "← Home")}
         </button>
-        {!editData && (
-          <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, background: A + "26", border: "1px solid " + A + "4D", color: A, fontSize: 15, fontWeight: 700, padding: "10px 16px", borderRadius: 10, cursor: "pointer" }}>
-            Backblast
-          </button>
-        )}
       </div>
 
       {/* Beatdown name + description */}
@@ -290,15 +285,13 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
               <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📣</span>
               <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
             </button>
-            {editData && (
-              <button
-                onClick={() => setCopyModal(true)}
-                style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.30)", color: A, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
-              >
-                <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📓</span>
-                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Backblast</span>
-              </button>
-            )}
+            <button
+              onClick={() => setCopyModal(true)}
+              style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.30)", color: A, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
+            >
+              <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📓</span>
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Backblast</span>
+            </button>
           </div>
         )}
 
