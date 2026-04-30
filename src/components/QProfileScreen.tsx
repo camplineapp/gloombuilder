@@ -293,13 +293,13 @@ export default function QProfileScreen({
       }}>
         <TabBtn
           label="Beatdowns"
-          count={stats?.beatdowns ?? 0}
+          count={beatdowns.length}
           active={tab === "beatdowns"}
           onClick={() => setTab("beatdowns")}
         />
         <TabBtn
           label="Exercises"
-          count={stats?.exercises ?? 0}
+          count={exercises.length}
           active={tab === "exercises"}
           onClick={() => setTab("exercises")}
         />
@@ -315,7 +315,6 @@ export default function QProfileScreen({
               <BeatdownCard
                 key={bd.id}
                 bd={bd}
-                isOwn={isOwn}
                 onTap={onOpenBeatdownDetail ? () => onOpenBeatdownDetail(bd.id) : undefined}
               />
             ))
@@ -326,7 +325,7 @@ export default function QProfileScreen({
             <EmptyState isOwn={isOwn} type="exercises" />
           ) : (
             exercises.map((ex) => (
-              <ExerciseCard key={ex.id} ex={ex} isOwn={isOwn} />
+              <ExerciseCard key={ex.id} ex={ex} />
             ))
           )
         )}
@@ -387,12 +386,15 @@ function TabBtn({ label, count, active, onClick }: { label: string; count: numbe
   );
 }
 
-// Beatdown card — light inline metadata, V2-4: tappable when onTap is provided
-function BeatdownCard({ bd, isOwn, onTap }: { bd: BeatdownRow; isOwn: boolean; onTap?: () => void }) {
-  const diff = difficultyColor(bd.difficulty);
+// Beatdown card — V2-Round-4: status stripe + source pill + asymmetric footer
+function BeatdownCard({ bd, onTap }: { bd: BeatdownRow; onTap?: () => void }) {
   const votes = bd.vote_count || 0;
   const steals = bd.steal_count || 0;
   const date = new Date(bd.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
+  const stripeColor = bd.is_public ? G : "#3a3a40";
+  const sourcePill = bd.generated
+    ? { label: "Generated", color: "#a78bfa", bg: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.30)" }
+    : { label: "HAND BUILT", color: GOLD, bg: `${GOLD}1A`, border: `1px solid ${GOLD}4D` };
 
   return (
     <div
@@ -400,22 +402,21 @@ function BeatdownCard({ bd, isOwn, onTap }: { bd: BeatdownRow; isOwn: boolean; o
       style={{
         background: CARD_BG,
         border: `1px solid ${BD}`,
-        borderLeft: `3px solid ${A}`,
+        borderLeft: `3px solid ${stripeColor}`,
         borderRadius: 12,
         padding: "13px 15px",
         marginBottom: 10,
         cursor: onTap ? "pointer" : "default",
-        transition: "background 0.15s ease",
       }}
     >
-      {/* Title + difficulty pill */}
+      {/* Title + source pill */}
       <div style={{
         display: "flex",
         alignItems: "center",
-        gap: 8,
-        marginBottom: 8,
+        gap: 10,
+        marginBottom: 4,
       }}>
-        <div style={{
+        <span style={{
           fontSize: 17,
           fontWeight: 800,
           color: T1,
@@ -425,213 +426,171 @@ function BeatdownCard({ bd, isOwn, onTap }: { bd: BeatdownRow; isOwn: boolean; o
           overflow: "hidden",
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
-        }}>{bd.name}</div>
+        }}>{bd.name}</span>
         <span style={{
           fontSize: 11,
           fontWeight: 800,
-          color: diff.fg,
-          background: diff.bg,
-          border: `1px solid ${diff.border}`,
+          color: sourcePill.color,
+          background: sourcePill.bg,
+          border: sourcePill.border,
           padding: "3px 8px",
           borderRadius: 6,
-          letterSpacing: 0.5,
-          whiteSpace: "nowrap",
-        }}>{diff.label}</span>
+          flexShrink: 0,
+        }}>{sourcePill.label}</span>
       </div>
 
-      {/* Description (2-line clamp) */}
+      {/* Description (single-line ellipsis) */}
       {bd.description && (
         <div style={{
-          fontSize: 13,
-          color: T3,
-          lineHeight: 1.45,
-          marginBottom: 10,
+          fontSize: 12,
+          color: T4,
+          fontWeight: 500,
+          lineHeight: 1.4,
+          marginBottom: 8,
           overflow: "hidden",
           textOverflow: "ellipsis",
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
+          whiteSpace: "nowrap",
         }}>{bd.description}</div>
       )}
 
-      {/* Light inline metadata — Strava/LinkedIn style */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 14,
-        fontSize: 12,
-        color: T4,
-        fontWeight: 600,
-        flexWrap: "wrap",
-      }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-          <ThumbsUpIcon size={13} filled />
-          <span>{votes}</span>
-        </span>
-        {steals > 0 && (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-            <span>{steals} {steals === 1 ? "steal" : "steals"}</span>
+      {/* Footer — asymmetric by is_public */}
+      {bd.is_public ? (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          fontSize: 12,
+          color: T4,
+          fontWeight: 600,
+        }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <ThumbsUpIcon size={13} filled />
+            <span style={{ color: T1 }}>{votes}</span>
           </span>
-        )}
-        {bd.duration && (
-          <span>{bd.duration} min</span>
-        )}
-        <span>{date}</span>
-        {isOwn && (
-          bd.is_public ? (
-            <span style={{
-              fontSize: 10,
-              color: G,
-              background: `14`,
-              padding: `2px 7px`,
-              borderRadius: 4,
-              letterSpacing: 0.5,
-              fontWeight: 800,
-              textTransform: `uppercase`,
-              border: `1px solid 40`,
-            }}>SHARED</span>
-          ) : (
-            <span style={{
-              fontSize: 10,
-              color: T5,
-              background: `rgba(255,255,255,0.04)`,
-              padding: `2px 7px`,
-              borderRadius: 4,
-              letterSpacing: 0.5,
-              fontWeight: 700,
-              textTransform: `uppercase`,
-              border: `1px solid `,
-            }}>DRAFT</span>
-          )
-        )}
-        {bd.generated && (
-          <span style={{
-            fontSize: 10,
-            color: T5,
-            background: "rgba(255,255,255,0.04)",
-            padding: "2px 7px",
-            borderRadius: 4,
-            letterSpacing: 0.5,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            border: `1px solid ${BD}`,
-          }}>AI</span>
-        )}
-        {!bd.generated && (
-          <span style={{
-            fontSize: 10,
-            color: GOLD,
-            background: `${GOLD}14`,
-            padding: "2px 7px",
-            borderRadius: 4,
-            letterSpacing: 0.5,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            border: `1px solid ${GOLD}40`,
-          }}>HAND BUILT</span>
-        )}
-        {bd.inspired_profile && (
-          <span style={{ color: T5, fontStyle: "italic" }}>
-            inspired by {bd.inspired_profile.f3_name}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <span style={{ fontSize: 13 }}>📋</span>
+            <span style={{ color: T1 }}>{steals}</span>
           </span>
-        )}
-      </div>
+          <span style={{ marginLeft: "auto", color: T4 }}>{date}</span>
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: T4, fontWeight: 500 }}>
+          Draft · {date}
+        </div>
+      )}
+
+      {/* Inspired-by quiet line */}
+      {bd.inspired_profile?.f3_name && (
+        <div style={{
+          fontSize: 11,
+          fontStyle: "italic",
+          color: T5,
+          fontWeight: 500,
+          marginTop: 4,
+          lineHeight: 1.4,
+        }}>
+          inspired by {bd.inspired_profile.f3_name}
+        </div>
+      )}
     </div>
   );
 }
 
-// Exercise card — same pattern, slightly different content
-function ExerciseCard({ ex, isOwn }: { ex: ExerciseRow; isOwn: boolean }) {
+// Exercise card — V2-Round-4: status stripe + HAND BUILT pill + asymmetric footer
+function ExerciseCard({ ex }: { ex: ExerciseRow }) {
   const votes = ex.vote_count || 0;
   const date = new Date(ex.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
-  const bodyParts = (ex.body_part || []).slice(0, 3);
+  const stripeColor = ex.is_public ? G : "#3a3a40";
+  const description = ex.description || ex.how_to;
 
   return (
     <div style={{
       background: CARD_BG,
       border: `1px solid ${BD}`,
-      borderLeft: `3px solid #a78bfa`,
+      borderLeft: `3px solid ${stripeColor}`,
       borderRadius: 12,
       padding: "13px 15px",
       marginBottom: 10,
     }}>
-      <div style={{
-        fontSize: 17,
-        fontWeight: 800,
-        color: T1,
-        letterSpacing: -0.3,
-        marginBottom: 6,
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-        whiteSpace: "nowrap",
-      }}>{ex.name}</div>
-
-      {(ex.description || ex.how_to) && (
-        <div style={{
-          fontSize: 13,
-          color: T3,
-          lineHeight: 1.45,
-          marginBottom: 10,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          display: "-webkit-box",
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: "vertical",
-        }}>{ex.description || ex.how_to}</div>
-      )}
-
+      {/* Title + HAND BUILT pill */}
       <div style={{
         display: "flex",
         alignItems: "center",
-        gap: 14,
-        fontSize: 12,
-        color: T4,
-        fontWeight: 600,
-        flexWrap: "wrap",
+        gap: 10,
+        marginBottom: 4,
       }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-          <ThumbsUpIcon size={13} filled />
-          <span>{votes}</span>
-        </span>
-        <span>{date}</span>
-        {isOwn && (
-          ex.is_public ? (
-            <span style={{
-              fontSize: 10,
-              color: G,
-              background: `14`,
-              padding: `2px 7px`,
-              borderRadius: 4,
-              letterSpacing: 0.5,
-              fontWeight: 800,
-              textTransform: `uppercase`,
-              border: `1px solid 40`,
-            }}>SHARED</span>
-          ) : (
-            <span style={{
-              fontSize: 10,
-              color: T5,
-              background: `rgba(255,255,255,0.04)`,
-              padding: `2px 7px`,
-              borderRadius: 4,
-              letterSpacing: 0.5,
-              fontWeight: 700,
-              textTransform: `uppercase`,
-              border: `1px solid `,
-            }}>DRAFT</span>
-          )
-        )}
-        {bodyParts.length > 0 && (
-          <span style={{ color: T5 }}>
-            {bodyParts.map(bp => bp.charAt(0).toUpperCase() + bp.slice(1)).join(" · ")}
-          </span>
-        )}
-        {ex.inspired_profile && (
-          <span style={{ color: T5, fontStyle: "italic" }}>
-            inspired by {ex.inspired_profile.f3_name}
-          </span>
-        )}
+        <span style={{
+          fontSize: 17,
+          fontWeight: 800,
+          color: T1,
+          letterSpacing: -0.3,
+          flex: 1,
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}>{ex.name}</span>
+        <span style={{
+          fontSize: 11,
+          fontWeight: 800,
+          color: GOLD,
+          background: `${GOLD}1A`,
+          border: `1px solid ${GOLD}4D`,
+          padding: "3px 8px",
+          borderRadius: 6,
+          flexShrink: 0,
+        }}>HAND BUILT</span>
       </div>
+
+      {/* Description (single-line ellipsis) */}
+      {description && (
+        <div style={{
+          fontSize: 12,
+          color: T4,
+          fontWeight: 500,
+          lineHeight: 1.4,
+          marginBottom: 8,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}>{description}</div>
+      )}
+
+      {/* Footer — asymmetric by is_public */}
+      {ex.is_public ? (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          fontSize: 12,
+          color: T4,
+          fontWeight: 600,
+        }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <ThumbsUpIcon size={13} filled />
+            <span style={{ color: T1 }}>{votes}</span>
+          </span>
+          <span style={{ marginLeft: "auto", color: T4 }}>{date}</span>
+        </div>
+      ) : (
+        <div style={{ fontSize: 12, color: T4, fontWeight: 500 }}>
+          Draft · {date}
+        </div>
+      )}
+
+      {/* Inspired-by quiet line */}
+      {ex.inspired_profile?.f3_name && (
+        <div style={{
+          fontSize: 11,
+          fontStyle: "italic",
+          color: T5,
+          fontWeight: 500,
+          marginTop: 4,
+          lineHeight: 1.4,
+        }}>
+          inspired by {ex.inspired_profile.f3_name}
+        </div>
+      )}
     </div>
   );
 }
