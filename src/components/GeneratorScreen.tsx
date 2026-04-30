@@ -7,6 +7,7 @@ import { loadSeedExercises } from "@/lib/db";
 import CopyModal from "@/components/CopyModal";
 import SectionEditor from "@/components/SectionEditor";
 import type { AttachedBeatdown } from "@/components/PreblastComposer";
+import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft, formatTimeAgo } from "@/lib/drafts";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -45,17 +46,53 @@ interface GeneratorScreenProps {
 }
 
 export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, onSendPreblast, userExercises, communityExercises }: GeneratorScreenProps) {
+  const draftKey = DRAFT_KEYS.generatorResult;
+  type GeneratorDraft = {
+    gc: GenConfig; gr: Section[]; grT: string; grD: string; shareLib: boolean;
+  };
+  const initialDraft = (() => {
+    if (typeof window === "undefined") return null;
+    return loadDraft<GeneratorDraft>(draftKey);
+  })();
+
   const [gs, setGs] = useState(0);
-  const [gc, setGc] = useState<GenConfig>({ dur: null, diff: null, sites: [], eq: [] });
-  const [gr, setGr] = useState<Section[] | null>(null);
-  const [grT, setGrT] = useState("");
-  const [grD, setGrD] = useState("");
+  const [gc, setGc] = useState<GenConfig>(initialDraft?.data.gc ?? { dur: null, diff: null, sites: [], eq: [] });
+  const [gr, setGr] = useState<Section[] | null>(initialDraft?.data.gr ?? null);
+  const [grT, setGrT] = useState(initialDraft?.data.grT ?? "");
+  const [grD, setGrD] = useState(initialDraft?.data.grD ?? "");
   const [ld, setLd] = useState(false);
-  const [shareLib, setShareLib] = useState(false);
+  const [shareLib, setShareLib] = useState(initialDraft?.data.shareLib ?? false);
   const [saving, setSaving] = useState(false);
   const [grDetailsOpen, setGrDetailsOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
+  const [draftRestored, setDraftRestored] = useState<{ timeAgo: string } | null>(null);
+
+  useEffect(() => {
+    if (initialDraft) {
+      setDraftRestored({ timeAgo: formatTimeAgo(initialDraft.savedAt) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!gr) return;
+    const timer = setTimeout(() => {
+      saveDraft<GeneratorDraft>(draftKey, { gc, gr, grT, grD, shareLib });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [gc, gr, grT, grD, shareLib, draftKey]);
+
+  const handleDiscardDraft = () => {
+    clearDraft(draftKey);
+    setDraftRestored(null);
+    setGc({ dur: null, diff: null, sites: [], eq: [] });
+    setGr(null);
+    setGrT("");
+    setGrD("");
+    setShareLib(false);
+    setGs(0);
+  };
 
   // Load exercises from Supabase on mount + merge user custom + community exercises
   useEffect(() => {
@@ -102,6 +139,14 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
       <div style={{ padding: "0 24px" }}>
         {toastEl}
         {copyModal && gr ? <CopyModal secs={gr} beatdownName={grT || "Generated Beatdown"} beatdownDesc={grD} qName={profName || "Q"} onClose={() => setCopyModal(false)} onToast={fl} /> : null}
+
+        {/* Draft restored banner */}
+        {draftRestored && (
+          <div style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.30)", borderRadius: 10, padding: "10px 14px", marginTop: 16, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, fontSize: 13, fontWeight: 600, color: A, fontFamily: F }}>
+            <span>↻ Draft restored from {draftRestored.timeAgo}</span>
+            <button onClick={handleDiscardDraft} style={{ fontFamily: F, background: "transparent", border: "1px solid rgba(245,158,11,0.40)", color: A, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 8, cursor: "pointer" }}>Discard</button>
+          </div>
+        )}
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingBottom: 16, borderBottom: "1px solid " + BD }}>
@@ -243,7 +288,11 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
             const nm = grT.trim() || "Generated Beatdown";
             const tgs = [gc.dur, ...(gc.sites || []), ...(gc.eq || [])].filter(Boolean) as string[];
             try {
-              await onSave({ nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib });
+              const newId = await onSave({ nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib });
+              if (newId) {
+                clearDraft(draftKey);
+                setDraftRestored(null);
+              }
             } finally {
               setSaving(false);
             }

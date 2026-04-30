@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TAGS } from "@/lib/exercises";
+import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft, formatTimeAgo } from "@/lib/drafts";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
 const G = "#22c55e";
+const A = "#f59e0b";
 const BG = "#0E0E10";
 const T1 = "#F0EDE8";
 const T4 = "#928982";
@@ -23,13 +25,47 @@ interface CreateExerciseScreenProps {
 }
 
 export default function CreateExerciseScreen({ onClose, onSave }: CreateExerciseScreenProps) {
-  const [cxN, setCxN] = useState("");
-  const [cxDesc, setCxDesc] = useState("");
-  const [cxH, setCxH] = useState("");
-  const [cxT, setCxT] = useState<string[]>([]);
-  const [cxShare, setCxShare] = useState(false);
+  const draftKey = DRAFT_KEYS.exerciseNew;
+  type ExerciseDraft = {
+    cxN: string; cxDesc: string; cxH: string; cxT: string[]; cxShare: boolean;
+  };
+  const initialDraft = (() => {
+    if (typeof window === "undefined") return null;
+    return loadDraft<ExerciseDraft>(draftKey);
+  })();
+
+  const [cxN, setCxN] = useState(initialDraft?.data.cxN ?? "");
+  const [cxDesc, setCxDesc] = useState(initialDraft?.data.cxDesc ?? "");
+  const [cxH, setCxH] = useState(initialDraft?.data.cxH ?? "");
+  const [cxT, setCxT] = useState<string[]>(initialDraft?.data.cxT ?? []);
+  const [cxShare, setCxShare] = useState(initialDraft?.data.cxShare ?? false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
+  const [draftRestored, setDraftRestored] = useState<{ timeAgo: string } | null>(null);
+
+  useEffect(() => {
+    if (initialDraft) {
+      setDraftRestored({ timeAgo: formatTimeAgo(initialDraft.savedAt) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveDraft<ExerciseDraft>(draftKey, { cxN, cxDesc, cxH, cxT, cxShare });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [cxN, cxDesc, cxH, cxT, cxShare, draftKey]);
+
+  const handleDiscardDraft = () => {
+    clearDraft(draftKey);
+    setDraftRestored(null);
+    setCxN("");
+    setCxDesc("");
+    setCxH("");
+    setCxT([]);
+    setCxShare(false);
+  };
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 
@@ -40,6 +76,12 @@ export default function CreateExerciseScreen({ onClose, onSave }: CreateExercise
   return (
     <div style={{ padding: "0 24px" }}>
       {toastEl}
+      {draftRestored && (
+        <div style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.30)", borderRadius: 10, padding: "10px 14px", marginTop: 16, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, fontSize: 13, fontWeight: 600, color: A, fontFamily: F }}>
+          <span>↻ Draft restored from {draftRestored.timeAgo}</span>
+          <button onClick={handleDiscardDraft} style={{ fontFamily: F, background: "transparent", border: "1px solid rgba(245,158,11,0.40)", color: A, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 8, cursor: "pointer" }}>Discard</button>
+        </div>
+      )}
       <button onClick={onClose} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14, marginBottom: 20 }}>← Home</button>
       <div style={{ fontSize: 24, fontWeight: 800, color: T1, marginBottom: 4 }}>Create exercise</div>
       <div style={{ fontSize: 13, color: T4, marginBottom: 24 }}>Add your own exercise</div>
@@ -84,6 +126,8 @@ export default function CreateExerciseScreen({ onClose, onSave }: CreateExercise
         if (saving) return;
         if (!cxN.trim()) { fl("Name required"); return; }
         setSaving(true);
+        clearDraft(draftKey);
+        setDraftRestored(null);
         onSave({ nm: cxN, tags: cxT, how: cxH, desc: cxDesc, share: cxShare });
       }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving..." : "Save exercise"}</button>
     </div>

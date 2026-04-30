@@ -7,6 +7,7 @@ import { loadSeedExercises } from "@/lib/db";
 import CopyModal from "@/components/CopyModal";
 import SectionEditor from "@/components/SectionEditor";
 import type { AttachedBeatdown } from "@/components/PreblastComposer";
+import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft, formatTimeAgo } from "@/lib/drafts";
 
 const G = "#22c55e";
 const A = "#f59e0b";
@@ -69,25 +70,65 @@ function defaultSections(): Section[] {
 }
 
 export default function BuilderScreen({ onClose, backLabel, onSave, editData, onUpdate, onRunThis, onRunBeatdown, onShareBeatdown, onUnshareBeatdown, onDeleteBeatdown, onSendPreblast, onSavedNew, profName, userExercises, communityExercises }: BuilderScreenProps) {
-  const [bT, setBT] = useState(editData?.nm || "");
-  const [bD, setBD] = useState(editData?.desc || "");
-  const [bDur, setBDur] = useState<string | null>(editData?.dur || null);
-  const [bDiff, setBDiff] = useState<string | null>(editData?.d || null);
-  const [bSites, setBSites] = useState<string[]>(editData?.sites || []);
-  const [bEq, setBEq] = useState<string[]>(editData?.eq || []);
-  const [secs, setSecs] = useState<Section[]>(() => {
+  const draftKey = editData ? DRAFT_KEYS.builderEdit(editData.id) : DRAFT_KEYS.builderNew;
+  type BuilderDraft = {
+    bT: string; bD: string; bDur: string | null; bDiff: string | null;
+    bSites: string[]; bEq: string[]; secs: Section[]; shareLib: boolean;
+  };
+  const initialDraft = (() => {
+    if (typeof window === "undefined") return null;
+    return loadDraft<BuilderDraft>(draftKey);
+  })();
+
+  const computeInitialSecs = (): Section[] => {
     if (editData?.secs && editData.secs.length > 0) {
       return editData.secs.map(s => normalizeSection(s as unknown as Record<string, unknown>));
     }
     return defaultSections();
-  });
-  const [shareLib, setShareLib] = useState(editData?.isPublic || false);
+  };
+
+  const [bT, setBT] = useState(initialDraft?.data.bT ?? editData?.nm ?? "");
+  const [bD, setBD] = useState(initialDraft?.data.bD ?? editData?.desc ?? "");
+  const [bDur, setBDur] = useState<string | null>(initialDraft?.data.bDur ?? editData?.dur ?? null);
+  const [bDiff, setBDiff] = useState<string | null>(initialDraft?.data.bDiff ?? editData?.d ?? null);
+  const [bSites, setBSites] = useState<string[]>(initialDraft?.data.bSites ?? editData?.sites ?? []);
+  const [bEq, setBEq] = useState<string[]>(initialDraft?.data.bEq ?? editData?.eq ?? []);
+  const [secs, setSecs] = useState<Section[]>(initialDraft?.data.secs ?? computeInitialSecs());
+  const [shareLib, setShareLib] = useState(initialDraft?.data.shareLib ?? editData?.isPublic ?? false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
   const [copyModal, setCopyModal] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [unshareConfirm, setUnshareConfirm] = useState(false);
+  const [draftRestored, setDraftRestored] = useState<{ timeAgo: string } | null>(null);
+
+  useEffect(() => {
+    if (initialDraft) {
+      setDraftRestored({ timeAgo: formatTimeAgo(initialDraft.savedAt) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveDraft<BuilderDraft>(draftKey, { bT, bD, bDur, bDiff, bSites, bEq, secs, shareLib });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [bT, bD, bDur, bDiff, bSites, bEq, secs, shareLib, draftKey]);
+
+  const handleDiscardDraft = () => {
+    clearDraft(draftKey);
+    setDraftRestored(null);
+    setBT(editData?.nm ?? "");
+    setBD(editData?.desc ?? "");
+    setBDur(editData?.dur ?? null);
+    setBDiff(editData?.d ?? null);
+    setBSites(editData?.sites ?? []);
+    setBEq(editData?.eq ?? []);
+    setSecs(computeInitialSecs());
+    setShareLib(editData?.isPublic ?? false);
+  };
 
   const userExRef = useRef(userExercises);
   const commExRef = useRef(communityExercises);
@@ -137,10 +178,18 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
     const tgs = buildTags();
     try {
       if (editData && onUpdate) {
-        await onUpdate(editData.id, { nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, dur: bDur, sites: bSites, eq: bEq });
+        const success = await onUpdate(editData.id, { nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, dur: bDur, sites: bSites, eq: bEq });
+        if (success) {
+          clearDraft(draftKey);
+          setDraftRestored(null);
+        }
       } else if (onSave) {
         const newId = await onSave({ nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib });
-        if (newId) onSavedNew?.(newId);
+        if (newId) {
+          clearDraft(draftKey);
+          setDraftRestored(null);
+          onSavedNew?.(newId);
+        }
       }
     } finally {
       setSaving(false);
@@ -161,6 +210,14 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
       {/* Copy Modal */}
       {copyModal && <CopyModal secs={secs} beatdownName={bT || "Untitled"} beatdownDesc={bD} qName={profName || "Q"} onClose={() => setCopyModal(false)} onToast={fl} />}
       {toastEl}
+
+      {/* Draft restored banner */}
+      {draftRestored && (
+        <div style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.30)", borderRadius: 10, padding: "10px 14px", marginTop: 16, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, fontSize: 13, fontWeight: 600, color: A, fontFamily: F }}>
+          <span>↻ Draft restored from {draftRestored.timeAgo}</span>
+          <button onClick={handleDiscardDraft} style={{ fontFamily: F, background: "transparent", border: "1px solid rgba(245,158,11,0.40)", color: A, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 8, cursor: "pointer" }}>Discard</button>
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid " + BD }}>
