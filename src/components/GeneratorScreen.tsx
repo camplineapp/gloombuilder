@@ -33,7 +33,7 @@ interface GeneratorScreenProps {
   onSave: (beatdown: {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
-  }) => void;
+  }) => Promise<string | null>;
   onRunThis?: (secs: Section[], title: string, dur: string, saveData: {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
@@ -237,11 +237,16 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
         {/* Action area — Round 3: Layer 1 primary + Layer 2 icon pills */}
         <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
           {/* LAYER 1 — PRIMARY */}
-          <button disabled={saving} onClick={() => {
-            if (saving) return; setSaving(true);
+          <button disabled={saving} onClick={async () => {
+            if (saving) return;
+            setSaving(true);
             const nm = grT.trim() || "Generated Beatdown";
             const tgs = [gc.dur, ...(gc.sites || []), ...(gc.eq || [])].filter(Boolean) as string[];
-            onSave({ nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib });
+            try {
+              await onSave({ nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib });
+            } finally {
+              setSaving(false);
+            }
           }} style={{ fontFamily: F, width: "100%", padding: "20px 0", borderRadius: 14, fontSize: 18, fontWeight: 800, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving..." : "Save"}</button>
 
           {/* LAYER 2 — SECONDARY ROW (icon pills) */}

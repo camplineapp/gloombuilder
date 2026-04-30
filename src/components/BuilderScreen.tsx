@@ -36,7 +36,7 @@ interface BuilderScreenProps {
   onSave: (beatdown: {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
-  }) => void;
+  }) => Promise<string | null>;
   editData?: {
     id: string; nm: string; desc: string; d: string; secs: Section[];
     tg: string[]; dur: string | null; sites: string[]; eq: string[]; isPublic?: boolean;
@@ -44,7 +44,7 @@ interface BuilderScreenProps {
   onUpdate?: (id: string, data: {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     dur: string | null; sites: string[]; eq: string[];
-  }) => void;
+  }) => Promise<boolean>;
   onRunThis?: (secs: Section[], title: string, dur: string, saveData: {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
@@ -54,6 +54,8 @@ interface BuilderScreenProps {
   onUnshareBeatdown?: () => void;
   onDeleteBeatdown?: () => void;
   onSendPreblast?: (bd: AttachedBeatdown) => void;
+  onSavedNew?: (newId: string) => void;
+  profName?: string;
   userExercises?: { id: string; nm: string; desc: string; tags: string[]; how: string }[];
   communityExercises?: { nm: string; desc: string; tags: string[]; how: string }[];
 }
@@ -66,7 +68,7 @@ function defaultSections(): Section[] {
   ].map(s => normalizeSection(s as Record<string, unknown>));
 }
 
-export default function BuilderScreen({ onClose, backLabel, onSave, editData, onUpdate, onRunThis, onRunBeatdown, onShareBeatdown, onUnshareBeatdown, onDeleteBeatdown, onSendPreblast, userExercises, communityExercises }: BuilderScreenProps) {
+export default function BuilderScreen({ onClose, backLabel, onSave, editData, onUpdate, onRunThis, onRunBeatdown, onShareBeatdown, onUnshareBeatdown, onDeleteBeatdown, onSendPreblast, onSavedNew, profName, userExercises, communityExercises }: BuilderScreenProps) {
   const [bT, setBT] = useState(editData?.nm || "");
   const [bD, setBD] = useState(editData?.desc || "");
   const [bDur, setBDur] = useState<string | null>(editData?.dur || null);
@@ -128,15 +130,20 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
   // Check if any details have been set (for collapsed chip summary)
   const hasAnyDetails = bDur || bDiff || bSites.length > 0 || bEq.length > 0;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (saving) return;
     setSaving(true);
     const nm = bT.trim() || "Untitled";
     const tgs = buildTags();
-    if (editData && onUpdate) {
-      onUpdate(editData.id, { nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, dur: bDur, sites: bSites, eq: bEq });
-    } else {
-      onSave({ nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib });
+    try {
+      if (editData && onUpdate) {
+        await onUpdate(editData.id, { nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, dur: bDur, sites: bSites, eq: bEq });
+      } else if (onSave) {
+        const newId = await onSave({ nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib });
+        if (newId) onSavedNew?.(newId);
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -152,7 +159,7 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
   return (
     <div style={{ padding: "0 24px" }}>
       {/* Copy Modal */}
-      {copyModal && <CopyModal secs={secs} beatdownName={bT || "Untitled"} beatdownDesc={bD} qName="The Bishop" onClose={() => setCopyModal(false)} onToast={fl} />}
+      {copyModal && <CopyModal secs={secs} beatdownName={bT || "Untitled"} beatdownDesc={bD} qName={profName || "Q"} onClose={() => setCopyModal(false)} onToast={fl} />}
       {toastEl}
 
       {/* Header */}

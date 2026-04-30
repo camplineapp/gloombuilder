@@ -304,7 +304,7 @@ export default function App() {
     }
   };
 
-  const handleSaveBeatdown = async (bd: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean }) => {
+  const handleSaveBeatdown = async (bd: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean }): Promise<string | null> => {
     const result = await saveBeatdown({
       nm: bd.nm,
       desc: bd.desc,
@@ -319,7 +319,6 @@ export default function App() {
     });
 
     if (result) {
-      // Reload from database to get fresh data
       await loadLocker();
       if (bd.share) {
         await loadLibrary();
@@ -327,11 +326,11 @@ export default function App() {
       } else {
         fl("Saved!");
       }
+      return (result as { id?: string }).id || null;
     } else {
       fl("Error saving — try again");
+      return null;
     }
-    setVw(null);
-    setTab("home");
   };
 
   const handleSaveExercise = async (ex: { nm: string; tags: string[]; how: string; desc: string; share: boolean }) => {
@@ -467,19 +466,18 @@ export default function App() {
     setVw("live");
   };
 
-  const handleUpdateBeatdown = async (id: string, data: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; dur: string | null; sites: string[]; eq: string[] }) => {
+  const handleUpdateBeatdown = async (id: string, data: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; dur: string | null; sites: string[]; eq: string[] }): Promise<boolean> => {
     const durNum = data.dur ? parseInt(data.dur) : null;
     const success = await updateBeatdown(id, { nm: data.nm, desc: data.desc, d: data.d, dur: durNum, siteFeatures: data.sites, equipment: data.eq, tags: data.tg, sections: data.secs });
     if (success) {
       await loadLocker();
       await loadLibrary();
       fl("Beatdown saved!");
+      return true;
     } else {
       fl("Error saving");
+      return false;
     }
-    setVw(null);
-    setEditingBd(null);
-    setTab("home");
   };
 
   const handleToggleVote = async (itemId: string, itemType: "beatdown" | "exercise" = "beatdown") => {
@@ -557,7 +555,7 @@ export default function App() {
           setLiveBd({ id: "temp", nm: title, dt: "", src: "Generated", d: "medium", desc: "", secs, tg: [dur], isPublic: false });
           setVw("live");
         }} />}
-        {vw === "build" && <BuilderScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} userExercises={lkEx} communityExercises={communityExercises} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onRunThis={async (secs, title, dur, saveData) => {
+        {vw === "build" && <BuilderScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onSavedNew={(newId) => { const justSaved = lk.find(b => b.id === newId); if (justSaved) { setEditingBd(justSaved); setVw("edit-bd"); } }} onRunThis={async (secs, title, dur, saveData) => {
           if (saveData) {
             const result = await saveBeatdown({ nm: saveData.nm, desc: saveData.desc, d: saveData.d, secs: saveData.secs, tg: saveData.tg, src: saveData.src, dur: saveData.dur, sites: saveData.sites, eq: saveData.eq, isPublic: saveData.share || false });
             if (result) { await loadLocker(); if (saveData.share) await loadLibrary(); fl("Saved!"); }
@@ -580,6 +578,7 @@ export default function App() {
             }
           }}
           backLabel={editFromQProfile ? ("← " + (profName || "profile") + "'s profile") : undefined}
+          profName={profName}
           onSave={handleSaveBeatdown}
           editData={{
             id: editingBd.id,

@@ -58,9 +58,10 @@ interface LockerScreenProps {
   onUpdateExercise?: (id: string, data: { nm: string; desc?: string; how: string; tags: string[] }) => void;
   onEditBeatdown?: (bd: LockerBeatdown) => void;
   onRunBeatdown?: (bd: LockerBeatdown) => void;
+  profName?: string;
 }
 
-export default function LockerScreen({ lk, setLk, lkEx, setLkEx, onNavigate, onDeleteBeatdown, onDeleteExercise, onShareBeatdown, onShareExercise, onUnshareBeatdown, onUnshareExercise, onUpdateExercise, onEditBeatdown, onRunBeatdown }: LockerScreenProps) {
+export default function LockerScreen({ lk, setLk, lkEx, setLkEx, onNavigate, onDeleteBeatdown, onDeleteExercise, onShareBeatdown, onShareExercise, onUnshareBeatdown, onUnshareExercise, onUpdateExercise, onEditBeatdown, onRunBeatdown, profName }: LockerScreenProps) {
   const [lT, setLT] = useState(0);
   const [toast, setToast] = useState("");
   const [edLkExI, setEdLkExI] = useState<number | null>(null);
@@ -236,7 +237,7 @@ export default function LockerScreen({ lk, setLk, lkEx, setLkEx, onNavigate, onD
 
 
       {/* ═══ COPY MODAL ═══ */}
-      {copySecs ? <CopyModal secs={copySecs.secs} beatdownName={copySecs.nm} beatdownDesc={copySecs.desc} qName="The Bishop" onClose={() => setCopySecs(null)} onToast={fl} /> : null}
+      {copySecs ? <CopyModal secs={copySecs.secs} beatdownName={copySecs.nm} beatdownDesc={copySecs.desc} qName={profName || "Q"} onClose={() => setCopySecs(null)} onToast={fl} /> : null}
       {toastEl}
     </div>
   );

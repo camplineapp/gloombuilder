@@ -213,13 +213,21 @@ export default function QProfileScreen({
         }}>← Back</button>
         {isOwn && onOpenSettings && (
           <button onClick={onOpenSettings} style={{
-            background: "transparent",
-            border: "none",
-            color: T3,
-            fontSize: 22,
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid " + BD,
+            borderRadius: 10,
+            color: T2,
+            fontSize: 14,
+            fontWeight: 700,
             cursor: "pointer",
-            padding: "4px 8px",
-          }}>⚙</button>
+            padding: "8px 14px",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}>
+            <span style={{ fontSize: 18, lineHeight: 1 }}>⚙</span>
+            <span>Settings</span>
+          </button>
         )}
       </div>
 
@@ -393,8 +401,8 @@ function BeatdownCard({ bd, onTap }: { bd: BeatdownRow; onTap?: () => void }) {
   const date = new Date(bd.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
   const stripeColor = bd.is_public ? G : "#3a3a40";
   const sourcePill = bd.generated
-    ? { label: "Generated", color: "#a78bfa", bg: "rgba(167,139,250,0.10)", border: "1px solid rgba(167,139,250,0.30)" }
-    : { label: "HAND BUILT", color: GOLD, bg: `${GOLD}1A`, border: `1px solid ${GOLD}4D` };
+    ? { label: "GloomBuilder", color: G, bg: G + "15", border: "1px solid " + G + "30" }
+    : { label: "Hand Built", color: GOLD, bg: GOLD + "18", border: "1px solid " + GOLD + "40" };
 
   return (
     <div
