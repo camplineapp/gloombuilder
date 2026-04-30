@@ -5,6 +5,7 @@ import { loadSeedExercises, addComment, loadComments, deleteComment, updateComme
 import { mapSupabaseExercise } from "@/lib/exercises";
 import type { ExerciseData } from "@/lib/exercises";
 import ThumbsUpIcon from "@/components/ThumbsUpIcon";
+import type { AttachedBeatdown } from "@/components/PreblastComposer";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -67,6 +68,7 @@ interface LibraryScreenProps {
   // V2-4: tap author name → open their Q Profile
   onOpenProfile?: (userId: string | null) => void;
   currentUserId?: string;
+  onSendPreblast?: (bd: AttachedBeatdown) => void;
 }
 
 // ═══ EXERCISE DETAIL SHEET (with scroll lock) ═══
@@ -125,7 +127,7 @@ function ExerciseDetailSheet({ exData, onClose }: { exData: ExerciseData; onClos
   );
 }
 
-export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote, onSteal, onRunBeatdown, onRefresh, onOpenProfile, currentUserId }: LibraryScreenProps) {
+export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote, onSteal, onRunBeatdown, onRefresh, onOpenProfile, currentUserId, onSendPreblast }: LibraryScreenProps) {
   const [libDet, setLibDet] = useState<FeedItem | null>(null);
   const [libSearch, setLibSearch] = useState("");
   const [libT, setLibT] = useState("beatdowns");
@@ -405,13 +407,34 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
           </div>
         </div>
         <div style={{ marginTop: 24 }}>
+          {/* LAYER 1 — PRIMARY */}
+          <button onClick={() => { onSteal?.(String(bd.id), bd.tp as "beatdown" | "exercise"); fl("Saved!"); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save</button>
+          {/* LAYER 2 — SECONDARY ROW (icon pills) — beatdowns with sections only */}
           {bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 && (
-            <button onClick={() => onRunBeatdown?.(bd)} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: "transparent", border: "2px solid " + G, color: G, marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M5 3L17 10L5 17V3Z" fill={G} /></svg>
-              Run This
-            </button>
+            <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+              <button onClick={() => onRunBeatdown?.(bd)} style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.30)", color: G, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>▶</span>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Run This</span>
+              </button>
+              <button
+                onClick={() => onSendPreblast?.({
+                  id: String(bd.id),
+                  title: bd.nm,
+                  duration: bd.dur,
+                  difficulty: bd.d,
+                  sections: bd.secs?.map(s => ({
+                    label: s.label,
+                    color: s.color,
+                    exercises: s.exercises.map(e => ({ name: e.n, reps: e.r ?? null, cadence: e.c ?? null })),
+                  })),
+                })}
+                style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.30)", color: P, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
+              >
+                <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>📣</span>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
+              </button>
+            </div>
           )}
-          <button onClick={() => { onSteal?.(String(bd.id), bd.tp as "beatdown" | "exercise"); fl("Saved!"); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? "rgba(255,255,255,0.04)" : G, color: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? T3 : BG, border: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? "1px solid " + BD : "none" }}>Save</button>
         </div>
         {toastEl}
       </div>

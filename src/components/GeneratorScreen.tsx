@@ -6,6 +6,7 @@ import type { GenConfig, Section, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
 import CopyModal from "@/components/CopyModal";
 import SectionEditor from "@/components/SectionEditor";
+import type { AttachedBeatdown } from "@/components/PreblastComposer";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -38,11 +39,12 @@ interface GeneratorScreenProps {
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
   }) => void;
   profName?: string;
+  onSendPreblast?: (bd: AttachedBeatdown) => void;
   userExercises?: { id: string; nm: string; desc: string; tags: string[]; how: string }[];
   communityExercises?: { nm: string; desc: string; tags: string[]; how: string }[];
 }
 
-export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, userExercises, communityExercises }: GeneratorScreenProps) {
+export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, onSendPreblast, userExercises, communityExercises }: GeneratorScreenProps) {
   const [gs, setGs] = useState(0);
   const [gc, setGc] = useState<GenConfig>({ dur: null, diff: null, sites: [], eq: [] });
   const [gr, setGr] = useState<Section[] | null>(null);
@@ -232,27 +234,52 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
           });
         }} />
 
-        {/* Save + Run This + Backblast */}
+        {/* Action area — Round 3: Layer 1 primary + Layer 2 icon pills */}
         <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
+          {/* LAYER 1 — PRIMARY */}
           <button disabled={saving} onClick={() => {
             if (saving) return; setSaving(true);
             const nm = grT.trim() || "Generated Beatdown";
             const tgs = [gc.dur, ...(gc.sites || []), ...(gc.eq || [])].filter(Boolean) as string[];
             onSave({ nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib });
           }} style={{ fontFamily: F, width: "100%", padding: "20px 0", borderRadius: 14, fontSize: 18, fontWeight: 800, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving..." : "Save"}</button>
-          {onRunThis && !saving && (
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => {
-                setSaving(true);
-                const nm = grT.trim() || "Generated Beatdown";
-                const tgs = [gc.dur, ...(gc.sites || []), ...(gc.eq || [])].filter(Boolean) as string[];
-                const saveData = { nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib };
-                onRunThis(JSON.parse(JSON.stringify(gr!)), nm, gc.dur || "45 min", saveData);
-              }} style={{ fontFamily: F, flex: 1, padding: "16px 0", borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: "pointer", background: "transparent", border: "2px solid " + G, color: G, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M5 3L17 10L5 17V3Z" fill={G} /></svg>
-                Run This
+
+          {/* LAYER 2 — SECONDARY ROW (icon pills) */}
+          {!saving && (
+            <div style={{ display: "flex", gap: 6 }}>
+              {onRunThis && (
+                <button onClick={() => {
+                  setSaving(true);
+                  const nm = grT.trim() || "Generated Beatdown";
+                  const tgs = [gc.dur, ...(gc.sites || []), ...(gc.eq || [])].filter(Boolean) as string[];
+                  const saveData = { nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib };
+                  onRunThis(JSON.parse(JSON.stringify(gr!)), nm, gc.dur || "45 min", saveData);
+                }} style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.30)", color: G, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>▶</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Run This</span>
+                </button>
+              )}
+              <button
+                onClick={() => onSendPreblast?.({
+                  id: "draft",
+                  title: grT || "Untitled beatdown",
+                  duration: gc.dur,
+                  difficulty: DIFFS.find(d => d.id === gc.diff)?.l ?? null,
+                  sections: (gr || []).map(s => ({
+                    label: s.label,
+                    color: s.color,
+                    exercises: s.exercises.map(e => ({ name: e.n, reps: e.r ?? null, cadence: e.c ?? null })),
+                  })),
+                })}
+                style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.30)", color: P, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
+              >
+                <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>📣</span>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
               </button>
-              <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, flex: 1, padding: "16px 0", borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: "pointer", background: A + "12", border: "1px solid " + A + "25", color: A }}>Backblast</button>
+              <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.30)", color: A, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>📓</span>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Backblast</span>
+              </button>
             </div>
           )}
         </div>

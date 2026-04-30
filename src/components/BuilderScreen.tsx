@@ -6,6 +6,7 @@ import type { Section, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
 import CopyModal from "@/components/CopyModal";
 import SectionEditor from "@/components/SectionEditor";
+import type { AttachedBeatdown } from "@/components/PreblastComposer";
 
 const G = "#22c55e";
 const A = "#f59e0b";
@@ -52,6 +53,7 @@ interface BuilderScreenProps {
   onShareBeatdown?: () => void;
   onUnshareBeatdown?: () => void;
   onDeleteBeatdown?: () => void;
+  onSendPreblast?: (bd: AttachedBeatdown) => void;
   userExercises?: { id: string; nm: string; desc: string; tags: string[]; how: string }[];
   communityExercises?: { nm: string; desc: string; tags: string[]; how: string }[];
 }
@@ -64,7 +66,7 @@ function defaultSections(): Section[] {
   ].map(s => normalizeSection(s as Record<string, unknown>));
 }
 
-export default function BuilderScreen({ onClose, backLabel, onSave, editData, onUpdate, onRunThis, onRunBeatdown, onShareBeatdown, onUnshareBeatdown, onDeleteBeatdown, userExercises, communityExercises }: BuilderScreenProps) {
+export default function BuilderScreen({ onClose, backLabel, onSave, editData, onUpdate, onRunThis, onRunBeatdown, onShareBeatdown, onUnshareBeatdown, onDeleteBeatdown, onSendPreblast, userExercises, communityExercises }: BuilderScreenProps) {
   const [bT, setBT] = useState(editData?.nm || "");
   const [bD, setBD] = useState(editData?.desc || "");
   const [bDur, setBDur] = useState<string | null>(editData?.dur || null);
@@ -158,9 +160,11 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
         <button onClick={onClose} style={{ fontFamily: F, color: T3, background: "none", border: "none", cursor: "pointer", fontSize: 17, fontWeight: 600, padding: "8px 0" }}>
           {backLabel || (editData ? "← Locker" : "← Home")}
         </button>
-        <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, background: A + "26", border: "1px solid " + A + "4D", color: A, fontSize: 15, fontWeight: 700, padding: "10px 16px", borderRadius: 10, cursor: "pointer" }}>
-          Backblast
-        </button>
+        {!editData && (
+          <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, background: A + "26", border: "1px solid " + A + "4D", color: A, fontSize: 15, fontWeight: 700, padding: "10px 16px", borderRadius: 10, cursor: "pointer" }}>
+            Backblast
+          </button>
+        )}
       </div>
 
       {/* Beatdown name + description */}
@@ -246,8 +250,9 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
         allEx={allEx}
       />
 
-      {/* Save + Run This */}
+      {/* Action area — Round 3: Layer 1 primary, Layer 2 icon pills, Layer 3 destructive footer */}
       <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
+        {/* LAYER 1 — PRIMARY */}
         <button
           disabled={saving}
           onClick={handleSave}
@@ -255,25 +260,72 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
         >
           {saving ? "Saving..." : (editData ? "Save changes" : "Save")}
         </button>
-        {/* Run This — show in both new and edit mode */}
-        {!saving && (editData ? onRunBeatdown : onRunThis) && (
-          <button
-            onClick={editData ? onRunBeatdown : handleRunThis}
-            style={{ fontFamily: F, width: "100%", padding: "18px 0", borderRadius: 14, fontSize: 17, fontWeight: 700, cursor: "pointer", background: "transparent", border: "2px solid " + G, color: G, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
-          >
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M5 3L17 10L5 17V3Z" fill={G} /></svg>
-            Run This
-          </button>
-        )}
-        {/* Share/Unshare + Delete — edit mode only */}
-        {editData && !saving && (
-          <div style={{ display: "flex", gap: 12, marginTop: 6, paddingTop: 16, borderTop: "1px solid " + BD }}>
-            {!editData.isPublic ? (
-              <button onClick={onShareBeatdown} style={{ fontFamily: F, flex: 1, padding: "14px 0", background: A + "12", color: A, border: "1px solid " + A + "25", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Share to Library</button>
-            ) : (
-              <button onClick={() => setUnshareConfirm(true)} style={{ fontFamily: F, flex: 1, padding: "14px 0", background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Unshare</button>
+
+        {/* LAYER 2 — SECONDARY ROW (icon pills) */}
+        {!saving && (
+          <div style={{ display: "flex", gap: 6 }}>
+            {(editData ? onRunBeatdown : onRunThis) && (
+              <button
+                onClick={editData ? onRunBeatdown : handleRunThis}
+                style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.30)", color: G, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
+              >
+                <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>▶</span>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Run This</span>
+              </button>
             )}
-            <button onClick={onDeleteBeatdown} style={{ fontFamily: F, flex: 1, padding: "14px 0", background: "rgba(255,255,255,0.04)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.20)", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Delete</button>
+            <button
+              onClick={() => onSendPreblast?.({
+                id: editData?.id ?? "draft",
+                title: bT || "Untitled beatdown",
+                duration: bDur,
+                difficulty: DIFFS.find(d => d.id === bDiff)?.l ?? null,
+                sections: secs.map(s => ({
+                  label: s.label,
+                  color: s.color,
+                  exercises: s.exercises.map(e => ({ name: e.n, reps: e.r ?? null, cadence: e.c ?? null })),
+                })),
+              })}
+              style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.30)", color: P, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
+            >
+              <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>📣</span>
+              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
+            </button>
+            {editData && (
+              <button
+                onClick={() => setCopyModal(true)}
+                style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.30)", color: A, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
+              >
+                <span style={{ fontSize: 14, lineHeight: 1, marginBottom: 6 }}>📓</span>
+                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.4, textTransform: "uppercase" }}>Backblast</span>
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* LAYER 3 — DESTRUCTIVE FOOTER (edit mode only) */}
+        {editData && !saving && (
+          <div style={{ marginTop: 18, paddingTop: 12, borderTop: "0.5px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            {editData.isPublic ? (
+              <span
+                onClick={() => setUnshareConfirm(true)}
+                style={{ fontFamily: F, fontSize: 11, fontWeight: 400, color: "rgba(239,68,68,0.7)", cursor: "pointer" }}
+              >
+                Unshare
+              </span>
+            ) : (
+              <span
+                onClick={onShareBeatdown}
+                style={{ fontFamily: F, fontSize: 11, fontWeight: 400, color: "rgba(34,197,94,0.85)", cursor: "pointer" }}
+              >
+                Share to library
+              </span>
+            )}
+            <span
+              onClick={onDeleteBeatdown}
+              style={{ fontFamily: F, fontSize: 11, fontWeight: 400, color: "rgba(239,68,68,0.7)", cursor: "pointer" }}
+            >
+              Delete
+            </span>
           </div>
         )}
       </div>

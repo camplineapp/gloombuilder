@@ -548,7 +548,7 @@ export default function App() {
   if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "live" || vw === "q-profile" || vw === "settings") {
     return (
       <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: vw === "live" ? 0 : 20, paddingBottom: vw === "live" ? 0 : 100, position: "relative" }}>
-        {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onRunThis={async (secs, title, dur, saveData) => {
+        {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onRunThis={async (secs, title, dur, saveData) => {
           // Save to locker WITHOUT resetting view
           if (saveData) {
             const result = await saveBeatdown({ nm: saveData.nm, desc: saveData.desc, d: saveData.d, secs: saveData.secs, tg: saveData.tg, src: saveData.src, dur: saveData.dur, sites: saveData.sites, eq: saveData.eq, isPublic: saveData.share || false });
@@ -557,7 +557,7 @@ export default function App() {
           setLiveBd({ id: "temp", nm: title, dt: "", src: "Generated", d: "medium", desc: "", secs, tg: [dur], isPublic: false });
           setVw("live");
         }} />}
-        {vw === "build" && <BuilderScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} userExercises={lkEx} communityExercises={communityExercises} onRunThis={async (secs, title, dur, saveData) => {
+        {vw === "build" && <BuilderScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} userExercises={lkEx} communityExercises={communityExercises} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onRunThis={async (secs, title, dur, saveData) => {
           if (saveData) {
             const result = await saveBeatdown({ nm: saveData.nm, desc: saveData.desc, d: saveData.d, secs: saveData.secs, tg: saveData.tg, src: saveData.src, dur: saveData.dur, sites: saveData.sites, eq: saveData.eq, isPublic: saveData.share || false });
             if (result) { await loadLocker(); if (saveData.share) await loadLibrary(); fl("Saved!"); }
@@ -600,6 +600,7 @@ export default function App() {
           onShareBeatdown={() => { handleShareBeatdown(editingBd.id); }}
           onUnshareBeatdown={() => { setVw(null); setEditingBd(null); handleUnshareBeatdown(editingBd.id); }}
           onDeleteBeatdown={() => { if (confirm("Delete this beatdown? This can't be undone.")) { setVw(null); setEditingBd(null); handleDeleteBeatdown(editingBd.id); } }}
+          onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }}
         />}
         {vw === "live" && liveBd && <LiveModeScreen
           beatdownTitle={liveBd.nm}
@@ -625,7 +626,6 @@ export default function App() {
           <ProfileScreen onProfileSaved={() => { checkUser(); setVw(null); }} onClose={() => setVw(null)} />
         )}
         {preblastOpen && <PreblastComposer onClose={() => { setPreblastOpen(false); setPreblastBd(null); }} qName={profName || "Q"} ao={profAO || ""} attachedBeatdown={preblastBd} userBeatdowns={lk} />}
-        {preblastOpen && <PreblastComposer onClose={() => { setPreblastOpen(false); setPreblastBd(null); }} qName={profName || "Q"} ao={profAO || ""} attachedBeatdown={preblastBd} userBeatdowns={lk} />}
       {toastEl}
       </div>
     );
@@ -643,7 +643,7 @@ export default function App() {
           onCreateEx={() => setVw("create-ex")}
         />
       )}
-      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} onSteal={handleSteal} onRunBeatdown={handleRunLibraryBeatdown} onRefresh={loadLibrary} onOpenProfile={handleOpenProfile} currentUserId={user.id} />}
+      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} onSteal={handleSteal} onRunBeatdown={handleRunLibraryBeatdown} onRefresh={loadLibrary} onOpenProfile={handleOpenProfile} currentUserId={user.id} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} />}
       {tab === "profile" && user && (
         <QProfileScreen
           userId={user.id}
