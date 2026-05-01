@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import ServiceWorkerManager from "./ServiceWorkerManager";
 export const metadata: Metadata = {
   title: "GloomBuilder",
   description: "Build. Share. Steal. Repeat. A community-first beatdown planning platform for F3 Qs.",
@@ -28,18 +29,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <ServiceWorkerManager />
         {children}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js');
-                });
-              }
-            `,
-          }}
-        />
       </body>
     </html>
   );
