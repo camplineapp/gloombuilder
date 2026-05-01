@@ -65,6 +65,8 @@ interface QProfileScreenProps {
   onOpenSettings?: () => void;
   // V2-4: tap a beatdown card → open it elsewhere (Library detail)
   onOpenBeatdownDetail?: (beatdownId: string) => void;
+  // Item 5B: tap an exercise card → open in edit mode
+  onOpenExerciseDetail?: (exerciseId: string) => void;
   refreshKey?: number;
 }
 
@@ -98,7 +100,7 @@ interface ExerciseRow {
   how_to: string;
   vote_count: number | null;
   created_at: string;
-  is_public: boolean;
+  source: "seed" | "community" | "private";
   body_part: string[] | null;
   inspired_profile: { f3_name: string } | null;
 }
@@ -109,6 +111,7 @@ export default function QProfileScreen({
   onClose,
   onOpenSettings,
   onOpenBeatdownDetail,
+  onOpenExerciseDetail,
   refreshKey,
 }: QProfileScreenProps) {
   const isOwn = userId === currentUserId;
@@ -333,7 +336,11 @@ export default function QProfileScreen({
             <EmptyState isOwn={isOwn} type="exercises" />
           ) : (
             exercises.map((ex) => (
-              <ExerciseCard key={ex.id} ex={ex} />
+              <ExerciseCard
+                key={ex.id}
+                ex={ex}
+                onTap={onOpenExerciseDetail ? () => onOpenExerciseDetail(ex.id) : undefined}
+              />
             ))
           )
         )}
@@ -505,21 +512,26 @@ function BeatdownCard({ bd, onTap }: { bd: BeatdownRow; onTap?: () => void }) {
 }
 
 // Exercise card — V2-Round-4: status stripe + HAND BUILT pill + asymmetric footer
-function ExerciseCard({ ex }: { ex: ExerciseRow }) {
+function ExerciseCard({ ex, onTap }: { ex: ExerciseRow; onTap?: () => void }) {
   const votes = ex.vote_count || 0;
   const date = new Date(ex.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
-  const stripeColor = ex.is_public ? G : "#3a3a40";
+  const isShared = ex.source === "community";
+  const stripeColor = isShared ? G : "#3a3a40";
   const description = ex.description || ex.how_to;
 
   return (
-    <div style={{
-      background: CARD_BG,
-      border: `1px solid ${BD}`,
-      borderLeft: `3px solid ${stripeColor}`,
-      borderRadius: 12,
-      padding: "13px 15px",
-      marginBottom: 10,
-    }}>
+    <div
+      onClick={onTap}
+      style={{
+        background: CARD_BG,
+        border: `1px solid ${BD}`,
+        borderLeft: `3px solid ${stripeColor}`,
+        borderRadius: 12,
+        padding: "13px 15px",
+        marginBottom: 10,
+        cursor: onTap ? "pointer" : "default",
+      }}
+    >
       {/* Title + HAND BUILT pill */}
       <div style={{
         display: "flex",
@@ -564,8 +576,8 @@ function ExerciseCard({ ex }: { ex: ExerciseRow }) {
         }}>{description}</div>
       )}
 
-      {/* Footer — asymmetric by is_public */}
-      {ex.is_public ? (
+      {/* Footer — asymmetric by source */}
+      {isShared ? (
         <div style={{
           display: "flex",
           alignItems: "center",

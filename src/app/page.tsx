@@ -163,6 +163,7 @@ export default function App() {
   const [tab, setTab] = useState<"home" | "library" | "profile">("home");
   const [vw, setVw] = useState<string | null>(null);
   const [editingBd, setEditingBd] = useState<LockerBeatdown | null>(null);
+  const [editingEx, setEditingEx] = useState<LockerExercise | null>(null);
   const [liveBd, setLiveBd] = useState<LockerBeatdown | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
@@ -482,28 +483,31 @@ export default function App() {
     }
   };
 
-  const handleSaveExercise = async (ex: { nm: string; tags: string[]; how: string; desc: string; share: boolean }) => {
-    const result = await saveExercise({
-      nm: ex.nm,
-      how: ex.how,
-      desc: ex.desc,
-      tags: ex.tags,
-      isPublic: ex.share,
-    });
+  const handleSaveExercise = async (ex: { nm: string; tags: string[]; how: string; desc: string; share: boolean }): Promise<void> => {
+    setSavingInFlight(true);
+    try {
+      const result = await saveExercise({
+        nm: ex.nm,
+        how: ex.how,
+        desc: ex.desc,
+        tags: ex.tags,
+        isPublic: ex.share,
+      });
 
-    if (result) {
-      await loadLocker();
-      if (ex.share) {
-        await loadLibrary();
-        fl("Saved! Shared to community!");
+      if (result) {
+        await loadLocker();
+        if (ex.share) {
+          await loadLibrary();
+          fl("Saved! Shared to community!");
+        } else {
+          fl("Saved!");
+        }
       } else {
-        fl("Saved!");
+        fl("Error saving — try again");
       }
-    } else {
-      fl("Error saving — try again");
+    } finally {
+      setSavingInFlight(false);
     }
-    setVw(null);
-    setTab("home");
   };
 
   const handleDeleteBeatdown = async (id: string) => {
@@ -546,6 +550,9 @@ export default function App() {
     const success = await shareExercise(id);
     if (success) {
       setLkEx(lkEx.map(e => e.id === id ? { ...e, shared: true } : e));
+      if (editingEx && editingEx.id === id) {
+        setEditingEx({ ...editingEx, shared: true });
+      }
       await loadLibrary();
       fl("Shared to community!");
     } else {
@@ -568,6 +575,9 @@ export default function App() {
     const success = await unshareExercise(id);
     if (success) {
       setLkEx(lkEx.map(e => e.id === id ? { ...e, shared: false } : e));
+      if (editingEx && editingEx.id === id) {
+        setEditingEx({ ...editingEx, shared: false });
+      }
       await loadLibrary();
       fl("Removed from Library");
     } else {
@@ -575,14 +585,21 @@ export default function App() {
     }
   };
 
-  const handleUpdateExercise = async (id: string, data: { nm: string; desc?: string; how: string; tags: string[] }) => {
-    const success = await updateExercise(id, data);
-    if (success) {
-      await loadLocker();
-      await loadLibrary();
-      fl("Exercise saved!");
-    } else {
-      fl("Error saving");
+  const handleUpdateExercise = async (id: string, data: { nm: string; desc?: string; how: string; tags: string[] }): Promise<boolean> => {
+    setSavingInFlight(true);
+    try {
+      const success = await updateExercise(id, data);
+      if (success) {
+        await loadLocker();
+        await loadLibrary();
+        fl("Exercise saved!");
+        return true;
+      } else {
+        fl("Error saving");
+        return false;
+      }
+    } finally {
+      setSavingInFlight(false);
     }
   };
 
@@ -696,8 +713,23 @@ export default function App() {
     setVw("edit-bd");
   };
 
+  // Item 5B: Q Profile exercise card tap → open Edit Exercise form (own only)
+  const handleOpenExerciseDetail = (exerciseId: string) => {
+    if (viewingUserId !== null) {
+      fl("Coming soon");
+      return;
+    }
+    const found = lkEx.find(e => e.id === exerciseId);
+    if (!found) {
+      fl("Exercise not found");
+      return;
+    }
+    setEditingEx(found);
+    setVw("edit-ex");
+  };
+
   // ===== FULL-SCREEN VIEWS =====
-  if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "live" || vw === "q-profile" || vw === "settings") {
+  if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "edit-ex" || vw === "live" || vw === "q-profile" || vw === "settings") {
     return (
       <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: vw === "live" ? 0 : 20, paddingBottom: vw === "live" ? 0 : 100, position: "relative" }}>
         {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onOpenCopyModal={(ctx) => { setCopyModalContext({ source: "generator", ...ctx }); setCopyModalOpen(true); }} onRunThis={async (secs, title, dur, saveData) => {
@@ -756,6 +788,28 @@ export default function App() {
           onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }}
           onOpenCopyModal={(ctx) => { setCopyModalContext({ source: "builder", ...ctx }); setCopyModalOpen(true); }}
         />}
+        {vw === "edit-ex" && editingEx && <CreateExerciseScreen
+          onClose={() => { setVw(null); setEditingEx(null); }}
+          onSave={handleSaveExercise}
+          editData={{
+            id: editingEx.id,
+            nm: editingEx.nm,
+            desc: editingEx.desc,
+            how: editingEx.how,
+            tags: editingEx.tags,
+            isPublic: editingEx.shared || false,
+          }}
+          onUpdate={handleUpdateExercise}
+          onShareExercise={() => handleShareExercise(editingEx.id)}
+          onUnshareExercise={() => handleUnshareExercise(editingEx.id)}
+          onDeleteExercise={() => {
+            if (confirm("Delete this exercise? This can't be undone.")) {
+              setVw(null);
+              setEditingEx(null);
+              handleDeleteExercise(editingEx.id);
+            }
+          }}
+        />}
         {vw === "live" && liveBd && <LiveModeScreen
           beatdownTitle={liveBd.nm}
           qName={profName || "Q"}
@@ -775,6 +829,7 @@ export default function App() {
             onClose={() => { setVw(null); setViewingUserId(null); }}
             onOpenSettings={viewingUserId ? undefined : () => { setVw(null); setTab("profile"); }}
             onOpenBeatdownDetail={handleOpenBeatdownDetail}
+            onOpenExerciseDetail={handleOpenExerciseDetail}
           refreshKey={profileRefreshKey}
           />
         )}
@@ -818,6 +873,7 @@ export default function App() {
           onClose={() => setTab("home")}
           onOpenSettings={() => setVw("settings")}
           onOpenBeatdownDetail={handleOpenBeatdownDetail}
+          onOpenExerciseDetail={handleOpenExerciseDetail}
           refreshKey={profileRefreshKey}
         />
       )}

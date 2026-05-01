@@ -21,29 +21,43 @@ const ist: React.CSSProperties = {
 
 interface CreateExerciseScreenProps {
   onClose: () => void;
-  onSave: (exercise: { nm: string; tags: string[]; how: string; desc: string; share: boolean }) => void;
+  onSave: (exercise: { nm: string; tags: string[]; how: string; desc: string; share: boolean }) => Promise<void>;
+  editData?: {
+    id: string;
+    nm: string;
+    desc: string;
+    how: string;
+    tags: string[];
+    isPublic: boolean;
+  };
+  onUpdate?: (id: string, data: { nm: string; desc?: string; how: string; tags: string[] }) => Promise<boolean>;
+  onShareExercise?: () => void;
+  onUnshareExercise?: () => void;
+  onDeleteExercise?: () => void;
 }
 
-export default function CreateExerciseScreen({ onClose, onSave }: CreateExerciseScreenProps) {
+export default function CreateExerciseScreen({ onClose, onSave, editData, onUpdate, onShareExercise, onUnshareExercise, onDeleteExercise }: CreateExerciseScreenProps) {
   const draftKey = DRAFT_KEYS.exerciseNew;
   type ExerciseDraft = {
     cxN: string; cxDesc: string; cxH: string; cxT: string[]; cxShare: boolean;
   };
   const initialDraft = (() => {
     if (typeof window === "undefined") return null;
+    if (editData) return null; // edit mode skips drafts entirely
     return loadDraft<ExerciseDraft>(draftKey);
   })();
 
-  const [cxN, setCxN] = useState(initialDraft?.data.cxN ?? "");
-  const [cxDesc, setCxDesc] = useState(initialDraft?.data.cxDesc ?? "");
-  const [cxH, setCxH] = useState(initialDraft?.data.cxH ?? "");
-  const [cxT, setCxT] = useState<string[]>(initialDraft?.data.cxT ?? []);
-  const [cxShare, setCxShare] = useState(initialDraft?.data.cxShare ?? false);
+  const [cxN, setCxN] = useState(editData?.nm ?? initialDraft?.data.cxN ?? "");
+  const [cxDesc, setCxDesc] = useState(editData?.desc ?? initialDraft?.data.cxDesc ?? "");
+  const [cxH, setCxH] = useState(editData?.how ?? initialDraft?.data.cxH ?? "");
+  const [cxT, setCxT] = useState<string[]>(editData?.tags ?? initialDraft?.data.cxT ?? []);
+  const [cxShare, setCxShare] = useState(editData?.isPublic ?? initialDraft?.data.cxShare ?? false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
   const [draftRestored, setDraftRestored] = useState<{ timeAgo: string } | null>(null);
 
   useEffect(() => {
+    if (editData) return;
     if (initialDraft) {
       setDraftRestored({ timeAgo: formatTimeAgo(initialDraft.savedAt) });
     }
@@ -51,11 +65,12 @@ export default function CreateExerciseScreen({ onClose, onSave }: CreateExercise
   }, []);
 
   useEffect(() => {
+    if (editData) return; // no autosave in edit mode
     const timer = setTimeout(() => {
       saveDraft<ExerciseDraft>(draftKey, { cxN, cxDesc, cxH, cxT, cxShare });
     }, 800);
     return () => clearTimeout(timer);
-  }, [cxN, cxDesc, cxH, cxT, cxShare, draftKey]);
+  }, [cxN, cxDesc, cxH, cxT, cxShare, draftKey, editData]);
 
   const handleDiscardDraft = () => {
     clearDraft(draftKey);
@@ -68,6 +83,23 @@ export default function CreateExerciseScreen({ onClose, onSave }: CreateExercise
   };
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
+
+  const handleSave = async () => {
+    if (saving) return;
+    if (!cxN.trim()) { fl("Name required"); return; }
+    setSaving(true);
+    try {
+      if (editData && onUpdate) {
+        await onUpdate(editData.id, { nm: cxN, desc: cxDesc, how: cxH, tags: cxT });
+      } else {
+        await onSave({ nm: cxN, tags: cxT, how: cxH, desc: cxDesc, share: cxShare });
+        clearDraft(draftKey);
+        setDraftRestored(null);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const toastEl = toast ? (
     <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: G, color: BG, padding: "10px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: F, zIndex: 300 }}>{toast}</div>
@@ -82,9 +114,9 @@ export default function CreateExerciseScreen({ onClose, onSave }: CreateExercise
           <button onClick={handleDiscardDraft} style={{ fontFamily: F, background: "transparent", border: "1px solid rgba(245,158,11,0.40)", color: A, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 8, cursor: "pointer" }}>Discard</button>
         </div>
       )}
-      <button onClick={onClose} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14, marginBottom: 20 }}>← Home</button>
-      <div style={{ fontSize: 24, fontWeight: 800, color: T1, marginBottom: 4 }}>Create exercise</div>
-      <div style={{ fontSize: 13, color: T4, marginBottom: 24 }}>Add your own exercise</div>
+      <button onClick={onClose} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14, marginBottom: 20 }}>{editData ? "← Locker" : "← Home"}</button>
+      <div style={{ fontSize: 24, fontWeight: 800, color: T1, marginBottom: 4 }}>{editData ? "Edit exercise" : "Create exercise"}</div>
+      <div style={{ fontSize: 13, color: T4, marginBottom: 24 }}>{editData ? "Update your exercise details" : "Add your own exercise"}</div>
 
       {/* Exercise name */}
       <div style={{ marginBottom: 14 }}>
@@ -115,21 +147,28 @@ export default function CreateExerciseScreen({ onClose, onSave }: CreateExercise
         </div>
       </div>
 
-      {/* Share toggle */}
-      <div onClick={() => setCxShare(!cxShare)} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, padding: "10px 14px", background: cxShare ? G + "10" : CD, border: "1px solid " + (cxShare ? G + "25" : BD), borderRadius: 10, cursor: "pointer" }}>
-        <div style={{ width: 18, height: 18, borderRadius: 4, border: "2px solid " + (cxShare ? G : T5), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: BG, background: cxShare ? G : "transparent" }}>{cxShare ? "✓" : ""}</div>
-        <span style={{ fontSize: 13, color: cxShare ? G : T4 }}>Share to community library</span>
-      </div>
+      {/* Share toggle — hidden in edit mode (sharing controlled via Layer 3 footer) */}
+      {!editData && (
+        <div onClick={() => setCxShare(!cxShare)} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, padding: "10px 14px", background: cxShare ? G + "10" : CD, border: "1px solid " + (cxShare ? G + "25" : BD), borderRadius: 10, cursor: "pointer" }}>
+          <div style={{ width: 18, height: 18, borderRadius: 4, border: "2px solid " + (cxShare ? G : T5), display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, color: BG, background: cxShare ? G : "transparent" }}>{cxShare ? "✓" : ""}</div>
+          <span style={{ fontSize: 13, color: cxShare ? G : T4 }}>Share to community library</span>
+        </div>
+      )}
 
       {/* Save */}
-      <button disabled={saving} onClick={() => {
-        if (saving) return;
-        if (!cxN.trim()) { fl("Name required"); return; }
-        setSaving(true);
-        clearDraft(draftKey);
-        setDraftRestored(null);
-        onSave({ nm: cxN, tags: cxT, how: cxH, desc: cxDesc, share: cxShare });
-      }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving..." : "Save exercise"}</button>
+      <button disabled={saving} onClick={handleSave} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving..." : (editData ? "Save changes" : "Save exercise")}</button>
+
+      {/* Layer 3 destructive footer (edit mode only) */}
+      {editData && !saving && (
+        <div style={{ marginTop: 18, paddingTop: 12, borderTop: "0.5px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {editData.isPublic ? (
+            <span onClick={() => onUnshareExercise?.()} style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: "#ef4444", cursor: "pointer" }}>Unshare</span>
+          ) : (
+            <span onClick={() => onShareExercise?.()} style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: "#22c55e", cursor: "pointer" }}>Share to library</span>
+          )}
+          <span onClick={() => onDeleteExercise?.()} style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: "#ef4444", cursor: "pointer" }}>Delete</span>
+        </div>
+      )}
     </div>
   );
 }
