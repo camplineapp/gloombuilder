@@ -62,6 +62,7 @@ export interface SharedItem {
   cm: number;
   ds: string;
   dt: string;
+  createdAt?: string;  // Item 5: raw ISO for unified-feed sort
   tp: string;
   tg?: string[];
   et?: string[];
@@ -111,6 +112,7 @@ function dbToShared(row: Record<string, unknown>): SharedItem {
     cm: (row.comment_count as number) || 0,
     ds: (row.description as string) || "",
     dt: new Date(row.created_at as string).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
+    createdAt: row.created_at as string | undefined,
     src: (row.generated as boolean) ? "GloomBuilder" : "Hand Built",
     tp: "beatdown",
     tg: (row.tags as string[]) || [],
@@ -255,6 +257,7 @@ export default function App() {
         ds: (row.description as string) || (row.how_to as string) || "",
         howTo: (row.how_to as string) || "",
         dt: new Date(row.created_at as string).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }),
+        createdAt: row.created_at as string | undefined,
         src: "Hand Built",
         tp: "exercise",
         et: mapBodyPartTags(row as Record<string, unknown>),
