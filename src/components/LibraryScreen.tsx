@@ -69,6 +69,9 @@ interface LibraryScreenProps {
   onOpenProfile?: (userId: string | null) => void;
   currentUserId?: string;
   onSendPreblast?: (bd: AttachedBeatdown) => void;
+  // Item 3: hardware back coordination
+  onLibDetChange?: (open: boolean) => void;
+  registerBackHandler?: (handler: () => void) => void;
 }
 
 // ═══ EXERCISE DETAIL SHEET (with scroll lock) ═══
@@ -127,7 +130,7 @@ function ExerciseDetailSheet({ exData, onClose }: { exData: ExerciseData; onClos
   );
 }
 
-export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote, onSteal, onRunBeatdown, onRefresh, onOpenProfile, currentUserId, onSendPreblast }: LibraryScreenProps) {
+export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote, onSteal, onRunBeatdown, onRefresh, onOpenProfile, currentUserId, onSendPreblast, onLibDetChange, registerBackHandler }: LibraryScreenProps) {
   const [libDet, setLibDet] = useState<FeedItem | null>(null);
   const [libSearch, setLibSearch] = useState("");
   const [libT, setLibT] = useState("beatdowns");
@@ -194,6 +197,21 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
       setDbComments([]);
     }
   }, [libDet?.id]);
+
+  // Item 3: notify parent when libDet open state changes
+  useEffect(() => {
+    onLibDetChange?.(libDet !== null);
+  }, [libDet, onLibDetChange]);
+
+  // Item 3: register back handler so parent's popstate can close libDet
+  useEffect(() => {
+    if (registerBackHandler) {
+      registerBackHandler(() => {
+        setLibDet(null);
+        setShowAllCmt(false);
+      });
+    }
+  }, [registerBackHandler]);
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 

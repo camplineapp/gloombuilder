@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import { EX, DIFFS, SITES, EQUIP, mapSupabaseExercise, normalizeSection } from "@/lib/exercises";
 import type { Section, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
-import CopyModal from "@/components/CopyModal";
 import SectionEditor from "@/components/SectionEditor";
 import type { AttachedBeatdown } from "@/components/PreblastComposer";
 import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft, formatTimeAgo } from "@/lib/drafts";
@@ -56,6 +55,7 @@ interface BuilderScreenProps {
   onDeleteBeatdown?: () => void;
   onSendPreblast?: (bd: AttachedBeatdown) => void;
   onSavedNew?: (newId: string) => void;
+  onOpenCopyModal?: (ctx: { secs: Section[]; beatdownName: string; beatdownDesc: string }) => void;
   profName?: string;
   userExercises?: { id: string; nm: string; desc: string; tags: string[]; how: string }[];
   communityExercises?: { nm: string; desc: string; tags: string[]; how: string }[];
@@ -69,7 +69,7 @@ function defaultSections(): Section[] {
   ].map(s => normalizeSection(s as Record<string, unknown>));
 }
 
-export default function BuilderScreen({ onClose, backLabel, onSave, editData, onUpdate, onRunThis, onRunBeatdown, onShareBeatdown, onUnshareBeatdown, onDeleteBeatdown, onSendPreblast, onSavedNew, profName, userExercises, communityExercises }: BuilderScreenProps) {
+export default function BuilderScreen({ onClose, backLabel, onSave, editData, onUpdate, onRunThis, onRunBeatdown, onShareBeatdown, onUnshareBeatdown, onDeleteBeatdown, onSendPreblast, onSavedNew, onOpenCopyModal, profName, userExercises, communityExercises }: BuilderScreenProps) {
   const draftKey = editData ? DRAFT_KEYS.builderEdit(editData.id) : DRAFT_KEYS.builderNew;
   type BuilderDraft = {
     bT: string; bD: string; bDur: string | null; bDiff: string | null;
@@ -98,7 +98,6 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
-  const [copyModal, setCopyModal] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [unshareConfirm, setUnshareConfirm] = useState(false);
   const [draftRestored, setDraftRestored] = useState<{ timeAgo: string } | null>(null);
@@ -207,8 +206,6 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
 
   return (
     <div style={{ padding: "0 24px" }}>
-      {/* Copy Modal */}
-      {copyModal && <CopyModal secs={secs} beatdownName={bT || "Untitled"} beatdownDesc={bD} qName={profName || "Q"} onClose={() => setCopyModal(false)} onToast={fl} />}
       {toastEl}
 
       {/* Draft restored banner */}
@@ -350,7 +347,7 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
               <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
             </button>
             <button
-              onClick={() => setCopyModal(true)}
+              onClick={() => onOpenCopyModal?.({ secs, beatdownName: bT || "Untitled", beatdownDesc: bD })}
               style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.30)", color: A, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
             >
               <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📓</span>

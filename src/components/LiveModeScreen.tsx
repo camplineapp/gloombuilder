@@ -744,9 +744,11 @@ interface LiveModeScreenProps {
   inspiredBy?: string;
   userExercises?: { nm: string; desc: string; tags: string[]; how: string }[];
   onClose: () => void;
+  onLiveActiveChange?: (active: boolean) => void;
+  registerBackHandler?: (handler: () => void) => void;
 }
 
-export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sections, inspiredBy, userExercises, onClose }: LiveModeScreenProps) {
+export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sections, inspiredBy, userExercises, onClose, onLiveActiveChange, registerBackHandler }: LiveModeScreenProps) {
   const [seedEx, setSeedEx] = useState<ExerciseData[]>(EX);
   const exercises = flattenBeatdown(sections, seedEx);
   const [screen, setScreen] = useState<"prelaunch" | "exercise" | "complete" | "review">("prelaunch");
@@ -804,6 +806,22 @@ export default function LiveModeScreen({ beatdownTitle, qName, ao, duration, sec
     }
     return () => { wakeLockRef.current?.release?.().catch(() => {}); };
   }, [screen]);
+
+  // Item 3: notify parent when entering/leaving the active workout state
+  useEffect(() => {
+    onLiveActiveChange?.(screen === "exercise");
+  }, [screen, onLiveActiveChange]);
+
+  // Item 3: register back handler so parent's popstate can trigger exit confirm
+  useEffect(() => {
+    if (registerBackHandler) {
+      registerBackHandler(() => {
+        if (screen === "exercise") {
+          setShowExitConfirm(true);
+        }
+      });
+    }
+  }, [screen, registerBackHandler]);
 
   const startBeatdown = () => {
     setCurrentIndex(0);

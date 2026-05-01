@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase";
 import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, unshareBeatdown, unshareExercise, addVote, removeVote, loadUserVotes, stealBeatdown, stealExercise, updateExercise, updateBeatdown  } from "@/lib/db";
 import type { User } from "@supabase/supabase-js";
@@ -17,6 +17,7 @@ import CreateExerciseScreen from "@/components/CreateExerciseScreen";
 import LiveModeScreen from "@/components/LiveModeScreen";
 import QProfileScreen from "@/components/QProfileScreen";
 import PreblastComposer, { type AttachedBeatdown } from "@/components/PreblastComposer";
+import CopyModal from "@/components/CopyModal";
 
 export interface LockerBeatdown {
   id: string;
@@ -184,6 +185,27 @@ export default function App() {
   const [sharedItems, setSharedItems] = useState<SharedItem[]>([]);
   const [userVotes, setUserVotes] = useState<Set<string>>(new Set());
 
+  // Item 3: lifted modal states (hardware back support)
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [copyModalContext, setCopyModalContext] = useState<{
+    source: "builder" | "generator" | "library";
+    secs: Section[];
+    beatdownName: string;
+    beatdownDesc: string;
+    inspiredBy?: string;
+  } | null>(null);
+
+  // Item 3: tracking state for child-internal modals (callbacks from children)
+  const [libDetOpen, setLibDetOpen] = useState(false);
+  const [liveActive, setLiveActive] = useState(false);
+
+  // Item 3: saving-in-flight guard for popstate
+  const [savingInFlight, setSavingInFlight] = useState(false);
+
+  // Item 3: refs for callback-driven children
+  const libraryCloseRequestRef = useRef<(() => void) | null>(null);
+  const liveBackRequestRef = useRef<(() => void) | null>(null);
+
   const supabase = createClient();
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
@@ -271,6 +293,125 @@ export default function App() {
     }
   }, [user, loadLocker, loadLibrary]);
 
+  // Item 3: pushState whenever a back-able state opens — keeps history stack aligned
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (preblastOpen) window.history.pushState({ gb: "preblast" }, "");
+  }, [preblastOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (copyModalOpen) window.history.pushState({ gb: "copyModal" }, "");
+  }, [copyModalOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (libDetOpen) window.history.pushState({ gb: "libDet" }, "");
+  }, [libDetOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (vw !== null) window.history.pushState({ gb: "vw:" + vw }, "");
+  }, [vw]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (tab !== "home") window.history.pushState({ gb: "tab:" + tab }, "");
+  }, [tab]);
+
+  // Item 3: centralized popstate handler — Android hardware back routing
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.history.replaceState({ gb: "root" }, "");
+
+    const onPopState = (_e: PopStateEvent) => {
+      // Saving in flight — silently re-push and ignore
+      if (savingInFlight) {
+        window.history.pushState({ gb: "guard" }, "");
+        return;
+      }
+
+      // Priority order: most-recently-opened thing closes first
+
+      // 1. Preblast composer (overlay above everything)
+      if (preblastOpen) {
+        setPreblastOpen(false);
+        setPreblastBd(null);
+        window.history.pushState({ gb: "level" }, "");
+        return;
+      }
+
+      // 2. Copy modal (Backblast modal, lifted to page.tsx)
+      if (copyModalOpen) {
+        setCopyModalOpen(false);
+        setCopyModalContext(null);
+        window.history.pushState({ gb: "level" }, "");
+        return;
+      }
+
+      // 3. Library detail view (internal to LibraryScreen — request close via callback)
+      if (libDetOpen && tab === "library") {
+        libraryCloseRequestRef.current?.();
+        window.history.pushState({ gb: "level" }, "");
+        return;
+      }
+
+      // 4. Live Mode active workout — request exit confirm via callback
+      if (vw === "live" && liveActive) {
+        liveBackRequestRef.current?.();
+        window.history.pushState({ gb: "level" }, "");
+        return;
+      }
+
+      // 5. Full-screen views (vw !== null) — replicate existing close handlers
+      if (vw === "live") {
+        setVw(null);
+        setLiveBd(null);
+        window.history.pushState({ gb: "level" }, "");
+        return;
+      }
+      if (vw === "edit-bd") {
+        if (editFromQProfile) {
+          setEditFromQProfile(false);
+          setEditingBd(null);
+          setVw("q-profile");
+        } else {
+          setVw(null);
+          setEditingBd(null);
+        }
+        window.history.pushState({ gb: "level" }, "");
+        return;
+      }
+      if (vw === "q-profile") {
+        setVw(null);
+        setViewingUserId(null);
+        window.history.pushState({ gb: "level" }, "");
+        return;
+      }
+      if (vw !== null) {
+        setVw(null);
+        window.history.pushState({ gb: "level" }, "");
+        return;
+      }
+
+      // 6. Tab navigation (vw === null) — Library or Profile back to Home
+      if (tab === "library" || tab === "profile") {
+        setTab("home");
+        window.history.pushState({ gb: "level" }, "");
+        return;
+      }
+
+      // 7. Already at root — fall through to OS exit
+    };
+
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    preblastOpen, copyModalOpen, libDetOpen, vw, liveActive,
+    tab, editFromQProfile, savingInFlight,
+  ]);
+
   if (checking) {
     return (
       <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -305,31 +446,36 @@ export default function App() {
   };
 
   const handleSaveBeatdown = async (bd: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean }): Promise<string | null> => {
-    const result = await saveBeatdown({
-      nm: bd.nm,
-      desc: bd.desc,
-      d: bd.d,
-      secs: bd.secs,
-      tg: bd.tg,
-      src: bd.src,
-      dur: bd.dur,
-      sites: bd.sites,
-      eq: bd.eq,
-      isPublic: bd.share || false,
-    });
+    setSavingInFlight(true);
+    try {
+      const result = await saveBeatdown({
+        nm: bd.nm,
+        desc: bd.desc,
+        d: bd.d,
+        secs: bd.secs,
+        tg: bd.tg,
+        src: bd.src,
+        dur: bd.dur,
+        sites: bd.sites,
+        eq: bd.eq,
+        isPublic: bd.share || false,
+      });
 
-    if (result) {
-      await loadLocker();
-      if (bd.share) {
-        await loadLibrary();
-        fl("Saved! Shared to community!");
+      if (result) {
+        await loadLocker();
+        if (bd.share) {
+          await loadLibrary();
+          fl("Saved! Shared to community!");
+        } else {
+          fl("Saved!");
+        }
+        return (result as { id?: string }).id || null;
       } else {
-        fl("Saved!");
+        fl("Error saving — try again");
+        return null;
       }
-      return (result as { id?: string }).id || null;
-    } else {
-      fl("Error saving — try again");
-      return null;
+    } finally {
+      setSavingInFlight(false);
     }
   };
 
@@ -467,16 +613,21 @@ export default function App() {
   };
 
   const handleUpdateBeatdown = async (id: string, data: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; dur: string | null; sites: string[]; eq: string[] }): Promise<boolean> => {
-    const durNum = data.dur ? parseInt(data.dur) : null;
-    const success = await updateBeatdown(id, { nm: data.nm, desc: data.desc, d: data.d, dur: durNum, siteFeatures: data.sites, equipment: data.eq, tags: data.tg, sections: data.secs });
-    if (success) {
-      await loadLocker();
-      await loadLibrary();
-      fl("Beatdown saved!");
-      return true;
-    } else {
-      fl("Error saving");
-      return false;
+    setSavingInFlight(true);
+    try {
+      const durNum = data.dur ? parseInt(data.dur) : null;
+      const success = await updateBeatdown(id, { nm: data.nm, desc: data.desc, d: data.d, dur: durNum, siteFeatures: data.sites, equipment: data.eq, tags: data.tg, sections: data.secs });
+      if (success) {
+        await loadLocker();
+        await loadLibrary();
+        fl("Beatdown saved!");
+        return true;
+      } else {
+        fl("Error saving");
+        return false;
+      }
+    } finally {
+      setSavingInFlight(false);
     }
   };
 
@@ -546,7 +697,7 @@ export default function App() {
   if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "live" || vw === "q-profile" || vw === "settings") {
     return (
       <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: vw === "live" ? 0 : 20, paddingBottom: vw === "live" ? 0 : 100, position: "relative" }}>
-        {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onRunThis={async (secs, title, dur, saveData) => {
+        {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onOpenCopyModal={(ctx) => { setCopyModalContext({ source: "generator", ...ctx }); setCopyModalOpen(true); }} onRunThis={async (secs, title, dur, saveData) => {
           // Save to locker WITHOUT resetting view
           if (saveData) {
             const result = await saveBeatdown({ nm: saveData.nm, desc: saveData.desc, d: saveData.d, secs: saveData.secs, tg: saveData.tg, src: saveData.src, dur: saveData.dur, sites: saveData.sites, eq: saveData.eq, isPublic: saveData.share || false });
@@ -555,7 +706,7 @@ export default function App() {
           setLiveBd({ id: "temp", nm: title, dt: "", src: "Generated", d: "medium", desc: "", secs, tg: [dur], isPublic: false });
           setVw("live");
         }} />}
-        {vw === "build" && <BuilderScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onSavedNew={(newId) => { const justSaved = lk.find(b => b.id === newId); if (justSaved) { setEditingBd(justSaved); setVw("edit-bd"); } }} onRunThis={async (secs, title, dur, saveData) => {
+        {vw === "build" && <BuilderScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onOpenCopyModal={(ctx) => { setCopyModalContext({ source: "builder", ...ctx }); setCopyModalOpen(true); }} onSavedNew={(newId) => { const justSaved = lk.find(b => b.id === newId); if (justSaved) { setEditingBd(justSaved); setVw("edit-bd"); } }} onRunThis={async (secs, title, dur, saveData) => {
           if (saveData) {
             const result = await saveBeatdown({ nm: saveData.nm, desc: saveData.desc, d: saveData.d, secs: saveData.secs, tg: saveData.tg, src: saveData.src, dur: saveData.dur, sites: saveData.sites, eq: saveData.eq, isPublic: saveData.share || false });
             if (result) { await loadLocker(); if (saveData.share) await loadLibrary(); fl("Saved!"); }
@@ -600,6 +751,7 @@ export default function App() {
           onUnshareBeatdown={() => { setVw(null); setEditingBd(null); handleUnshareBeatdown(editingBd.id); }}
           onDeleteBeatdown={() => { if (confirm("Delete this beatdown? This can't be undone.")) { setVw(null); setEditingBd(null); handleDeleteBeatdown(editingBd.id); } }}
           onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }}
+          onOpenCopyModal={(ctx) => { setCopyModalContext({ source: "builder", ...ctx }); setCopyModalOpen(true); }}
         />}
         {vw === "live" && liveBd && <LiveModeScreen
           beatdownTitle={liveBd.nm}
@@ -610,6 +762,8 @@ export default function App() {
           inspiredBy={liveBd.inspiredBy}
           userExercises={lkEx}
           onClose={() => { setVw(null); setLiveBd(null); }}
+          onLiveActiveChange={(active) => setLiveActive(active)}
+          registerBackHandler={(handler) => { liveBackRequestRef.current = handler; }}
         />}
         {vw === "q-profile" && user && (
           <QProfileScreen
@@ -625,6 +779,17 @@ export default function App() {
           <ProfileScreen onProfileSaved={() => { checkUser(); setVw(null); }} onClose={() => setVw(null)} />
         )}
         {preblastOpen && <PreblastComposer onClose={() => { setPreblastOpen(false); setPreblastBd(null); }} qName={profName || "Q"} ao={profAO || ""} attachedBeatdown={preblastBd} userBeatdowns={lk} />}
+        {copyModalOpen && copyModalContext && (
+          <CopyModal
+            secs={copyModalContext.secs}
+            beatdownName={copyModalContext.beatdownName}
+            beatdownDesc={copyModalContext.beatdownDesc}
+            qName={profName || "Q"}
+            inspiredBy={copyModalContext.inspiredBy}
+            onClose={() => { setCopyModalOpen(false); setCopyModalContext(null); }}
+            onToast={fl}
+          />
+        )}
       {toastEl}
       </div>
     );
@@ -642,7 +807,7 @@ export default function App() {
           onCreateEx={() => setVw("create-ex")}
         />
       )}
-      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} onSteal={handleSteal} onRunBeatdown={handleRunLibraryBeatdown} onRefresh={loadLibrary} onOpenProfile={handleOpenProfile} currentUserId={user.id} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} />}
+      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} onSteal={handleSteal} onRunBeatdown={handleRunLibraryBeatdown} onRefresh={loadLibrary} onOpenProfile={handleOpenProfile} currentUserId={user.id} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onLibDetChange={(open) => setLibDetOpen(open)} registerBackHandler={(handler) => { libraryCloseRequestRef.current = handler; }} />}
       {tab === "profile" && user && (
         <QProfileScreen
           userId={user.id}
@@ -655,6 +820,17 @@ export default function App() {
       )}
             <BottomNav active={tab} onTabChange={(t) => { setTab(t); setVw(null); }} />
       {preblastOpen && <PreblastComposer onClose={() => { setPreblastOpen(false); setPreblastBd(null); }} qName={profName || "Q"} ao={profAO || ""} attachedBeatdown={preblastBd} userBeatdowns={lk} />}
+      {copyModalOpen && copyModalContext && (
+        <CopyModal
+          secs={copyModalContext.secs}
+          beatdownName={copyModalContext.beatdownName}
+          beatdownDesc={copyModalContext.beatdownDesc}
+          qName={profName || "Q"}
+          inspiredBy={copyModalContext.inspiredBy}
+          onClose={() => { setCopyModalOpen(false); setCopyModalContext(null); }}
+          onToast={fl}
+        />
+      )}
       {toastEl}
     </div>
   );

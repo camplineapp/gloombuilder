@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { EX, DIFFS, SITES, EQUIP, generate, mapSupabaseExercise, normalizeSection } from "@/lib/exercises";
 import type { GenConfig, Section, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
-import CopyModal from "@/components/CopyModal";
 import SectionEditor from "@/components/SectionEditor";
 import type { AttachedBeatdown } from "@/components/PreblastComposer";
 import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft, formatTimeAgo } from "@/lib/drafts";
@@ -41,11 +40,12 @@ interface GeneratorScreenProps {
   }) => void;
   profName?: string;
   onSendPreblast?: (bd: AttachedBeatdown) => void;
+  onOpenCopyModal?: (ctx: { secs: Section[]; beatdownName: string; beatdownDesc: string }) => void;
   userExercises?: { id: string; nm: string; desc: string; tags: string[]; how: string }[];
   communityExercises?: { nm: string; desc: string; tags: string[]; how: string }[];
 }
 
-export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, onSendPreblast, userExercises, communityExercises }: GeneratorScreenProps) {
+export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, onSendPreblast, onOpenCopyModal, userExercises, communityExercises }: GeneratorScreenProps) {
   const draftKey = DRAFT_KEYS.generatorResult;
   type GeneratorDraft = {
     gc: GenConfig; gr: Section[]; grT: string; grD: string; shareLib: boolean;
@@ -114,8 +114,6 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
     });
   }, [userExercises, communityExercises]);
 
-  const [copyModal, setCopyModal] = useState(false);
-
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 
   const toastEl = toast ? (
@@ -138,7 +136,6 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
     return (
       <div style={{ padding: "0 24px" }}>
         {toastEl}
-        {copyModal && gr ? <CopyModal secs={gr} beatdownName={grT || "Generated Beatdown"} beatdownDesc={grD} qName={profName || "Q"} onClose={() => setCopyModal(false)} onToast={fl} /> : null}
 
         {/* Draft restored banner */}
         {draftRestored && (
@@ -330,7 +327,7 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
                 <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📣</span>
                 <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
               </button>
-              <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.30)", color: A, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
+              <button onClick={() => { if (!gr) return; onOpenCopyModal?.({ secs: gr, beatdownName: grT || "Generated Beatdown", beatdownDesc: grD }); }} style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.30)", color: A, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
                 <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📓</span>
                 <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Backblast</span>
               </button>
