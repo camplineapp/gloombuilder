@@ -45,22 +45,23 @@ interface NotepadScreenProps {
 }
 
 const PLACEHOLDER = `Warmup
-Standing Toe Touch
-- Keep back straight
-Motivators x10
+Side Straddle Hop x20
+Imperial Walker x20
+Mountain Climber x10
+- Slow and controlled
 
 The Thang
 - Finish 5 Rounds
 Merkin 10
-> Mousey to corner
-Jump Squats 10
+> Mosey to corner
+Squat 20
 
 Mary
-American Hammers x20
+American Hammer x20
 Plank 60sec`;
 
 const HELP_ROWS: Array<[string, string]> = [
-  ["blank line", "starts a new section"],
+  ["blank line", "starts a new section. Don't put a blank line between a section header and its first exercise."],
   ["- text", "coaching note (for exercise above OR section above)"],
   ["> text", "transition (mosey/run to a new spot)"],
   ["x10, 60sec", "marks an exercise with reps or time"],

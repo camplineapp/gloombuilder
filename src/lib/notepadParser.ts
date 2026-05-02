@@ -68,15 +68,7 @@ function matchExercise(name: string, library: ExerciseData[]): ExerciseData | nu
   return null;
 }
 
-function antiPatternRejects(name: string, library: ExerciseData[]): boolean {
-  if (matchExercise(name, library) !== null) return false;
-  const trimmed = name.trim();
-  const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
-  const charCount = trimmed.length;
-  return wordCount < 2 && charCount < 6;
-}
-
-function extractReps(line: string, library: ExerciseData[]): RepInfo | null {
+function extractReps(line: string): RepInfo | null {
   const { cadence, textWithoutCadence: workLine } = extractCadence(line);
 
   // PATTERN 1: xN or x N anywhere in line
@@ -103,17 +95,13 @@ function extractReps(line: string, library: ExerciseData[]): RepInfo | null {
   // PATTERN 3: trailing digit at end of line
   const p3 = workLine.match(/^(.+?)\s+(\d+)\s*$/);
   if (p3) {
-    const exerciseName = p3[1].trim();
-    if (antiPatternRejects(exerciseName, library)) return null;
-    return { reps: p3[2], exerciseName, cadence };
+    return { reps: p3[2], exerciseName: p3[1].trim(), cadence };
   }
 
   // PATTERN 4: leading digit at start
   const p4 = workLine.match(/^(\d+)\s+(.+)$/);
   if (p4) {
-    const exerciseName = p4[2].trim();
-    if (antiPatternRejects(exerciseName, library)) return null;
-    return { reps: p4[1], exerciseName, cadence };
+    return { reps: p4[1], exerciseName: p4[2].trim(), cadence };
   }
 
   return null;
@@ -219,8 +207,21 @@ export function parseNotepad(input: ParseInput): ParseResult {
       continue;
     }
 
-    // Q4: EXERCISE WITH REPS
-    const repInfo = extractReps(rawLine, exerciseLibrary);
+    // Q4 NEW: SECTION HEADER (positional — blank line above OR first non-empty line).
+    // Section names are free text. The only signal is position. A line under a blank
+    // line is always a section header — even when it contains a digit ("exercise 1",
+    // "round 1", "block A", "AMRAP 12 minutes"). Rep extraction comes after.
+    if (previousLineWasEmpty) {
+      if (currentSection !== null) {
+        sections.push(currentSection);
+      }
+      currentSection = newSection(rawLine.trim(), sections.length);
+      previousLineWasEmpty = false;
+      continue;
+    }
+
+    // Q5 NEW: EXERCISE WITH REPS (only fires when not under a blank line)
+    const repInfo = extractReps(rawLine);
     if (repInfo) {
       if (currentSection === null) {
         currentSection = newSection("Untitled", sections.length);
@@ -231,16 +232,6 @@ export function parseNotepad(input: ParseInput): ParseResult {
         { name: repInfo.exerciseName, r: String(repInfo.reps), c: repInfo.cadence },
         matched
       );
-      previousLineWasEmpty = false;
-      continue;
-    }
-
-    // Q5: SECTION HEADER (previous line empty)
-    if (previousLineWasEmpty) {
-      if (currentSection !== null) {
-        sections.push(currentSection);
-      }
-      currentSection = newSection(rawLine.trim(), sections.length);
       previousLineWasEmpty = false;
       continue;
     }
