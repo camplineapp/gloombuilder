@@ -14,6 +14,7 @@ import ProfileScreen from "@/components/ProfileScreen";
 import GeneratorScreen from "@/components/GeneratorScreen";
 import BuilderScreen from "@/components/BuilderScreen";
 import CreateExerciseScreen from "@/components/CreateExerciseScreen";
+import NotepadScreen from "@/components/NotepadScreen";
 import LiveModeScreen from "@/components/LiveModeScreen";
 import QProfileScreen from "@/components/QProfileScreen";
 import PreblastComposer, { type AttachedBeatdown } from "@/components/PreblastComposer";
@@ -33,6 +34,7 @@ export interface LockerBeatdown {
   eq?: string[];
   inspiredBy?: string;
   isPublic?: boolean;
+  fromNotepad?: boolean;
 }
 
 export interface LockerExercise {
@@ -89,6 +91,7 @@ function dbToLocker(row: Record<string, unknown>): LockerBeatdown {
     sites: (row.site_features as string[]) || [],
     eq: (row.equipment as string[]) || [],
     isPublic: (row.is_public as boolean) || false,
+    fromNotepad: (row.from_notepad as boolean) || false,
     inspiredBy: hasInspiredBy ? (inspiredProfile?.f3_name as string) || "a fellow PAX" : undefined,
   };
 }
@@ -449,25 +452,27 @@ export default function App() {
     }
   };
 
-  const handleSaveBeatdown = async (bd: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean }): Promise<string | null> => {
+  const handleSaveBeatdown = async (bd: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; src?: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean; isPublic?: boolean; fromNotepad?: boolean }): Promise<string | null> => {
     setSavingInFlight(true);
     try {
+      const isPublic = bd.isPublic ?? bd.share ?? false;
       const result = await saveBeatdown({
         nm: bd.nm,
         desc: bd.desc,
         d: bd.d,
         secs: bd.secs,
         tg: bd.tg,
-        src: bd.src,
+        src: bd.src ?? "Manual",
         dur: bd.dur,
         sites: bd.sites,
         eq: bd.eq,
-        isPublic: bd.share || false,
+        isPublic,
+        fromNotepad: bd.fromNotepad ?? false,
       });
 
       if (result) {
         await loadLocker();
-        if (bd.share) {
+        if (isPublic) {
           await loadLibrary();
           fl("Saved! Shared to community!");
         } else {
@@ -729,7 +734,7 @@ export default function App() {
   };
 
   // ===== FULL-SCREEN VIEWS =====
-  if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "edit-ex" || vw === "live" || vw === "q-profile" || vw === "settings") {
+  if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "edit-ex" || vw === "live" || vw === "q-profile" || vw === "settings" || vw === "notepad") {
     return (
       <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: vw === "live" ? 0 : 20, paddingBottom: vw === "live" ? 0 : 100, position: "relative" }}>
         {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onOpenCopyModal={(ctx) => { setCopyModalContext({ source: "generator", ...ctx }); setCopyModalOpen(true); }} onRunThis={async (secs, title, dur, saveData) => {
@@ -750,6 +755,19 @@ export default function App() {
           setVw("live");
         }} />}
         {vw === "create-ex" && <CreateExerciseScreen onClose={() => setVw(null)} onSave={handleSaveExercise} />}
+        {vw === "notepad" && <NotepadScreen
+          onClose={() => setVw(null)}
+          onSave={handleSaveBeatdown}
+          onSavedNew={(newId) => {
+            const justSaved = lk.find(b => b.id === newId);
+            if (justSaved) {
+              setEditingBd(justSaved);
+              setVw("edit-bd");
+            }
+          }}
+          userExercises={lkEx}
+          profName={profName}
+        />}
         {vw === "edit-bd" && editingBd && <BuilderScreen
           onClose={() => {
             if (editFromQProfile) {
@@ -862,6 +880,7 @@ export default function App() {
           onGenerate={() => setVw("gen")}
           onSendPreblast={() => { setPreblastBd(null); setPreblastOpen(true); }}
           onBuild={() => setVw("build")}
+          onCreateNotepad={() => setVw("notepad")}
           onCreateEx={() => setVw("create-ex")}
         />
       )}

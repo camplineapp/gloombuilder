@@ -7,9 +7,10 @@ interface HomeScreenProps {
   onBuild: () => void;
   onCreateEx: () => void;
   onSendPreblast: () => void;
+  onCreateNotepad?: () => void;
 }
 
-export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild, onCreateEx, onSendPreblast }: HomeScreenProps) {
+export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild, onCreateEx, onSendPreblast, onCreateNotepad }: HomeScreenProps) {
   const initials = profName
     .split(" ")
     .map((w) => (w[0] || "").toUpperCase())
@@ -58,6 +59,33 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
           </div>
           <div style={{ color: "#7A7268", fontSize: 20 }}>→</div>
         </div>
+        {onCreateNotepad && (
+          <button
+            onClick={onCreateNotepad}
+            style={{
+              background: "rgba(255,255,255,0.028)",
+              border: "1px solid rgba(245,158,11,0.30)",
+              borderRadius: 18,
+              padding: "20px 22px",
+              width: "100%",
+              textAlign: "left" as const,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              cursor: "pointer",
+              fontFamily: "'Outfit', system-ui, sans-serif",
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 16, fontWeight: 700, color: "#D0C8BC" }}>Write it freeform</span>
+                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase" as const, background: "rgba(245,158,11,0.20)", color: "#f59e0b", padding: "2px 6px", borderRadius: 4 }}>NEW</span>
+              </div>
+              <div style={{ fontSize: 13, color: "#928982" }}>Notepad-style — paste or type</div>
+            </div>
+            <span style={{ color: "#7A7268", fontSize: 20 }}>→</span>
+          </button>
+        )}
         <div onClick={onCreateEx} style={{ background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: "20px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#a78bfa" }}>Create exercise</div>

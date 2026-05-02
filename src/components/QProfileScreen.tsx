@@ -91,6 +91,7 @@ interface BeatdownRow {
   is_public: boolean;
   tags: string[] | null;
   inspired_profile: { f3_name: string } | null;
+  from_notepad?: boolean;
 }
 
 interface ExerciseRow {
@@ -452,6 +453,19 @@ function BeatdownCard({ bd, onTap }: { bd: BeatdownRow; onTap?: () => void }) {
           borderRadius: 6,
           flexShrink: 0,
         }}>{sourcePill.label}</span>
+        {bd.from_notepad && (
+          <span style={{
+            fontSize: 11,
+            fontWeight: 800,
+            color: G,
+            background: G + "15",
+            border: "1px solid " + G + "30",
+            padding: "3px 8px",
+            borderRadius: 6,
+            flexShrink: 0,
+            whiteSpace: "nowrap" as const,
+          }}>↻ from Notepad</span>
+        )}
       </div>
 
       {/* Description (single-line ellipsis) */}

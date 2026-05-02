@@ -14,6 +14,7 @@ export async function saveBeatdown(data: {
   sites: string[];
   eq: string[];
   isPublic: boolean;
+  fromNotepad?: boolean;
 }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -33,6 +34,7 @@ export async function saveBeatdown(data: {
       created_by: user.id,
       is_public: data.isPublic,
       generated: data.src === "Generated",
+      from_notepad: data.fromNotepad ?? false,
     })
     .select()
     .single();
