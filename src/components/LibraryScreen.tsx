@@ -32,6 +32,24 @@ const REGIONS = ["All","Northeast","Southeast","Midwest","Southwest","West","Mid
 const SITES = [{id:"field",l:"Open field"},{id:"track",l:"Track"},{id:"benches",l:"Benches"},{id:"hills",l:"Hills"},{id:"stairs",l:"Stairs"},{id:"parking",l:"Parking lot"},{id:"pullup",l:"Pull-up bars"},{id:"walls",l:"Walls"}];
 const TAGS = ["Warm-Up","Mary","Core","Cardio","Full Body","Legs","Chest","Arms","Shoulders","Static","Transport","Coupon"];
 
+const TYPE_TAGS = [
+  { value: "Warm-Up", label: "Warm-up" },
+  { value: "Mary", label: "Mary" },
+  { value: "Cardio", label: "Cardio" },
+  { value: "Static", label: "Static" },
+  { value: "Transport", label: "Transport" },
+  { value: "Coupon", label: "Coupon" },
+];
+
+const BODY_TAGS = [
+  { value: "Full Body", label: "Full body" },
+  { value: "Core", label: "Core" },
+  { value: "Legs", label: "Legs" },
+  { value: "Chest", label: "Chest" },
+  { value: "Arms", label: "Arms" },
+  { value: "Shoulders", label: "Shoulders" },
+];
+
 interface Comment { au: string; ao: string; txt: string; dt: string }
 interface Exercise { n: string; r: string; c: string; nt: string }
 interface Section { label: string; color: string; exercises: Exercise[]; note: string }
@@ -152,7 +170,8 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
   const [editCmtText, setEditCmtText] = useState("");
   const [seedEx, setSeedEx] = useState<ExerciseData[]>([]);
   const [exSearch, setExSearch] = useState("");
-  const [exTag, setExTag] = useState("All");
+  const [exType, setExType] = useState("All");
+  const [exBody, setExBody] = useState("All");
   const [dbDetail, setDbDetail] = useState<ExerciseData | null>(null);
 
   useEffect(() => {
@@ -575,8 +594,9 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
 
             const q = exSearch.trim().toLowerCase();
             let filtered = allEx.filter(e => {
-              const tagMatch = exTag === "All" || e.t.includes(exTag);
-              if (!tagMatch) return false;
+              const typeMatch = exType === "All" || e.t.includes(exType);
+              const bodyMatch = exBody === "All" || e.t.includes(exBody);
+              if (!typeMatch || !bodyMatch) return false;
               if (!q) return true;
               return (
                 e.n.toLowerCase().includes(q) ||
@@ -641,10 +661,92 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
             return (
               <>
                 <input value={exSearch} onChange={e => setExSearch(e.target.value)} placeholder={`Search ${allEx.length} exercises by name, alias, or PAX...`} style={{ ...ist, marginBottom: 10 }} />
-                <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 14 }}>
-                  {["All", ...TAGS].map(t => (
-                    <button key={t} onClick={() => setExTag(t)} style={{ fontFamily: F, background: exTag === t ? P + "20" : "rgba(255,255,255,0.04)", color: exTag === t ? P : T5, border: "1px solid " + (exTag === t ? P + "30" : BD), padding: "5px 11px", borderRadius: 20, fontSize: 10, cursor: "pointer", textTransform: "uppercase", fontWeight: 600 }}>{t}</button>
-                  ))}
+                {/* TYPE row */}
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{
+                    fontFamily: F,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: T5,
+                    textTransform: "uppercase",
+                    letterSpacing: 1.5,
+                    marginBottom: 6,
+                    paddingLeft: 2,
+                  }}>Type</div>
+                  <div style={{
+                    display: "flex",
+                    gap: 5,
+                    overflowX: "auto",
+                    flexWrap: "nowrap",
+                    scrollbarWidth: "none",
+                    WebkitOverflowScrolling: "touch",
+                    paddingBottom: 2,
+                  }}>
+                    {[{ value: "All", label: "All" }, ...TYPE_TAGS].map(t => (
+                      <button
+                        key={t.value}
+                        onClick={() => setExType(t.value)}
+                        style={{
+                          fontFamily: F,
+                          background: exType === t.value ? P + "20" : "rgba(255,255,255,0.04)",
+                          color: exType === t.value ? P : T5,
+                          border: "1px solid " + (exType === t.value ? P + "30" : BD),
+                          padding: "5px 11px",
+                          borderRadius: 20,
+                          fontSize: 10,
+                          cursor: "pointer",
+                          textTransform: "uppercase",
+                          fontWeight: 600,
+                          flexShrink: 0,
+                          whiteSpace: "nowrap",
+                        }}
+                      >{t.label}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* BODY PART row */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{
+                    fontFamily: F,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: T5,
+                    textTransform: "uppercase",
+                    letterSpacing: 1.5,
+                    marginBottom: 6,
+                    paddingLeft: 2,
+                  }}>Body part</div>
+                  <div style={{
+                    display: "flex",
+                    gap: 5,
+                    overflowX: "auto",
+                    flexWrap: "nowrap",
+                    scrollbarWidth: "none",
+                    WebkitOverflowScrolling: "touch",
+                    paddingBottom: 2,
+                  }}>
+                    {[{ value: "All", label: "All" }, ...BODY_TAGS].map(t => (
+                      <button
+                        key={t.value}
+                        onClick={() => setExBody(t.value)}
+                        style={{
+                          fontFamily: F,
+                          background: exBody === t.value ? P + "20" : "rgba(255,255,255,0.04)",
+                          color: exBody === t.value ? P : T5,
+                          border: "1px solid " + (exBody === t.value ? P + "30" : BD),
+                          padding: "5px 11px",
+                          borderRadius: 20,
+                          fontSize: 10,
+                          cursor: "pointer",
+                          textTransform: "uppercase",
+                          fontWeight: 600,
+                          flexShrink: 0,
+                          whiteSpace: "nowrap",
+                        }}
+                      >{t.label}</button>
+                    ))}
+                  </div>
                 </div>
                 {allEx.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>Loading exercises...</div> : null}
                 {shown.map(e => (
