@@ -459,7 +459,7 @@ export default function App() {
       const result = await saveBeatdown({
         nm: bd.nm,
         desc: bd.desc,
-        d: bd.d,
+        d: bd.d || "medium",
         secs: bd.secs,
         tg: bd.tg,
         src: bd.src ?? "Manual",
