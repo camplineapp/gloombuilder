@@ -21,11 +21,25 @@ type BuilderDraft = {
   shareLib: boolean;
 };
 
+type GeneratorDraftLite = {
+  grT: string;
+  gr: Section[];
+};
+
+type NotepadDraftLite = {
+  title: string;
+  text: string;
+};
+
+type PickUpFlow = "build" | "generate" | "notepad";
+
 interface PickUpInfo {
+  flow: PickUpFlow;
   name: string;
-  exerciseCount: number;
-  sectionCount: number;
+  exerciseCount: number; // 0 for notepad (not displayed for notepad)
+  sectionCount: number;  // 0 for notepad (not displayed for notepad)
   timeAgo: string;
+  savedAt: number;       // for max-savedAt comparison
 }
 
 interface HomeScreenProps {
@@ -49,27 +63,78 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const env = loadDraft<BuilderDraft>(DRAFT_KEYS.builderNew);
-    if (!env) return;
 
-    const exerciseCount = (env.data.secs || []).reduce(
-      (sum, s) => sum + (s.exercises || []).filter(
-        e => (e as { type?: string }).type !== "transition"
-      ).length,
-      0
-    );
+    const candidates: PickUpInfo[] = [];
 
-    const titleHasContent = !!env.data.bT && env.data.bT.trim() !== "";
-    const hasExercises = exerciseCount > 0;
+    // Build flow
+    const buildEnv = loadDraft<BuilderDraft>(DRAFT_KEYS.builderNew);
+    if (buildEnv) {
+      const exerciseCount = (buildEnv.data.secs || []).reduce(
+        (sum, s) => sum + (s.exercises || []).filter(
+          e => (e as { type?: string }).type !== "transition"
+        ).length, 0
+      );
+      const titleHasContent = !!buildEnv.data.bT && buildEnv.data.bT.trim() !== "";
+      const hasExercises = exerciseCount > 0;
+      if (titleHasContent || hasExercises) {
+        candidates.push({
+          flow: "build",
+          name: titleHasContent ? buildEnv.data.bT.trim() : "Untitled",
+          exerciseCount,
+          sectionCount: (buildEnv.data.secs || []).length,
+          timeAgo: formatTimeAgo(buildEnv.savedAt),
+          savedAt: buildEnv.savedAt,
+        });
+      }
+    }
 
-    if (!titleHasContent && !hasExercises) return;
+    // Generate flow
+    const genEnv = loadDraft<GeneratorDraftLite>(DRAFT_KEYS.generatorResult);
+    if (genEnv) {
+      const exerciseCount = (genEnv.data.gr || []).reduce(
+        (sum, s) => sum + (s.exercises || []).filter(
+          e => (e as { type?: string }).type !== "transition"
+        ).length, 0
+      );
+      const titleHasContent = !!genEnv.data.grT && genEnv.data.grT.trim() !== "";
+      const hasExercises = exerciseCount > 0;
+      // GeneratorScreen only autosaves when gr is non-null, so any
+      // persisted draft has exercises by construction. Title-or-exercises
+      // gate is for safety/symmetry with the other flows.
+      if (titleHasContent || hasExercises) {
+        candidates.push({
+          flow: "generate",
+          name: titleHasContent ? genEnv.data.grT.trim() : "Generated beatdown",
+          exerciseCount,
+          sectionCount: (genEnv.data.gr || []).length,
+          timeAgo: formatTimeAgo(genEnv.savedAt),
+          savedAt: genEnv.savedAt,
+        });
+      }
+    }
 
-    setPickUp({
-      name: titleHasContent ? env.data.bT.trim() : "Untitled",
-      exerciseCount,
-      sectionCount: (env.data.secs || []).length,
-      timeAgo: formatTimeAgo(env.savedAt),
-    });
+    // Notepad flow
+    const npEnv = loadDraft<NotepadDraftLite>(DRAFT_KEYS.notepadDraft);
+    if (npEnv) {
+      const titleHasContent = !!npEnv.data.title && npEnv.data.title.trim() !== "";
+      const textHasContent = !!npEnv.data.text && npEnv.data.text.trim() !== "";
+      if (titleHasContent || textHasContent) {
+        candidates.push({
+          flow: "notepad",
+          name: titleHasContent ? npEnv.data.title.trim() : "Untitled notepad",
+          exerciseCount: 0,
+          sectionCount: 0,
+          timeAgo: formatTimeAgo(npEnv.savedAt),
+          savedAt: npEnv.savedAt,
+        });
+      }
+    }
+
+    if (candidates.length === 0) return;
+
+    // Most-recent wins
+    candidates.sort((a, b) => b.savedAt - a.savedAt);
+    setPickUp(candidates[0]);
   }, []);
 
   return (
@@ -119,7 +184,11 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
             paddingLeft: 4,
           }}>Pick up where you left off</div>
           <button
-            onClick={onBuild}
+            onClick={() => {
+              if (pickUp.flow === "generate") onGenerate();
+              else if (pickUp.flow === "notepad") onCreateNotepad?.();
+              else onBuild();
+            }}
             style={{
               width: "100%",
               textAlign: "left",
@@ -150,9 +219,31 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
                 textOverflow: "ellipsis",
                 marginBottom: 4,
               }}>{pickUp.name}</div>
-              <div style={{ fontSize: 12, color: T4 }}>
-                {pickUp.timeAgo} · {pickUp.sectionCount} {pickUp.sectionCount === 1 ? "section" : "sections"}
-                {pickUp.exerciseCount > 0 && ` · ${pickUp.exerciseCount} ${pickUp.exerciseCount === 1 ? "exercise" : "exercises"}`}
+              <div style={{ fontSize: 12, color: T4, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <span style={{
+                  fontFamily: F,
+                  background: "rgba(255,255,255,0.06)",
+                  color: T2,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: 0.5,
+                  padding: "2px 7px",
+                  borderRadius: 4,
+                  textTransform: "uppercase",
+                  flexShrink: 0,
+                }}>
+                  {pickUp.flow === "build" ? "Built" : pickUp.flow === "generate" ? "Generated" : "Notepad"}
+                </span>
+                <span>{pickUp.timeAgo}</span>
+                {pickUp.flow !== "notepad" && pickUp.sectionCount > 0 && (
+                  <>
+                    <span>·</span>
+                    <span>
+                      {pickUp.sectionCount} {pickUp.sectionCount === 1 ? "section" : "sections"}
+                      {pickUp.exerciseCount > 0 && ` · ${pickUp.exerciseCount} ${pickUp.exerciseCount === 1 ? "exercise" : "exercises"}`}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
             <span style={{ color: "#22c55e", fontSize: 22, fontWeight: 700 }}>→</span>
