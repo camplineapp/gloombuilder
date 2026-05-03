@@ -1,5 +1,33 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { loadDraft, formatTimeAgo, DRAFT_KEYS } from "@/lib/drafts";
+import type { Section } from "@/lib/exercises";
+
+const F = "'Outfit', system-ui, sans-serif";
+const T1 = "#F0EDE8";
+const T2 = "#D0C8BC";
+const T4 = "#928982";
+const T5 = "#7A7268";
+
+type BuilderDraft = {
+  bT: string;
+  bD: string;
+  bDur: string | null;
+  bDiff: string | null;
+  bSites: string[];
+  bEq: string[];
+  secs: Section[];
+  shareLib: boolean;
+};
+
+interface PickUpInfo {
+  name: string;
+  exerciseCount: number;
+  sectionCount: number;
+  timeAgo: string;
+}
+
 interface HomeScreenProps {
   profName: string;
   onProfileTap: () => void;
@@ -16,6 +44,33 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
     .map((w) => (w[0] || "").toUpperCase())
     .join("")
     .slice(0, 2);
+
+  const [pickUp, setPickUp] = useState<PickUpInfo | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const env = loadDraft<BuilderDraft>(DRAFT_KEYS.builderNew);
+    if (!env) return;
+
+    const exerciseCount = (env.data.secs || []).reduce(
+      (sum, s) => sum + (s.exercises || []).filter(
+        e => (e as { type?: string }).type !== "transition"
+      ).length,
+      0
+    );
+
+    const titleHasContent = !!env.data.bT && env.data.bT.trim() !== "";
+    const hasExercises = exerciseCount > 0;
+
+    if (!titleHasContent && !hasExercises) return;
+
+    setPickUp({
+      name: titleHasContent ? env.data.bT.trim() : "Untitled",
+      exerciseCount,
+      sectionCount: (env.data.secs || []).length,
+      timeAgo: formatTimeAgo(env.savedAt),
+    });
+  }, []);
 
   return (
     <div>
@@ -50,8 +105,63 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
         <div style={{ flex: 1, height: 1, background: "rgba(255,255,255,0.07)" }} />
       </div>
 
-      {/* Build + Create */}
-      <div style={{ padding: "0 24px", display: "flex", flexDirection: "column" as const, gap: 10 }}>
+      {/* Pick up where you left off — only when a meaningful builderNew draft exists */}
+      {pickUp && (
+        <div style={{ padding: "0 24px", marginBottom: 10 }}>
+          <div style={{
+            fontFamily: F,
+            fontSize: 11,
+            fontWeight: 700,
+            color: T5,
+            textTransform: "uppercase",
+            letterSpacing: 1.5,
+            marginBottom: 8,
+            paddingLeft: 4,
+          }}>Pick up where you left off</div>
+          <button
+            onClick={onBuild}
+            style={{
+              width: "100%",
+              textAlign: "left",
+              fontFamily: F,
+              background: "rgba(34,197,94,0.06)",
+              border: "1px solid rgba(34,197,94,0.20)",
+              borderRadius: 18,
+              padding: "16px 20px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+            }}
+          >
+            <div style={{
+              width: 4,
+              alignSelf: "stretch",
+              background: "#22c55e",
+              borderRadius: 2,
+            }} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: T1,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                marginBottom: 4,
+              }}>{pickUp.name}</div>
+              <div style={{ fontSize: 12, color: T4 }}>
+                {pickUp.timeAgo} · {pickUp.sectionCount} {pickUp.sectionCount === 1 ? "section" : "sections"}
+                {pickUp.exerciseCount > 0 && ` · ${pickUp.exerciseCount} ${pickUp.exerciseCount === 1 ? "exercise" : "exercises"}`}
+              </div>
+            </div>
+            <span style={{ color: "#22c55e", fontSize: 22, fontWeight: 700 }}>→</span>
+          </button>
+        </div>
+      )}
+
+      {/* Build from scratch — full-width list-row, primary creation entry */}
+      <div style={{ padding: "0 24px", display: "flex", flexDirection: "column" as const, gap: 10, marginBottom: 8 }}>
         <div onClick={onBuild} style={{ background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: "20px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#D0C8BC" }}>Build from scratch</div>
@@ -59,51 +169,71 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
           </div>
           <div style={{ color: "#7A7268", fontSize: 20 }}>→</div>
         </div>
-        {onCreateNotepad && (
-          <button
-            onClick={onCreateNotepad}
-            style={{
-              background: "rgba(255,255,255,0.028)",
-              border: "1px solid rgba(245,158,11,0.30)",
-              borderRadius: 18,
-              padding: "20px 22px",
-              width: "100%",
-              textAlign: "left" as const,
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              cursor: "pointer",
-              fontFamily: "'Outfit', system-ui, sans-serif",
-            }}
-          >
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <span style={{ fontSize: 16, fontWeight: 700, color: "#D0C8BC" }}>Write it freeform</span>
-                <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: 0.5, textTransform: "uppercase" as const, background: "rgba(245,158,11,0.20)", color: "#f59e0b", padding: "2px 6px", borderRadius: 4 }}>NEW</span>
-              </div>
-              <div style={{ fontSize: 13, color: "#928982" }}>Notepad-style — paste or type</div>
-            </div>
-            <span style={{ color: "#7A7268", fontSize: 20 }}>→</span>
-          </button>
-        )}
-        <div onClick={onCreateEx} style={{ background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: "20px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#a78bfa" }}>Create exercise</div>
-            <div style={{ fontSize: 13, color: "#928982", marginTop: 4 }}>Add your own to the community library</div>
-          </div>
-          <div style={{ color: "#7A7268", fontSize: 20 }}>→</div>
-        </div>
+      </div>
 
-        <div onClick={onSendPreblast} style={{ background: "linear-gradient(135deg, rgba(167,139,250,0.10), rgba(167,139,250,0.02))", border: "1px solid rgba(167,139,250,0.30)", borderRadius: 18, padding: "20px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(167,139,250,0.20)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg></div>
-            <div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: "#a78bfa" }}>Send Preblast</div>
-              <div style={{ fontSize: 13, color: "#928982", marginTop: 4 }}>Tell the PAX what’s coming next</div>
-            </div>
-          </div>
-          <div style={{ color: "#7A7268", fontSize: 20 }}>→</div>
-        </div>
+      {/* 3-card grid: Notepad / Add exercise / Preblast */}
+      <div style={{
+        padding: "0 24px",
+        display: "grid",
+        gridTemplateColumns: "1fr 1fr 1fr",
+        gap: 8,
+      }}>
+        <button
+          onClick={onCreateNotepad}
+          style={{
+            fontFamily: F,
+            background: "rgba(255,255,255,0.028)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 18,
+            padding: "20px 12px",
+            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span style={{ fontSize: 28 }}>📝</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: T2, textAlign: "center" }}>Notepad</span>
+        </button>
+
+        <button
+          onClick={onCreateEx}
+          style={{
+            fontFamily: F,
+            background: "rgba(255,255,255,0.028)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 18,
+            padding: "20px 12px",
+            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span style={{ fontSize: 28 }}>➕</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: T2, textAlign: "center" }}>Add exercise</span>
+        </button>
+
+        <button
+          onClick={onSendPreblast}
+          style={{
+            fontFamily: F,
+            background: "rgba(255,255,255,0.028)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            borderRadius: 18,
+            padding: "20px 12px",
+            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span style={{ fontSize: 28 }}>📣</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: T2, textAlign: "center" }}>Preblast</span>
+        </button>
       </div>
 
       {/* Disclaimer */}
