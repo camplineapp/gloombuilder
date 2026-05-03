@@ -6,6 +6,7 @@ export const DRAFT_KEYS = {
   builderEdit: (id: string) => `gloombuilder.draft.builder.edit.${id}`,
   generatorResult: "gloombuilder.draft.generator.result",
   exerciseNew: "gloombuilder.draft.exercise.new",
+  notepadDraft: "gloombuilder.draft.notepad",
 } as const;
 
 export interface DraftEnvelope<T> {

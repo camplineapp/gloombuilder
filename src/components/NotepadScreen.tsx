@@ -5,6 +5,12 @@ import { EX, mapSupabaseExercise } from "@/lib/exercises";
 import type { Section, SectionExercise, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
 import { parseNotepad, type ParseResult } from "@/lib/notepadParser";
+import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft, formatTimeAgo } from "@/lib/drafts";
+
+type NotepadDraft = {
+  title: string;
+  text: string;
+};
 
 const G = "#22c55e";
 const A = "#f59e0b";
@@ -68,14 +74,43 @@ const HELP_ROWS: Array<[string, string]> = [
 ];
 
 export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercises }: NotepadScreenProps) {
-  const [title, setTitle] = useState("");
-  const [text, setText] = useState("");
+  const draftKey = DRAFT_KEYS.notepadDraft;
+  const initialDraft = (() => {
+    if (typeof window === "undefined") return null;
+    return loadDraft<NotepadDraft>(draftKey);
+  })();
+
+  const [title, setTitle] = useState(initialDraft?.data.title ?? "");
+  const [text, setText] = useState(initialDraft?.data.text ?? "");
   const [showHelp, setShowHelp] = useState(false);
   const [mode, setMode] = useState<"write" | "preview">("write");
   const [parsedResult, setParsedResult] = useState<ParseResult | null>(null);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
+  const [draftRestored, setDraftRestored] = useState<{ timeAgo: string } | null>(null);
+
+  useEffect(() => {
+    if (initialDraft) {
+      setDraftRestored({ timeAgo: formatTimeAgo(initialDraft.savedAt) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!title.trim() && !text.trim()) return;
+    const timer = setTimeout(() => {
+      saveDraft<NotepadDraft>(draftKey, { title, text });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [title, text, draftKey]);
+
+  const handleDiscardDraft = () => {
+    setTitle("");
+    setText("");
+    clearDraft(draftKey);
+    setDraftRestored(null);
+  };
 
   const userExRef = useRef(userExercises);
   userExRef.current = userExercises;
@@ -137,6 +172,8 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
         fromNotepad: true,
       });
       if (newId) {
+        clearDraft(draftKey);
+        setDraftRestored(null);
         onSavedNew(newId);
       } else {
         fl("Couldn't save — try again");
@@ -157,6 +194,38 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
       <button onClick={onClose} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14, marginBottom: 20 }}>← Home</button>
       <div style={{ fontSize: 24, fontWeight: 800, color: T1, marginBottom: 4 }}>Notepad</div>
       <div style={{ fontSize: 13, color: T4, marginBottom: 20 }}>Type or paste a beatdown — we&apos;ll parse it into sections and exercises.</div>
+
+      {draftRestored && (
+        <div style={{
+          background: "rgba(245,158,11,0.10)",
+          border: "1px solid rgba(245,158,11,0.30)",
+          borderRadius: 10,
+          padding: "10px 14px",
+          marginTop: 0,
+          marginBottom: 16,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          fontSize: 13,
+          fontWeight: 600,
+          color: A,
+          fontFamily: F,
+        }}>
+          <span>↻ Draft restored from {draftRestored.timeAgo}</span>
+          <button onClick={handleDiscardDraft} style={{
+            fontFamily: F,
+            background: "transparent",
+            border: "1px solid rgba(245,158,11,0.40)",
+            color: A,
+            fontSize: 12,
+            fontWeight: 700,
+            padding: "5px 12px",
+            borderRadius: 8,
+            cursor: "pointer",
+          }}>Discard</button>
+        </div>
+      )}
 
       {/* Write / Preview toggle (mirrors LibraryScreen libT pill) */}
       <div style={{ display: "flex", gap: 0, background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid " + BD, padding: 3, marginBottom: 16 }}>
