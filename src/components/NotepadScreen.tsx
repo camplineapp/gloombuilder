@@ -269,9 +269,16 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
                 <span style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: A, textTransform: "uppercase", letterSpacing: 1.5 }}>HOW TO WRITE</span>
                 <button onClick={() => setShowHelp(false)} style={{ background: "none", border: "none", color: T4, fontSize: 16, cursor: "pointer", fontFamily: F, lineHeight: 1, padding: 0 }}>✕</button>
               </div>
-              {HELP_ROWS.map((row) => (
-                <div key={row.key} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontFamily: MONO, fontSize: 13, color: G, fontWeight: 700, width: "50%", flexShrink: 0 }}>{row.key}</span>
+              {HELP_ROWS.map((row, idx) => (
+                <div key={row.key} style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 12,
+                  marginBottom: idx === HELP_ROWS.length - 1
+                    ? 0
+                    : (row.warning ? 10 : 4),
+                }}>
+                  <span style={{ fontFamily: MONO, fontSize: 13, color: G, fontWeight: 700, width: 70, flexShrink: 0 }}>{row.key}</span>
                   <div style={{ flex: 1 }}>
                     <span style={{ fontFamily: F, fontSize: 13, color: T3, lineHeight: 1.4, display: "block" }}>{row.desc}</span>
                     {row.warning && (
@@ -302,7 +309,8 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
             style={{
               ...ist,
               fontFamily: MONO,
-              fontSize: 15,
+              fontSize: 17,
+              fontWeight: 500,
               minHeight: 360,
               padding: 12,
               resize: "vertical" as const,
