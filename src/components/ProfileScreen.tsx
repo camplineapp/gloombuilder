@@ -210,9 +210,8 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
             Why I built this
           </div>
           <p style={{ color: T3, fontSize: 16, lineHeight: 1.8, margin: 0 }}>
-            Every Q knows the feeling. 10pm the night before and you&apos;re
-            staring at the ceiling trying to plan a beatdown. What exercises? How
-            many reps? What order? GloomBuilder was born from that moment.
+            10pm, ceiling stare, no plan. That&apos;s why most PAX never
+            take the Q.
           </p>
           <p
             style={{
@@ -222,13 +221,9 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
               margin: "14px 0 0",
             }}
           >
-            But here&apos;s the thing — that same feeling is the number one
-            reason PAX don&apos;t step up to Q. They want to lead, but the
-            planning feels overwhelming. GloomBuilder removes that barrier.
-            Generate a solid beatdown in 30 seconds, customize it to your AO,
-            and show up ready to lead. No more excuses. If you&apos;ve been
-            thinking about taking the Q, this is your tool. If you already Q,
-            share this with the PAX who need that push.
+            GloomBuilder kills that excuse. Generate a beatdown in 30
+            seconds, steal one from the library, or build your own. Show
+            up locked and loaded.
           </p>
         </div>
 
@@ -292,7 +287,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
           </div>
           <div
             style={{
-              fontSize: 15,
+              fontSize: 16,
               color: T4,
               textAlign: "center",
               marginBottom: 16,
@@ -624,8 +619,8 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
       <div
         onClick={() => setVw("about")}
         style={{
-          background: CD,
-          border: "1px solid " + BD,
+          background: "rgba(34,197,94,0.04)",
+          border: "1px solid rgba(34,197,94,0.12)",
           borderRadius: 14,
           padding: "18px 20px",
           marginTop: 24,
@@ -636,14 +631,14 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
         }}
       >
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: T2 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: G }}>
             About GloomBuilder
           </div>
           <div style={{ fontSize: 12, color: T4, marginTop: 3 }}>
             The story, the creator, support
           </div>
         </div>
-        <div style={{ color: T5 }}>→</div>
+        <div style={{ color: G }}>→</div>
       </div>
 
       {/* Log out */}
