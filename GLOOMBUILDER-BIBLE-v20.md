@@ -388,6 +388,252 @@ fbdf96b             Library Exercises filter: split into Type and Body part rows
 
 ---
 
+## V20 AMENDMENT — MAY 4, 2026 (LATE EVENING / FOLLOWUP COMMITS)
+
+*This amendment is layered on top of the original v20 SESSION RECAP (above) which documented the 11-commit polish day plus the Bible v20 commit itself. After v20 was committed (`5625773 — Add Bible v20`), Ritz continued working through real Vercel preview testing and four additional commits shipped over the following hours. This amendment captures those four commits, one unresolved bug, four lessons from the session, and one new permanent operating rule. Total commit count for the May 3-4 calendar window now reads as 14 code commits + 1 Bible commit = 15 commits, supplanting the "11 commits" figure stated elsewhere in v20. The kickoff prompt for the next session must reflect this amended state.*
+
+### Why this is a v20 amendment instead of v21
+
+Ritz's call: tonight's followup work is small-scale iteration on top of v20's substance, not a new major chapter. The substance of v20 (11-commit polish day, three deferrals, Cluster D expansion, two new operating rules) remains canonical and stands as documented above. The amendment adds: 4 followup commits, 1 carried-over open bug, several wrong-call lessons that produced a new operating rule, and an honest accounting of the session-end pattern that ultimately led to deferring the final fix.
+
+### The four followup commits (chronological)
+
+```
+(latest)            globals.css: overscroll-behavior-x: none on body  (iOS swipe — INCOMPLETE FIX, see open bug below)
+                    LibraryScreen: revert author name green/underline styling on cards
+                    LibraryScreen: avatar + name tap-to-profile fix
+                    PreblastComposer: bump preview + textarea fonts for outdoor readability
+5625773             Add Bible v20                                      ← v20 baseline
+                    (equipment filter)
+                    [...11 cluster-D commits documented above...]
+7e1b7c6             Add Bible v18                                      ← v18 baseline
+```
+
+#### Followup 1 (D12) — PreblastComposer: preview + textarea font bumps
+
+**Files touched:** `src/components/PreblastComposer.tsx` only. +2 / -2 net.
+
+**Trigger:** Real iPhone smoke test. PreblastComposer hadn't been touched in any of the day's 11 commits. Two visible bugs in standalone PWA mode:
+1. Preview block (the rendered preblast text users read before sharing) was rendering at fontSize 11 monospace — dramatically smaller than every other user-facing reading surface in the app
+2. Message textarea (where users compose preblast body content) was rendering at fontSize 14 proportional — visibly smaller than iPhone Notes baseline 17px
+
+**Stage 1 diagnostic findings (30+ fontSize values inventoried):**
+- Line 273 (textarea): fontSize 14 → 17 target. fontFamily is F (Outfit proportional), already correct.
+- Line 331 (preview block): fontSize 11 → 17 target + add fontWeight 500. fontFamily is `'Courier New', monospace`, the lone monospace surface in PreblastComposer.
+- 5 other "visibly small" body-text values flagged in PreblastComposer but explicitly out of scope: BD-picker beatdown name (line 227, 14px) and meta (228, 11px), custom-type input (247, 13px), When/Location/Beatdown chip text (297, 305, 313 — all 12px), empty-state text (220, 13px). Held to keep commit scope tight.
+- Labels, pills, counters, X-controls, navigation buttons all at 9-13px BUT correctly identified as intentional UI chrome — NOT touched.
+
+**Spec applied (2 surgical changes, both inline-style-block edits):**
+- Line 273 textarea: `fontSize: 14 → 17`. No fontWeight added (proportional Outfit reads cleanly at 17 regular weight).
+- Line 331 preview block: `fontSize: 11 → 17` AND `+ fontWeight: 500` (NEW property after fontSize). The fontWeight thickens Courier strokes for outdoor readability — same pattern as Notepad textarea after D6.
+
+**Build green. +2 / -2 net.** Smoke-tested live by Ritz.
+
+**Out of scope but flagged for next session (full app-wide font audit):**
+- All 5 PreblastComposer body-text values listed above (chip text, BD-picker meta, etc.)
+- Live Mode font sizing
+- Generator config screens font sizing
+- CreateExercise screen font sizing
+
+#### Followup 2 (D13) — LibraryScreen: avatar + name tap-to-profile fix
+
+**Files touched:** `src/components/LibraryScreen.tsx` only. +22 / -16 net.
+
+**Trigger:** Real iPhone smoke test. On Library Beatdowns cards, tapping the author's avatar circle did NOT route to the author's Q Profile. Tap fell through to the card's outer onClick which opened the beatdown detail view. User had to open beatdown detail FIRST, then click the author name in the detail view to reach the profile. Extra tap.
+
+**Stage 1 diagnostic findings (carefully done after Claude's earlier wrong calls):**
+- Avatar circle (lines 813-827 in card render block): zero onClick handler at all. The avatar `<div>` is a bare presentational element. Tap bubbles directly to outer card `onClick={() => setLibDet(bd)}` which opens detail view. **Real routing bug.**
+- Author name span (lines 830-839, interactive branch): HAS correct `onClick={e => handleAuthorTap(e, bd.auId)}`. Routing is technically correct.
+- BUT: name styling was `color: T2, fontWeight: 700, cursor: "pointer"` — visually identical to inert text, no underline, no green tint. Users perceived as non-tappable. **Discoverability bug, not routing bug.**
+- handleAuthorTap (lines 254-262): correctly calls `e.stopPropagation()` first line. Handles own-profile (`authorId === currentUserId → onOpenProfile(null)`) vs other-profile (`onOpenProfile(authorId)`).
+- onOpenProfile and currentUserId both in scope on LibraryScreenProps already. Wired in page.tsx:895 as `onOpenProfile={handleOpenProfile} currentUserId={user.id}`.
+- Detail view at line 286 has the proven "tappable name" styling: `color G + textDecoration underline + textUnderlineOffset 3 + textDecorationColor G + "60"`. Visual lineage opportunity.
+
+**Stage 1 diagnostic also flagged the 8-color avatar helper from D7 had been correctly extracted to `src/lib/avatars.ts` and was being imported. Confirmed visual color consistency would survive the change.**
+
+**Spec applied (2 hunks, in same file):**
+- Avatar `<div>`: added conditional `onClick={bd.auId && onOpenProfile ? (e => handleAuthorTap(e, bd.auId)) : undefined}` and `cursor: bd.auId && onOpenProfile ? "pointer" : "default"`. handleAuthorTap's internal stopPropagation handles bubble prevention.
+- Author name interactive branch: changed `color: T2 → G`, ADDED `textDecoration: "underline"`, `textUnderlineOffset: 3`, `textDecorationColor: G + "60"`. Matched detail-view styling at line 286.
+- Inert fallback span (the no-onClick branch): UNTOUCHED. Stays at `color T2` with no decoration — correctly signals "not tappable" when bd.auId is missing.
+
+**Build green. Pushed.**
+
+**Smoke test outcome:** Avatar tap WORKED — Niseko's avatar circle now opens Niseko's Q Profile. Name tap also worked. Card body tap unchanged (opens detail). YOU pill avatar tap correctly routes to own profile via `authorId === currentUserId` branch.
+
+**BUT:** the visual styling change (green color + underline) was rejected by Ritz on smoke test. "Looks like a hyperlink, too aggressive. I want it the same font color and no line. Just clickable." → became Followup 3.
+
+#### Followup 3 (D14) — LibraryScreen: revert name visual styling
+
+**Files touched:** `src/components/LibraryScreen.tsx` only. +1 / -4 net.
+
+**Trigger:** Direct user feedback on D13's smoke test. The detail-view styling (color G + underline) was the wrong call for the card context — too aggressive, read as a hyperlink, didn't match card chrome.
+
+**Spec applied (single hunk on interactive name span):**
+- `color: G → T2` (revert to light cream — matches inert fallback)
+- REMOVE `textDecoration: "underline"`
+- REMOVE `textUnderlineOffset: 3`
+- REMOVE `textDecorationColor: G + "60"`
+- KEEP `fontSize: 14, fontWeight: 700, cursor: "pointer"` (cursor preserved for desktop hover affordance — invisible on mobile)
+- KEEP `onClick` handler (the whole point — name remains clickable)
+
+**Result:** Interactive name span now visually identical to inert fallback span EXCEPT for `cursor: "pointer"`. Discoverability for the tap-to-profile affordance lives entirely on the avatar circle (D13 made tappable). Name remains clickable as a secondary affordance for users who try it, but doesn't visually demand attention.
+
+**Inert fallback span untouched. Avatar onClick from D13 untouched. handleAuthorTap untouched.**
+
+**Build green. Pushed.**
+
+**Smoke test outcome:** Confirmed working. Card chrome visually consistent.
+
+**Lesson surfaced (codified as Rule 31 below):** The D13 styling decision was a wrong call. Claude reasoned "match the detail view for visual lineage" without checking whether the user wanted that styling treatment in the card context. Detail view has more space and benefits from explicit affordances; card context is denser and benefits from quieter chrome. The wrong-call cost was one extra commit (D14 revert).
+
+#### Followup 4 (D15) — globals.css: overscroll-behavior-x: none on body (INCOMPLETE FIX)
+
+**Files touched:** `src/app/globals.css` only. +1 / -0 net. Single property addition.
+
+**Trigger:** Real iPhone standalone PWA testing surfaced a previously-undiscovered bug: edge-swipe-from-left-edge on iPhone (in standalone PWA mode) triggered iOS Safari's native back-navigation gesture. Symptom: Library visually painted on top while Home's tap targets were active underneath, producing taps that landed on Home's action grid (Build/Notepad/Add exercise tiles) at coordinates matching Home's layout. User reflexively tapped multiple times when "nothing happened," landing on wrong-screen elements.
+
+**Stage 1 diagnostic findings (run before specifying the fix):**
+- The v17 popstate handler (page.tsx:326-422) runs correctly on iOS — pushes/replaces state, intercepts popstate events, routes back from Library → Home. NOT iOS-specific (no userAgent check). Tested mechanism is platform-agnostic.
+- Live Mode swipe handler (LiveModeScreen.tsx:228-263) reads raw touch coordinates via React onTouchStart/Move/End on a child div with NO `touchAction` style. Native React touch events, no library, no preventDefault, no stopPropagation. Critical: this is a CHILD div, not the document/body — its touch handlers receive JS events independently of document-level overscroll behavior.
+- manifest.json: `display: "standalone"` confirmed, `orientation: "portrait"` locked. No iOS-specific keys.
+- 6 existing `overscroll-behavior` / `touchAction` usages in the codebase, all overlay/drag/modal-local, none at document root, none on X-axis. Diagnostic confirmed: zero usage at html / root container level.
+- globals.css body had `overscroll-behavior-y: contain` already (blocks pull-to-refresh) but NO X-axis equivalent. The X-axis was unconstrained at the root level.
+
+**Diagnostic conclusion at the time:** Fix A (`overscroll-behavior-x: none` on body) was the smallest, lowest-risk approach. Live Mode's child-div JS swipe handlers would be unaffected (the property only blocks browser-level overscroll/back gestures, not JS event delivery to children).
+
+**Spec applied:** Added `overscroll-behavior-x: none;` to the body rule in globals.css, immediately after the existing `overscroll-behavior-y: contain;` line.
+
+**Build green. Pushed.**
+
+**Smoke test outcome — UNRESOLVED:** Multiple iPhone PWA reinstalls (force-quit + delete from home screen + fresh add-to-home-screen + reopen) over ~5 minutes confirmed: **the bug still exists.** Edge-swipe-from-left-edge still navigates back to the previous tab (Home → Profile, swipe right, returns to Home). The CSS fix did not stop the iOS standalone PWA back-navigation gesture.
+
+**This is the unresolved open bug carried forward to the next session.** See dedicated section below.
+
+### OPEN BUG — iOS PWA EDGE-SWIPE-BACK (carried forward to next session)
+
+**The bug:**
+On standalone iOS PWA install, edge-swipe-from-left-edge triggers iOS Safari's native back-navigation gesture. iOS captures a snapshot of the previous history state and renders it as the "behind" layer of the transition. As the user swipes, the current tab (e.g., Library) slides off to the right while the cached previous tab (e.g., Home) slides in from the left. The v17 popstate handler runs and routes correctly in React state, but iOS's interactive transition is already mid-flight and cannot be cancelled. Result: visually one tab, interactively the other, until React re-renders catch up. Half-broken state where tap coordinates land on Home's elements (Build from scratch / Add exercise) while Library is still visually visible.
+
+**Reproducibility:**
+Confirmed in standalone PWA mode after fresh install. NOT a service worker cache issue. Multiple reinstall cycles still show the bug.
+
+**Asymmetry:**
+Edge-swipe-from-left-edge (drag right) → navigates back. Edge-swipe-from-right-edge (drag left) → does nothing (no future history state). This asymmetry confirms the gesture is iOS Safari's edge-swipe-back, not horizontal scroll or carousel behavior. Code search confirmed: zero translateX/scroll-snap/swipeable/carousel patterns in the codebase. page.tsx uses conditional render — only one tab mounted at a time.
+
+**What's been tried (and failed):**
+1. `overscroll-behavior-x: none` on body in globals.css. **Did not work.** Confirmed via fresh PWA install. The property may not apply to iOS standalone PWA's back-navigation gesture (which is a separate mechanism from scroll-overscroll), OR iOS WebKit reads from html element instead of body in standalone-mode PWAs, OR `overscroll-behavior` is the wrong CSS primitive for navigation gestures entirely.
+
+**Three candidate fixes for next session, ranked by Stage 2 confidence:**
+1. **Fix Candidate 1 (cheapest first try, ~70% confidence):** Add `overscroll-behavior-x: none` to `html` selector ALSO (in addition to body). Some iOS standalone-mode behavior reads back-gesture suppression from html. Single-line addition. Diagnostic-first: grep globals.css to confirm no html rule exists yet.
+2. **Fix Candidate 2 (input-layer block, ~60% confidence):** Add `touch-action: pan-y` to body (or html). Tells the browser at the gesture-recognition layer "only allow vertical pan gestures." Blocks horizontal gesture recognition before iOS picks it up for back-nav. **Risk:** Live Mode swipe-between-exercises lives on a child div with no touchAction style of its own; needs `touchAction: "pan-x pan-y"` override on the swipeable teleprompter div to preserve. Two-file commit, two-step verify.
+3. **Fix Candidate 3 (most surgical, ~50% confidence):** JavaScript-level — root touchstart listener that calls `e.preventDefault()` when `touch.clientX < 20` (i.e., near the left edge). Stops gesture before iOS gesture-recognizer fires. More code, more iOS-version edge cases.
+
+**Recommended next-session approach:**
+- Stage 1 diagnostic: confirm whether previous Followup 4 commit actually deployed to PWA (verify CSS in DevTools or live inspector), check globals.css current state, search for any html-element rules.
+- Stage 2 if cache verified: apply Fix Candidate 1 first (html-level overscroll-behavior-x). Smoke-test.
+- Stage 3 if Fix 1 fails: apply Fix Candidate 2 (touch-action: pan-y on body + override on Live Mode teleprompter div). Smoke-test BOTH the swipe-back fix AND Live Mode swipe regression.
+- If Fix 2 also fails or breaks Live Mode: defer to a dedicated investigation session with iOS-version-matrix testing.
+
+**Real-world impact of leaving this unfixed:**
+- Real PAX who install the PWA properly and DON'T edge-swipe will not encounter the bug
+- Users who reflexively edge-swipe-back (iOS muscle memory from Safari tabs) WILL hit the half-broken state
+- Severity: medium-high. Not blocking ship but produces tap-on-wrong-element confusion for affected users.
+
+**The bug must be fixed before merge to main.** The merge-to-main remains explicitly user-gated; this bug is one of the gating items.
+
+### Cumulative day-on-day progress (FINAL — amended)
+
+| Day | Commits | Major outcomes |
+|---|---|---|
+| April 30 (v16) | 5 | Action area pattern, Q Profile cards canonicalized, Shout/Follow archived |
+| May 1 (v17) | 11 | Cluster A + B + C Item 5 + 3 latent bugs |
+| May 2 (v18) | 3 | Item 12 Notepad v0 MVP end-to-end |
+| May 3 (v19 morning) | 4 | Cluster D Items D1-D4 |
+| May 3-4 (v20 afternoon) | 7 | Cluster D Items D5-D11 |
+| May 4 (v20 amendment / late evening) | 4 | Followups D12-D15: PreblastComposer fonts + Library avatar+name tap fix + name styling revert + iOS swipe CSS (incomplete fix) |
+| **Total today (May 3-4)** | **15 commits** (14 code + 1 Bible) | Largest single-day push in project history. v2-pivot is now POLISH-COMPLETE-MINUS-IOS-SWIPE-BUG. |
+
+### LESSONS FROM THE LATE-EVENING SESSION
+
+Four wrong calls or near-misses produced lessons worth canonizing:
+
+**Wrong Call 1 — "The author name on Library cards is already clickable" (D13 lead-up).**
+When Ritz first reported "tapping name doesn't open profile," Claude responded from memory of D7's spec: "the name is already wired with handleAuthorTap, should work." This was a Rule 26 violation (memory-first instead of diagnostic-first). The correct approach was to diagnose the live code immediately, which would have surfaced the dual nature of the bug (avatar = real routing gap, name = discoverability gap) before specifying anything.
+
+**Wrong Call 2 — "Add green underline for visual lineage with detail view" (D13 → D14).**
+Claude specified the detail-view styling treatment (color G + underline) as the correct fix for the name's discoverability gap. Reasoning: "match detail-view styling for visual lineage." Ritz rejected on smoke test ("looks like a hyperlink"). The wrong-call cost was one extra commit (D14 revert). The lesson: **visual lineage between surfaces is a useful pattern but not always desired by the user; check before specifying.** Card context is denser than detail view; what works in detail may be wrong in card.
+
+**Wrong Call 3 — "iOS edge-swipe-back is fixed by overscroll-behavior-x on body" (D15).**
+Stage 1 diagnostic correctly identified the gesture and mapped Live Mode's swipe handler. Claude specified Fix A (overscroll-behavior-x on body) with high confidence per documented behavior. Real PWA testing showed it didn't work. **The diagnostic told Claude what the spec says; it didn't test the actual fix on actual iOS PWA.** Confidence based on documentation is not the same as confidence based on empirical testing. The lesson: when shipping iOS-specific gesture fixes, flag uncertainty in the spec — "this is the documented fix; we'll need to verify empirically" — rather than projecting false confidence.
+
+**Wrong Call 4 — Misreading the screenshot showing Home appearing during edge-swipe.**
+After the iOS fix appeared not to work, Claude initially read the screenshot as "all three tabs mounted simultaneously in a horizontal carousel." This was a clear over-correction from "iOS edge-swipe-back" (the previous diagnosis) toward a totally new architectural hypothesis. Stage 1 diagnostic refuted the carousel hypothesis cleanly: page.tsx uses conditional render, no carousel/translateX/scroll-snap patterns anywhere. The original diagnosis (iOS edge-swipe) WAS correct; the fix shipped was just incomplete. The lesson: **when a fix appears not to work, the first hypothesis isn't always wrong — sometimes the fix just doesn't reach the target.** Don't reach for a new architectural diagnosis until the original is empirically refuted.
+
+### Pattern observation: session-creep dynamics
+
+The May 3-4 session illustrated session-creep dynamics that are worth naming explicitly so the next Claude can recognize them:
+
+1. **"Walk away earned" said three+ times.** Claude declared session-end multiple times during the afternoon ("walk away earned"). Each time, Ritz brought "one more thing" and the session continued. By late evening, this pattern was acknowledged but not stopped — the work continued through 4 more commits and 1 unresolved bug.
+
+2. **Sleep-deprived diagnostic discipline degrades.** Three of the four wrong calls occurred in the late evening, after the day had already produced 11 successful commits. The same diagnostic-first muscle that produced clean commits earlier in the day produced wrong calls later. This is a real cognitive-load effect and not a reflection on Ritz's or Claude's competence.
+
+3. **"Are you calling me weak? Let's fix this" — the pivot-to-action pattern.** When Claude recommended deferring the iOS swipe fix to morning, Ritz's response was a friendly challenge to ship anyway. Claude's response acknowledged the dynamic but still cut a spec at 70% confidence (the touch-action fix). Honest expectation-setting in the spec helped — Claude flagged the 50% combined success risk before Ritz approved. The lesson: **expectation-setting up front beats false confidence followed by retraction.**
+
+4. **The wrong fix can prove valuable even when wrong.** The shipped overscroll-behavior-x: none on body wasn't the right fix for the iOS PWA back-gesture, but it IS still the right CSS hygiene rule for blocking horizontal pull-overscroll. Per the diagnostic recommendation, the commit should NOT be reverted — it stays as good-citizen CSS even though it didn't solve the reported bug. Future investigation will layer additional fixes on top.
+
+### NEW PERMANENT OPERATING RULE — Rule 31
+
+**Rule 31 — Diagnostic confidence vs empirical confidence**
+
+**The rule:** When specifying a fix that depends on platform-specific behavior (iOS, Android, specific browser versions, PWA standalone mode, etc.), Claude must explicitly distinguish between "this is the documented fix" and "this is the empirically-validated fix." If only documentation supports the spec, Claude must flag the uncertainty in the spec and propose an empirical verification step BEFORE shipping.
+
+**The pattern from this session:**
+The iOS swipe-back fix (D15) was specified with high confidence based on the diagnostic's note "iOS Safari support: solid since iOS 16." The diagnostic was reporting documented behavior. The actual iOS PWA standalone-mode behavior turned out to differ. Had Claude flagged this distinction in the spec — "we're shipping the documented fix; if it doesn't work in standalone PWA, we have three follow-up candidates" — Ritz would have known to verify before assuming the fix shipped clean.
+
+**What to do instead:**
+- For platform-specific fixes, frame confidence as: "X% confidence per documentation; Y% confidence per project codebase precedent; Z% confidence per actual platform testing in this session."
+- If the answer is "documented but not empirically tested," flag it: "This is the documented fix. We should test it on the target platform (real iPhone PWA standalone) before declaring done."
+- Pair the spec with a concrete test plan that validates the fix on the actual target platform.
+- After the fix ships, the smoke-test must include the platform-specific scenario, not just "build green + screen looks right."
+
+**Rule 31 connects to:**
+- Rule 26 (diagnostic-first / spec-second / build-third)
+- Rule 29 (visual smoke test before declaring done)
+- The two-stage diagnostic pattern from D7/D9
+
+Together they form a complete loop: Stage 1 diagnostic establishes ground truth; Stage 2 spec writes the fix; Stage 3 build executes; Stage 4 visual smoke test validates on the target platform with empirical (not documented) confidence.
+
+### Outstanding work going into next session (UPDATED)
+
+**Critical / blocks-merge items:**
+1. **iOS PWA edge-swipe-back bug** (open). See dedicated section above. Must fix before merge to main. Stage 1 diagnostic ready, three candidate fixes ranked by confidence.
+
+**Polish / non-blocking items:**
+2. App-wide font audit covering remaining unaudited surfaces — PreblastComposer body-text values not yet bumped (BD-picker meta, chip text, custom-type input, empty-state), Live Mode font sizing, Generator config screens, CreateExercise. Group these into a single coordinated audit + commit cluster.
+3. Bible v20 references "11 commits" and "polish-complete" in some sections; this amendment supersedes those numbers. Future Bible (v21) should rationalize.
+
+**Strategic deferrals (still in force):**
+- Photo upload for avatars: post-launch PAX signal
+- Admin / debug tools: until ops exceed 1/week
+- Marketing infographic: separate session in Claude Design
+- steal_count architectural fix: indefinitely deferred per action-count framing
+- Notepad v0.2 (fuzzy match, multi-exercise lines, AI smart import): post-launch PAX signal
+- Item 6+7 (find HIMs / follow system): deferred per v17
+
+**Optional pre-merge items (Ritz's call):**
+- Complete iOS swipe fix (mandatory, see above)
+- App-wide font audit (optional but recommended)
+- Bump package.json version 0.1.0 → 2.0.0 (mechanical, only when ready to merge)
+- Final test pass across all v2-pivot features
+- Tag v2.0.0
+- Merge `v2-pivot` → `main`
+- Push to gloombuilder.app
+- Existing PWA users see "↻ New version available — Refresh" banner triggered by version bump
+
+The merge-to-main remains EXPLICITLY user-gated. The next Claude must not instruct merge without Ritz's explicit "merge" command. Per session-locked rules in v17/v18/v19/v20.
+
+---
+
 ## STRATEGIC DEFERRALS — V20 ADDITIONS
 
 This section captures three explicit deferrals locked during the May 3-4 session. The next Claude must NOT propose these unprompted; they're locked product decisions, not "TODO" items.
@@ -6723,6 +6969,10 @@ Converts Supabase row to ExerciseData. Bridge between 904 DB exercises and gener
 - Mockups before code, every time.
 - Single path, no walk-backs.
 - Build is the only verification.
+
+---
+
+*Bible v20 AMENDMENT — May 4, 2026 (late evening). The original v20 closing block (immediately below) documents the 11-commit polish day as it stood when v20 was committed (`5625773 — Add Bible v20`). After v20 was committed, four additional commits shipped and one critical bug remains unresolved. The amended state: 14 code commits + 1 Bible commit = 15 total commits in the May 3-4 window. The v2-pivot branch is now POLISH-COMPLETE-MINUS-IOS-SWIPE-BUG. The four amendment commits are: (D12) PreblastComposer preview block fontSize 11->17 and message textarea 14->17, both with appropriate fontWeight handling; (D13) LibraryScreen avatar circle gained conditional onClick + cursor for tap-to-profile routing, name span gained green underline styling; (D14) revert of D13 styling back to plain T2 color (Ritz: too aggressive, looks like a hyperlink); (D15) globals.css overscroll-behavior-x: none on body — INCOMPLETE FIX, did not stop iOS PWA edge-swipe-back gesture, bug remains open and is the gating item before merge to main. Three follow-up candidate fixes ranked by confidence in the amendment section above. The shipped CSS commit (D15) is good-citizen CSS hygiene and should NOT be reverted — future fixes layer on top. Four wrong-call lessons documented: (1) memory-first instead of diagnostic-first on D13 lead-up, (2) visual-lineage assumption that did not match user preference on D13 -> D14 revert, (3) documented-fix vs empirically-validated-fix conflation on D15, (4) misreading screenshot during D15 followup that led to a transient horizontal-carousel hypothesis (refuted by Stage 1 diagnostic — code is conditional render, no carousel anywhere). One new permanent operating rule added: Rule 31 (diagnostic confidence vs empirical confidence — when shipping platform-specific fixes, distinguish documented from empirically-validated and flag uncertainty in the spec). Session-creep dynamics observed and named explicitly: walk-away-earned said three+ times, late-evening diagnostic discipline degraded, the fix-it-anyway pivot pattern. The next session opens fresh with the iOS swipe bug as priority 1, the app-wide font audit as priority 2 (optional), and merge-to-main remaining explicitly user-gated. Bible v20 (with this amendment) is the canonical state.*
 
 ---
 
