@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { loadSeedExercises, addComment, loadComments, deleteComment, updateComment } from "@/lib/db";
-import { mapSupabaseExercise } from "@/lib/exercises";
+import { mapSupabaseExercise, EQUIP } from "@/lib/exercises";
 import type { ExerciseData } from "@/lib/exercises";
 import ThumbsUpIcon from "@/components/ThumbsUpIcon";
 import type { AttachedBeatdown } from "@/components/PreblastComposer";
@@ -56,7 +56,7 @@ interface Exercise { n: string; r: string; c: string; nt: string }
 interface Section { label: string; color: string; exercises: Exercise[]; note: string }
 interface FeedItem {
   id: number | string; src: string; nm: string; au: string; auId?: string; ao: string; reg: string;
-  d: string; dur: string | null; aoT: string[]; v: number; u: number; cm: number;
+  d: string; dur: string | null; aoT: string[]; eq?: string[]; v: number; u: number; cm: number;
   ds: string; dt: string; createdAt?: string; tp: string; tg?: string[]; et?: string[];
   howTo?: string; inspiredBy?: string; comments: Comment[]; secs?: Section[];
 }
@@ -159,6 +159,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
   const [fDu, setFDu] = useState("All");
   const [fR, setFR] = useState("All");
   const [fAo, setFAo] = useState("All");
+  const [fEq, setFEq] = useState("All");
   const [fSrc, setFSrc] = useState("All");
   const [fET, setFET] = useState("All");
   const [fExR, setFExR] = useState("All");
@@ -510,6 +511,8 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>{REGIONS.map(o => filterBtn(o, fR === o, () => setFR(o)))}</div>
             <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: T5, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10 }}>AO site type</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>{["All", ...SITES.map(s => s.l)].map(o => filterBtn(o, fAo === o, () => setFAo(o)))}</div>
+            <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: T5, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10 }}>Equipment</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>{["All", ...EQUIP.map(e => e.l)].map(o => filterBtn(o, fEq === o, () => setFEq(o)))}</div>
             <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: T5, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10 }}>Source</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>{["All","Hand Built","GloomBuilder"].map(o => filterBtn(o, fSrc === o, () => setFSrc(o)))}</div>
           </div>
@@ -540,6 +543,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     if (fDu !== "All") feed = feed.filter(b => b.dur === fDu);
     if (fR !== "All") feed = feed.filter(b => b.reg === fR);
     if (fAo !== "All") { const sId = SITES.find(s => s.l === fAo); feed = feed.filter(b => sId && b.aoT && b.aoT.includes(sId.id)); }
+    if (fEq !== "All") { const eId = EQUIP.find(e => e.l === fEq); feed = feed.filter(b => eId && b.eq && b.eq.includes(eId.id)); }
     if (fSrc !== "All") feed = feed.filter(b => b.src === fSrc);
   } else {
     feed = feed.filter(b => b.tp === "exercise");
@@ -552,7 +556,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
   if (fSort === "stolen") feed.sort((a, b) => b.u - a.u);
 
   const af = libT === "beatdowns"
-    ? [fD, fDu, fR, fAo, fSrc].filter(v => v !== "All").length
+    ? [fD, fDu, fR, fAo, fEq, fSrc].filter(v => v !== "All").length
     : [fET, fD, fExR].filter(v => v !== "All").length;
 
   return (

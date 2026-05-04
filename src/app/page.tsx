@@ -59,6 +59,7 @@ export interface SharedItem {
   d: string;
   dur: string | null;
   aoT: string[];
+  eq?: string[];
   v: number;
   u: number;
   cm: number;
@@ -110,6 +111,7 @@ function dbToShared(row: Record<string, unknown>): SharedItem {
     d: (row.difficulty as string) || "medium",
     dur: (row.duration as number) ? (row.duration as number) + " min" : null,
     aoT: (row.site_features as string[]) || [],
+    eq: (row.equipment as string[]) || [],
     v: (row.vote_count as number) || 0,
     u: (row.steal_count as number) || 0,
     cm: (row.comment_count as number) || 0,
