@@ -810,29 +810,35 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
           }}>
             {/* HEADER ROW — avatar + author/AO/date + duration pill */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
-              <div style={{
-                width: 36,
-                height: 36,
-                borderRadius: "50%",
-                background: avatarColor + "1f",
-                border: "2px solid " + avatarColor,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 13,
-                fontWeight: 700,
-                color: avatarColor,
-                flexShrink: 0,
-                letterSpacing: -0.5,
-              }}>{initials}</div>
+              <div
+                onClick={bd.auId && onOpenProfile ? (e => handleAuthorTap(e, bd.auId)) : undefined}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  background: avatarColor + "1f",
+                  border: "2px solid " + avatarColor,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: avatarColor,
+                  flexShrink: 0,
+                  letterSpacing: -0.5,
+                  cursor: bd.auId && onOpenProfile ? "pointer" : "default",
+                }}>{initials}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                   {bd.auId && onOpenProfile ? (
                     <span onClick={e => handleAuthorTap(e, bd.auId)} style={{
                       fontSize: 14,
                       fontWeight: 700,
-                      color: T2,
+                      color: G,
                       cursor: "pointer",
+                      textDecoration: "underline",
+                      textUnderlineOffset: 3,
+                      textDecorationColor: G + "60",
                     }}>{bd.au}</span>
                   ) : (
                     <span style={{ fontSize: 14, fontWeight: 700, color: T2 }}>{bd.au}</span>
