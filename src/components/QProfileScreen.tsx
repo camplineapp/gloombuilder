@@ -10,6 +10,7 @@ import {
   type ProfileStats,
 } from "@/lib/db";
 import ThumbsUpIcon from "@/components/ThumbsUpIcon";
+import { colorForUserId, getInitials, AVATAR_COLORS } from "@/lib/avatars";
 
 // Design tokens (matches Bible v14 + existing screens)
 const BG = "#0E0E10";
@@ -26,27 +27,6 @@ const T4 = "#928982";
 const T5 = "#7A7268";
 const GOLD = "#E8A820";
 const F = "'Outfit', system-ui, sans-serif";
-
-// Avatar palette for OTHER HIMs (own profile is always green for brand consistency)
-const AVATAR_COLORS = ["#f59e0b", "#a78bfa", "#3b82f6", "#06b6d4", "#E8A820"];
-
-function colorForUserId(id: string, isOwn: boolean): string {
-  if (isOwn) return G;
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash = (hash << 5) - hash + id.charCodeAt(i);
-    hash |= 0;
-  }
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => (w[0] || "").toUpperCase())
-    .join("")
-    .slice(0, 2);
-}
 
 // Difficulty pill colors per Bible v14
 function difficultyColor(d: string): { bg: string; fg: string; border: string; label: string } {

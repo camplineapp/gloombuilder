@@ -6,6 +6,7 @@ import { mapSupabaseExercise } from "@/lib/exercises";
 import type { ExerciseData } from "@/lib/exercises";
 import ThumbsUpIcon from "@/components/ThumbsUpIcon";
 import type { AttachedBeatdown } from "@/components/PreblastComposer";
+import { colorForUserId, getInitials } from "@/lib/avatars";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -775,40 +776,176 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
         <button onClick={() => setLibF(true)} style={{ fontFamily: F, marginLeft: "auto", background: af > 0 ? G + "15" : "rgba(255,255,255,0.04)", color: af > 0 ? G : T4, padding: "7px 14px", borderRadius: 10, fontSize: 12, border: "1px solid " + (af > 0 ? G + "30" : BD), cursor: "pointer", fontWeight: 600 }}>Filters{af > 0 ? " (" + af + ")" : ""}</button>
       </div>
       {feed.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40, border: "1px dashed " + BD, borderRadius: 14, marginBottom: 8 }}>No {libT} shared yet. Be the first!</div> : null}
-      {feed.map(bd => (
-        <div key={bd.id} onClick={() => setLibDet(bd)} style={{ background: CD, border: "1px solid " + BD, borderLeft: "3px solid " + (bd.tp === "exercise" ? P + "50" : A + "50"), borderRadius: 14, padding: "16px 18px", marginBottom: 8, cursor: "pointer" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: T2 }}>{bd.nm}</div>
-                {bd.src && bd.tp !== "exercise" ? (() => { const sb = srcBadge(bd.src); return <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, fontWeight: 700, background: sb.bg, color: sb.c }}>{sb.l}</span>; })() : null}
+      {feed.map(bd => {
+        const isOwn = bd.auId ? bd.auId === currentUserId : false;
+        const avatarColor = colorForUserId(bd.auId || String(bd.id), isOwn);
+        const initials = getInitials(bd.au);
+
+        // Date formatter — "Apr 24" current year, "Apr 24, 2025" prior year
+        let dateStr = bd.dt; // fallback to pre-formatted dt
+        if (bd.createdAt) {
+          const d = new Date(bd.createdAt);
+          const currentYear = new Date().getFullYear();
+          const opts: Intl.DateTimeFormatOptions = d.getFullYear() === currentYear
+            ? { month: "short", day: "numeric" }
+            : { month: "short", day: "numeric", year: "numeric" };
+          dateStr = d.toLocaleDateString("en-US", opts);
+        }
+
+        const sb = bd.src ? srcBadge(bd.src) : null;
+        const diffColor = dc(bd.d);
+
+        return (
+          <div key={bd.id} onClick={() => setLibDet(bd)} style={{
+            background: CD,
+            border: "1px solid " + BD,
+            borderRadius: 14,
+            padding: "16px 18px",
+            marginBottom: 8,
+            cursor: "pointer",
+          }}>
+            {/* HEADER ROW — avatar + author/AO/date + duration pill */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+              <div style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                background: avatarColor + "1f",
+                border: "2px solid " + avatarColor,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 13,
+                fontWeight: 700,
+                color: avatarColor,
+                flexShrink: 0,
+                letterSpacing: -0.5,
+              }}>{initials}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  {bd.auId && onOpenProfile ? (
+                    <span onClick={e => handleAuthorTap(e, bd.auId)} style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: T2,
+                      cursor: "pointer",
+                    }}>{bd.au}</span>
+                  ) : (
+                    <span style={{ fontSize: 14, fontWeight: 700, color: T2 }}>{bd.au}</span>
+                  )}
+                  {isOwn && (
+                    <span style={{
+                      fontSize: 10,
+                      padding: "2px 7px",
+                      borderRadius: 4,
+                      background: G + "20",
+                      color: G,
+                      fontWeight: 700,
+                      letterSpacing: 0.5,
+                    }}>YOU</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: T5, marginTop: 2 }}>
+                  {bd.ao}{bd.ao && dateStr ? " · " : ""}{dateStr}
+                </div>
               </div>
-              <div style={{ fontSize: 14, color: T4, marginTop: 5, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
-                {bd.auId && onOpenProfile ? (
-                  <span onClick={e => handleAuthorTap(e, bd.auId)} style={{ color: G, fontWeight: 700, cursor: "pointer", padding: "4px 2px", textDecoration: "underline", textUnderlineOffset: 3, textDecorationColor: G + "60" }}>{bd.au}</span>
-                ) : (
-                  <span>{bd.au}</span>
-                )}
-                <span>· {bd.ao}</span>
-                {bd.au === profName ? <span style={{ color: G, fontSize: 11, marginLeft: 2 }}>· You</span> : null}
-              </div>
-              {bd.inspiredBy ? <div style={{ fontSize: 11, color: A, marginTop: 3 }}>Inspired by {bd.inspiredBy}</div> : null}
-              <div style={{ fontSize: 12, color: T5, marginTop: 3 }}>{bd.dt}</div>
+              {bd.dur && (
+                <span style={{
+                  background: G + "15",
+                  color: G,
+                  fontSize: 12,
+                  padding: "5px 10px",
+                  borderRadius: 6,
+                  fontFamily: F,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}>{bd.dur}</span>
+              )}
             </div>
-            <span style={{ background: dc(bd.d) + "15", color: dc(bd.d), fontSize: 12, padding: "4px 10px", borderRadius: 6, fontWeight: 700, fontFamily: F, textTransform: "uppercase" }}>{bd.d}</span>
-          </div>
-          <div style={{ fontSize: 15, color: T3, marginTop: 10, lineHeight: 1.55, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{bd.ds}</div>
-          {(bd.tg || bd.et || bd.dur) ? <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>{bd.dur ? <span style={{ background: G + "12", color: G, fontSize: 12, padding: "3px 10px", borderRadius: 6, fontFamily: F, fontWeight: 600 }}>{bd.dur}</span> : null}{(bd.tg || bd.et || []).filter(t => t !== bd.dur && !["Easy","Medium","Hard","Beast"].includes(t)).map(t => <span key={t} style={{ background: "rgba(255,255,255,0.05)", color: T4, fontSize: 12, padding: "3px 10px", borderRadius: 6, fontFamily: F }}>{t}</span>)}</div> : null}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-            <div style={{ display: "flex", gap: 14, fontSize: 14, color: T4 }}>
-              {bd.tp === "beatdown" ? <span onClick={e => { e.stopPropagation(); onToggleVote?.(String(bd.id), "beatdown"); }} style={{ color: userVotes.has(String(bd.id)) ? G : T4, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}><ThumbsUpIcon size={14} filled={userVotes.has(String(bd.id))} /> {bd.v}</span> : <span onClick={e => { e.stopPropagation(); onToggleVote?.(String(bd.id), "exercise"); }} style={{ color: userVotes.has(String(bd.id)) ? G : T4, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}><ThumbsUpIcon size={14} filled={userVotes.has(String(bd.id))} /> {bd.v}</span>}
-              <span>Stolen {bd.u}x</span>
-              {bd.cm > 0 ? <span>{bd.cm} comments</span> : null}
+
+            {/* TITLE */}
+            <div style={{ fontSize: 18, fontWeight: 700, color: T2, marginBottom: 6 }}>{bd.nm}</div>
+
+            {/* INSPIRED-BY (if present) */}
+            {bd.inspiredBy && (
+              <div style={{ fontSize: 11, color: A, marginBottom: 6 }}>Inspired by {bd.inspiredBy}</div>
+            )}
+
+            {/* SOURCE + DIFFICULTY + TAGS row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+              {sb && (
+                <span style={{
+                  fontSize: 11,
+                  padding: "3px 8px",
+                  borderRadius: 5,
+                  fontWeight: 700,
+                  background: sb.bg,
+                  color: sb.c,
+                }}>{sb.l}</span>
+              )}
+              <span style={{
+                background: diffColor + "15",
+                color: diffColor,
+                fontSize: 11,
+                padding: "3px 8px",
+                borderRadius: 5,
+                fontWeight: 700,
+                fontFamily: F,
+                textTransform: "uppercase",
+              }}>{bd.d}</span>
+              {bd.tg && bd.tg.filter(t =>
+                t !== bd.dur && !["Easy","Medium","Hard","Beast"].includes(t)
+              ).length > 0 && (
+                <span style={{ fontSize: 12, color: T4 }}>
+                  · {bd.tg.filter(t =>
+                    t !== bd.dur && !["Easy","Medium","Hard","Beast"].includes(t)
+                  ).join(" · ")}
+                </span>
+              )}
             </div>
-            <span onClick={e => { e.stopPropagation(); onSteal?.(String(bd.id), bd.tp as "beatdown" | "exercise"); fl("Saved!"); }} style={{ fontSize: 14, color: G, cursor: "pointer", padding: "4px 8px", fontWeight: 600 }}>Save</span>
+
+            {/* DESCRIPTION */}
+            {bd.ds && (
+              <div style={{
+                fontSize: 14,
+                color: T3,
+                lineHeight: 1.55,
+                overflow: "hidden",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                marginBottom: 12,
+              }}>{bd.ds}</div>
+            )}
+
+            {/* 3-COUNTER FOOTER (always visible, vote interactive) */}
+            <div style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: 14,
+              paddingTop: 12,
+              borderTop: "1px solid rgba(255,255,255,0.04)",
+              fontSize: 13,
+              color: T4,
+            }}>
+              <span
+                onClick={e => { e.stopPropagation(); onToggleVote?.(String(bd.id), "beatdown"); }}
+                style={{
+                  color: userVotes.has(String(bd.id)) ? G : T4,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >👍 {bd.v}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>↻ {bd.u}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>💬 {bd.cm}</span>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       {feed.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>No results match your filters</div> : null}
       </>
       )}
