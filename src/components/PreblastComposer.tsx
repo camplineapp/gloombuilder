@@ -270,7 +270,7 @@ export default function PreblastComposer({ onClose, qName, ao, attachedBeatdown,
               Message <span style={{ color: G, fontSize: 9, marginLeft: 4 }}>REQUIRED</span>
             </div>
             <div style={{ position: "relative", marginBottom: 16 }}>
-              <textarea value={message} onChange={(e) => setMessage(e.target.value.slice(0, 240))} placeholder="What's the call? Coupon party at the Yard. Be there or square..." style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid " + BD, borderRadius: 12, color: T1, fontFamily: F, fontSize: 14, padding: "12px 14px", minHeight: 140, resize: "vertical", outline: "none", lineHeight: 1.5 }} maxLength={240} />
+              <textarea value={message} onChange={(e) => setMessage(e.target.value.slice(0, 240))} placeholder="What's the call? Coupon party at the Yard. Be there or square..." style={{ width: "100%", background: "rgba(255,255,255,0.03)", border: "1px solid " + BD, borderRadius: 12, color: T1, fontFamily: F, fontSize: 17, padding: "12px 14px", minHeight: 140, resize: "vertical", outline: "none", lineHeight: 1.5 }} maxLength={240} />
               <div style={{ position: "absolute", bottom: 8, right: 12, fontSize: 10, color: message.length > 220 ? A : T5, fontFamily: F }}>{message.length} / 240</div>
             </div>
 
@@ -328,7 +328,7 @@ export default function PreblastComposer({ onClose, qName, ao, attachedBeatdown,
               <div style={{ width: 60 }} />
             </div>
             <div style={{ fontSize: 10, fontWeight: 800, color: T5, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 7 }}>Your preblast (paste anywhere)</div>
-            <div style={{ background: CARD_BG, border: "1px solid " + BD, borderRadius: 11, padding: 14, fontFamily: "'Courier New', monospace", fontSize: 11, color: T2, lineHeight: 1.55, marginBottom: 14, whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: "50vh", overflowY: "auto" }}>{previewText}</div>
+            <div style={{ background: CARD_BG, border: "1px solid " + BD, borderRadius: 11, padding: 14, fontFamily: "'Courier New', monospace", fontSize: 17, fontWeight: 500, color: T2, lineHeight: 1.55, marginBottom: 14, whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: "50vh", overflowY: "auto" }}>{previewText}</div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={handleCopy} style={{ flex: 1, background: "rgba(255,255,255,0.05)", color: T1, border: "1px solid " + BD, fontFamily: F, fontSize: 13, fontWeight: 800, padding: "12px 0", borderRadius: 11, cursor: "pointer" }}>{copied ? "\u2713 Copied" : "\uD83D\uDCCB Copy"}</button>
               <button onClick={handleShare} style={{ flex: 1, background: G, color: BG, border: "none", fontFamily: F, fontSize: 13, fontWeight: 800, padding: "12px 0", borderRadius: 11, cursor: "pointer" }}>{"\u2197"} Share</button>
