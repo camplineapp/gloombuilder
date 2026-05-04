@@ -28,7 +28,7 @@ const MONO = "'Courier New', Courier, monospace";
 
 const ist: React.CSSProperties = {
   width: "100%", background: "rgba(255,255,255,0.04)", border: "1px solid " + BD, borderRadius: 10,
-  color: T2, padding: "12px 14px", fontSize: 15, outline: "none", boxSizing: "border-box", fontFamily: F,
+  color: T2, padding: "12px 14px", fontSize: 17, outline: "none", boxSizing: "border-box", fontFamily: F,
 };
 
 interface NotepadScreenProps {
@@ -66,11 +66,16 @@ Mary
 American Hammer x20
 Plank 60sec`;
 
-const HELP_ROWS: Array<[string, string]> = [
-  ["blank line", "starts a new section. Don't put a blank line between a section header and its first exercise."],
-  ["- text", "coaching note (for exercise above OR section above)"],
-  ["> text", "transition (mosey/run to a new spot)"],
-  ["x10, 60sec", "marks an exercise with reps or time"],
+type HelpRow = { key: string; desc: string; warning?: string };
+const HELP_ROWS: HelpRow[] = [
+  {
+    key: "Section",
+    desc: "A blank line above creates a new section.",
+    warning: "Don't leave a blank line between a section header and its first exercise.",
+  },
+  { key: "x10", desc: "Add x10 or 60sec for reps or time." },
+  { key: "- text", desc: "Coaching note for the line above." },
+  { key: "> text", desc: "Mosey or run between exercises." },
 ];
 
 export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercises }: NotepadScreenProps) {
@@ -184,16 +189,16 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
   };
 
   const toastEl = toast ? (
-    <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: G, color: BG, padding: "10px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: F, zIndex: 300 }}>{toast}</div>
+    <div style={{ position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", background: G, color: BG, padding: "10px 24px", borderRadius: 10, fontSize: 16, fontWeight: 700, fontFamily: F, zIndex: 300 }}>{toast}</div>
   ) : null;
 
   return (
     <div style={{ padding: "0 24px" }}>
       {toastEl}
 
-      <button onClick={onClose} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14, marginBottom: 20 }}>← Home</button>
-      <div style={{ fontSize: 24, fontWeight: 800, color: T1, marginBottom: 4 }}>Notepad</div>
-      <div style={{ fontSize: 13, color: T4, marginBottom: 20 }}>Type or paste a beatdown — we&apos;ll parse it into sections and exercises.</div>
+      <button onClick={onClose} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 16, marginBottom: 20 }}>← Home</button>
+      <div style={{ fontSize: 26, fontWeight: 800, color: T1, marginBottom: 4 }}>Notepad</div>
+      <div style={{ fontSize: 15, color: T4, marginBottom: 20 }}>Type or paste a beatdown — we&apos;ll parse it into sections and exercises.</div>
 
       {draftRestored && (
         <div style={{
@@ -207,7 +212,7 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
           alignItems: "center",
           justifyContent: "space-between",
           gap: 12,
-          fontSize: 13,
+          fontSize: 15,
           fontWeight: 600,
           color: A,
           fontFamily: F,
@@ -218,7 +223,7 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
             background: "transparent",
             border: "1px solid rgba(245,158,11,0.40)",
             color: A,
-            fontSize: 12,
+            fontSize: 14,
             fontWeight: 700,
             padding: "5px 12px",
             borderRadius: 8,
@@ -233,7 +238,7 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
           <div
             key={m}
             onClick={() => setMode(m)}
-            style={{ flex: 1, textAlign: "center", padding: "10px 0", fontSize: 13, fontWeight: mode === m ? 700 : 500, color: mode === m ? G : T4, background: mode === m ? "rgba(34,197,94,0.08)" : "transparent", borderRadius: 10, cursor: "pointer", textTransform: "capitalize", fontFamily: F }}
+            style={{ flex: 1, textAlign: "center", padding: "10px 0", fontSize: 15, fontWeight: mode === m ? 700 : 500, color: mode === m ? G : T4, background: mode === m ? "rgba(34,197,94,0.08)" : "transparent", borderRadius: 10, cursor: "pointer", textTransform: "capitalize", fontFamily: F }}
           >
             {m}
           </div>
@@ -244,30 +249,46 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
         <>
           {/* Title */}
           <div style={{ marginBottom: 14 }}>
-            <label style={{ fontFamily: F, color: T5, fontSize: 12, textTransform: "uppercase", letterSpacing: 1.5, display: "block", marginBottom: 4, fontWeight: 600 }}>Title</label>
+            <label style={{ fontFamily: F, color: T5, fontSize: 14, textTransform: "uppercase", letterSpacing: 1.5, display: "block", marginBottom: 4, fontWeight: 600 }}>Title</label>
             <input value={title} maxLength={80} onChange={e => setTitle(e.target.value)} placeholder="Name this beatdown..." style={ist} />
           </div>
 
           {/* Beatdown notes label + help button */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <span style={{ fontFamily: F, color: T5, fontSize: 12, textTransform: "uppercase", letterSpacing: 1.5, fontWeight: 600 }}>Beatdown notes</span>
+            <span style={{ fontFamily: F, color: T5, fontSize: 14, textTransform: "uppercase", letterSpacing: 1.5, fontWeight: 600 }}>Beatdown notes</span>
             <button
               onClick={() => setShowHelp(!showHelp)}
               aria-label="Show notepad syntax help"
-              style={{ fontFamily: F, background: "rgba(255,255,255,0.04)", border: "1px solid " + BD, color: T4, fontSize: 14, fontWeight: 700, padding: "4px 10px", borderRadius: 8, cursor: "pointer", lineHeight: 1 }}
+              style={{ fontFamily: F, background: "rgba(255,255,255,0.04)", border: "1px solid " + BD, color: T4, fontSize: 16, fontWeight: 700, padding: "4px 10px", borderRadius: 8, cursor: "pointer", lineHeight: 1 }}
             >?</button>
           </div>
 
           {showHelp && (
             <div style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.20)", borderRadius: 10, padding: 11, marginBottom: 10 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <span style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: A, textTransform: "uppercase", letterSpacing: 1.5 }}>HOW TO WRITE</span>
-                <button onClick={() => setShowHelp(false)} style={{ background: "none", border: "none", color: T4, fontSize: 14, cursor: "pointer", fontFamily: F, lineHeight: 1, padding: 0 }}>✕</button>
+                <span style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: A, textTransform: "uppercase", letterSpacing: 1.5 }}>HOW TO WRITE</span>
+                <button onClick={() => setShowHelp(false)} style={{ background: "none", border: "none", color: T4, fontSize: 16, cursor: "pointer", fontFamily: F, lineHeight: 1, padding: 0 }}>✕</button>
               </div>
-              {HELP_ROWS.map(([key, desc]) => (
-                <div key={key} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontFamily: MONO, fontSize: 11, color: G, fontWeight: 700, width: "50%", flexShrink: 0 }}>{key}</span>
-                  <span style={{ fontFamily: F, fontSize: 11, color: T3, lineHeight: 1.4 }}>{desc}</span>
+              {HELP_ROWS.map((row) => (
+                <div key={row.key} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontFamily: MONO, fontSize: 13, color: G, fontWeight: 700, width: "50%", flexShrink: 0 }}>{row.key}</span>
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontFamily: F, fontSize: 13, color: T3, lineHeight: 1.4, display: "block" }}>{row.desc}</span>
+                    {row.warning && (
+                      <div style={{
+                        display: "flex",
+                        gap: 6,
+                        marginTop: 6,
+                        padding: "6px 8px",
+                        background: "rgba(245,158,11,0.06)",
+                        borderLeft: "2px solid " + A,
+                        borderRadius: 3,
+                      }}>
+                        <span style={{ fontFamily: F, fontSize: 12, color: A, flexShrink: 0, lineHeight: 1.4 }}>⚠</span>
+                        <span style={{ fontFamily: F, fontSize: 12, color: A, fontStyle: "italic", lineHeight: 1.4 }}>{row.warning}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -281,7 +302,7 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
             style={{
               ...ist,
               fontFamily: MONO,
-              fontSize: 13,
+              fontSize: 15,
               minHeight: 360,
               padding: 12,
               resize: "vertical" as const,
@@ -296,7 +317,7 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
       {mode === "preview" && (
         <div style={{ marginBottom: 16 }}>
           {(parsedResult === null || exerciseCount === 0) ? (
-            <div style={{ textAlign: "center", color: T5, padding: "40px 20px", border: "1px dashed " + BD, borderRadius: 14, fontSize: 13, fontFamily: F }}>
+            <div style={{ textAlign: "center", color: T5, padding: "40px 20px", border: "1px dashed " + BD, borderRadius: 14, fontSize: 15, fontFamily: F }}>
               Switch to Write tab to start typing your beatdown.
             </div>
           ) : (
@@ -309,7 +330,7 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
 
       {/* Section/exercise meta line — shown when there's a parse */}
       {parsedResult && exerciseCount > 0 && (
-        <div style={{ textAlign: "center", color: T5, fontSize: 12, fontFamily: F, marginBottom: 12 }}>
+        <div style={{ textAlign: "center", color: T5, fontSize: 14, fontFamily: F, marginBottom: 12 }}>
           {parsedResult.sections.length} {parsedResult.sections.length === 1 ? "section" : "sections"} · {exerciseCount} {exerciseCount === 1 ? "exercise" : "exercises"}
         </div>
       )}
@@ -323,7 +344,7 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
           width: "100%",
           padding: "16px 0",
           borderRadius: 14,
-          fontSize: 16,
+          fontSize: 18,
           fontWeight: 800,
           cursor: disabled ? "default" : "pointer",
           background: G,
@@ -357,8 +378,8 @@ function PreviewSectionCard({ sec, allEx }: { sec: Section; allEx: ExerciseData[
       <div style={{ borderRadius: "22px 22px 0 0", overflow: "hidden" }}>
         <div style={{ height: 3, background: sColor }} />
         <div style={{ padding: "14px 18px 12px" }}>
-          <div style={{ color: T1, fontSize: 21, fontWeight: 800, letterSpacing: "-0.5px", fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{secLabel}</div>
-          <div style={{ color: T4, fontSize: 13, marginTop: 3, fontFamily: F, fontWeight: 500 }}>{exCount} {exCount === 1 ? "exercise" : "exercises"}</div>
+          <div style={{ color: T1, fontSize: 23, fontWeight: 800, letterSpacing: "-0.5px", fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{secLabel}</div>
+          <div style={{ color: T4, fontSize: 15, marginTop: 3, fontFamily: F, fontWeight: 500 }}>{exCount} {exCount === 1 ? "exercise" : "exercises"}</div>
         </div>
       </div>
 
@@ -371,7 +392,7 @@ function PreviewSectionCard({ sec, allEx }: { sec: Section; allEx: ExerciseData[
             padding: "10px 14px",
             marginBottom: 10,
             color: T2,
-            fontSize: 13,
+            fontSize: 15,
             fontStyle: "italic",
             lineHeight: 1.5,
             whiteSpace: "pre-wrap" as const,
@@ -401,8 +422,8 @@ function PreviewExerciseRow({ ex, allEx }: { ex: SectionExercise; allEx: Exercis
     const exName = ex.name || ex.n || "";
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: "rgba(255,255,255,0.03)", borderRadius: 10, marginBottom: 6 }}>
-        <span style={{ color: T4, fontSize: 15, flexShrink: 0 }}>↗</span>
-        <span style={{ color: T3, fontSize: 16, fontStyle: "italic", fontWeight: 500, fontFamily: F, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{exName}</span>
+        <span style={{ color: T4, fontSize: 17, flexShrink: 0 }}>↗</span>
+        <span style={{ color: T3, fontSize: 18, fontStyle: "italic", fontWeight: 500, fontFamily: F, flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{exName}</span>
       </div>
     );
   }
@@ -417,11 +438,11 @@ function PreviewExerciseRow({ ex, allEx }: { ex: SectionExercise; allEx: Exercis
       <div style={{ background: EX_BG, borderRadius: 14, padding: "13px 14px", display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "nowrap", overflow: "hidden" }}>
-            <span style={{ color: T1, fontSize: 18, fontWeight: 700, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{exName}</span>
-            {isCustom && <span style={{ fontSize: 10, color: A, background: A + "15", padding: "2px 6px", borderRadius: 4, fontWeight: 700, textTransform: "uppercase", flexShrink: 0, fontFamily: F }}>Custom</span>}
+            <span style={{ color: T1, fontSize: 20, fontWeight: 700, fontFamily: F, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{exName}</span>
+            {isCustom && <span style={{ fontSize: 12, color: A, background: A + "15", padding: "2px 6px", borderRadius: 4, fontWeight: 700, textTransform: "uppercase", flexShrink: 0, fontFamily: F }}>Custom</span>}
           </div>
           {amount && (
-            <div style={{ color: T4, fontSize: 14, fontWeight: 600, marginTop: 3, fontFamily: F }}>
+            <div style={{ color: T4, fontSize: 16, fontWeight: 600, marginTop: 3, fontFamily: F }}>
               <span>{amount}{cadence ? ` · ${cadence}` : ""}</span>
             </div>
           )}
@@ -435,7 +456,7 @@ function PreviewExerciseRow({ ex, allEx }: { ex: SectionExercise; allEx: Exercis
           marginTop: 4,
           borderRadius: 6,
           color: T3,
-          fontSize: 13,
+          fontSize: 15,
           fontStyle: "italic",
           lineHeight: 1.5,
           whiteSpace: "pre-wrap" as const,
