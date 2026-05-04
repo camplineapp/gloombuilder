@@ -259,7 +259,7 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
             <button
               onClick={() => setShowHelp(!showHelp)}
               aria-label="Show notepad syntax help"
-              style={{ fontFamily: F, background: "rgba(255,255,255,0.04)", border: "1px solid " + BD, color: T4, fontSize: 16, fontWeight: 700, padding: "4px 10px", borderRadius: 8, cursor: "pointer", lineHeight: 1 }}
+              style={{ fontFamily: F, background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.30)", color: A, fontSize: 16, fontWeight: 700, padding: "4px 10px", borderRadius: 8, cursor: "pointer", lineHeight: 1 }}
             >?</button>
           </div>
 
@@ -404,6 +404,8 @@ function PreviewSectionCard({ sec, allEx }: { sec: Section; allEx: ExerciseData[
             fontStyle: "italic",
             lineHeight: 1.5,
             whiteSpace: "pre-wrap" as const,
+            wordBreak: "break-word",
+            overflowWrap: "anywhere",
             fontFamily: F,
           }}>{qNotes}</div>
         )}
@@ -468,6 +470,8 @@ function PreviewExerciseRow({ ex, allEx }: { ex: SectionExercise; allEx: Exercis
           fontStyle: "italic",
           lineHeight: 1.5,
           whiteSpace: "pre-wrap" as const,
+          wordBreak: "break-word",
+          overflowWrap: "anywhere",
           fontFamily: F,
         }}>{note}</div>
       )}
