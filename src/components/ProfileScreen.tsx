@@ -153,7 +153,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
             background: "none",
             border: "none",
             cursor: "pointer",
-            fontSize: 14,
+            fontSize: 16,
             marginBottom: 20,
           }}
         >
@@ -170,7 +170,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: 30,
+              fontSize: 32,
               fontWeight: 800,
               background: "linear-gradient(135deg,#22c55e,#16a34a)",
               color: BG,
@@ -178,13 +178,13 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
           >
             TB
           </div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: T1 }}>
+          <div style={{ fontSize: 26, fontWeight: 800, color: T1 }}>
             The Bishop
           </div>
-          <div style={{ color: T4, fontSize: 13, marginTop: 4 }}>
+          <div style={{ color: T4, fontSize: 15, marginTop: 4 }}>
             Creator of GloomBuilder
           </div>
-          <div style={{ color: T5, fontSize: 12, marginTop: 4 }}>
+          <div style={{ color: T5, fontSize: 14, marginTop: 4 }}>
             F3 Essex · New Jersey
           </div>
         </div>
@@ -200,7 +200,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
         >
           <div
             style={{
-              fontSize: 14,
+              fontSize: 16,
               fontWeight: 800,
               color: A,
               textTransform: "uppercase",
@@ -209,7 +209,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
           >
             Why I built this
           </div>
-          <p style={{ color: T3, fontSize: 14, lineHeight: 1.8, margin: 0 }}>
+          <p style={{ color: T3, fontSize: 16, lineHeight: 1.8, margin: 0 }}>
             Every Q knows the feeling. 10pm the night before and you&apos;re
             staring at the ceiling trying to plan a beatdown. What exercises? How
             many reps? What order? GloomBuilder was born from that moment.
@@ -217,7 +217,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
           <p
             style={{
               color: T3,
-              fontSize: 14,
+              fontSize: 16,
               lineHeight: 1.8,
               margin: "14px 0 0",
             }}
@@ -243,50 +243,30 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
         >
           <div
             style={{
-              fontSize: 14,
+              fontSize: 16,
               fontWeight: 800,
               color: A,
               textTransform: "uppercase",
               marginBottom: 10,
             }}
           >
-            Emergency Q? No sweat.
+            One nation of Q&apos;s
           </div>
-          <p style={{ color: T3, fontSize: 14, lineHeight: 1.8, margin: 0 }}>
-            We&apos;ve all been there. You roll up to the AO and the Q
-            fartsacked. No call, no text — just 15 PAX staring at you.
-            Don&apos;t spiral. Open GloomBuilder, generate a beatdown in 30
-            seconds, or steal one straight from the community library.
-            You&apos;re locked and loaded before the first SSH. The Gloom
-            doesn&apos;t wait, and neither does GloomBuilder.
+          <p style={{ color: T3, fontSize: 16, lineHeight: 1.8, margin: 0 }}>
+            Thousands of AOs. Tens of thousands of PAX. Every gloom, somewhere
+            a brother is Q-ing something brutal and creative you&apos;ve never
+            seen.
           </p>
-        </div>
-
-        <div
-          style={{
-            background: CD,
-            border: "1px solid " + BD,
-            borderRadius: 18,
-            padding: 24,
-            marginTop: 16,
-          }}
-        >
-          <div
+          <p
             style={{
-              fontSize: 14,
-              fontWeight: 800,
-              color: A,
-              textTransform: "uppercase",
-              marginBottom: 10,
+              color: T3,
+              fontSize: 16,
+              lineHeight: 1.8,
+              margin: "14px 0 0",
             }}
           >
-            Iron sharpens iron
-          </div>
-          <p style={{ color: T3, fontSize: 14, lineHeight: 1.8, margin: 0 }}>
-            The generator gets you in the door, but the community library is
-            what keeps GloomBuilder alive. Every beatdown shared, every exercise
-            stolen, every vote cast makes the platform better for every Q.
-            Build. Share. Steal. Repeat.
+            Share your best beatdown. Steal theirs. A Q in Essex builds a
+            smoker. A Q in Houston runs it Friday. That&apos;s the network.
           </p>
         </div>
 
@@ -301,7 +281,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
         >
           <div
             style={{
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: 800,
               color: G,
               textAlign: "center",
@@ -312,7 +292,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
           </div>
           <div
             style={{
-              fontSize: 13,
+              fontSize: 15,
               color: T4,
               textAlign: "center",
               marginBottom: 16,
@@ -323,7 +303,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
             to, show some love, brother. Every dollar helps keep it going and
             the features coming.
           </div>
-          {donating ? <div style={{ textAlign: "center", color: G, fontSize: 14, fontWeight: 700, padding: 20 }}>Redirecting to payment...</div> : null}
+          {donating ? <div style={{ textAlign: "center", color: G, fontSize: 16, fontWeight: 700, padding: 20 }}>Redirecting to payment...</div> : null}
           <div style={{ display: "flex", gap: 10, opacity: donating ? 0.4 : 1, pointerEvents: donating ? "none" : "auto" }}>
             {[
               { a: 3, l: "Light coupon" },
@@ -343,10 +323,10 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
                   fontFamily: F,
                 }}
               >
-                <div style={{ color: G, fontSize: 22, fontWeight: 800 }}>
+                <div style={{ color: G, fontSize: 24, fontWeight: 800 }}>
                   ${t.a}
                 </div>
-                <div style={{ color: T5, fontSize: 10, marginTop: 6 }}>
+                <div style={{ color: T5, fontSize: 12, marginTop: 6 }}>
                   {t.l}
                 </div>
               </button>
@@ -369,7 +349,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
                   transform: "translateY(-50%)",
                   color: G,
                   fontWeight: 700,
-                  fontSize: 16,
+                  fontSize: 18,
                 }}
               >
                 $
@@ -387,7 +367,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
                   borderRadius: 14,
                   color: T1,
                   padding: "16px 14px 16px 28px",
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: 800,
                   outline: "none",
                   boxSizing: "border-box",
@@ -413,7 +393,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
                 flexShrink: 0,
               }}
             >
-              <div style={{ color: G, fontSize: 14, fontWeight: 700 }}>
+              <div style={{ color: G, fontSize: 16, fontWeight: 700 }}>
                 Choose your weight
               </div>
             </button>
@@ -421,12 +401,12 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
         </div>
 
         <div style={{ textAlign: "center", marginTop: 20 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: T4 }}>
+          <div style={{ fontSize: 16, fontWeight: 700, color: T4 }}>
             Build. Share. Steal. Repeat.
           </div>
         </div>
         <div style={{ textAlign: "center", marginTop: 16 }}>
-          <div style={{ fontSize: 11, color: T6 }}>
+          <div style={{ fontSize: 13, color: T6 }}>
             Not affiliated with F3 Nation, Inc.
           </div>
         </div>
@@ -442,7 +422,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
               color: BG,
               padding: "10px 24px",
               borderRadius: 10,
-              fontSize: 14,
+              fontSize: 16,
               fontWeight: 700,
               fontFamily: F,
               zIndex: 100,

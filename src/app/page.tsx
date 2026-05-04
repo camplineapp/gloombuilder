@@ -544,6 +544,9 @@ export default function App() {
     const success = await shareBeatdown(id);
     if (success) {
       setLk(lk.map(b => b.id === id ? { ...b, isPublic: true } : b));
+      if (editingBd && editingBd.id === id) {
+        setEditingBd({ ...editingBd, isPublic: true });
+      }
       await loadLibrary();
       fl("Shared to community!");
     } else {
@@ -569,6 +572,9 @@ export default function App() {
     const success = await unshareBeatdown(id);
     if (success) {
       setLk(lk.map(b => b.id === id ? { ...b, isPublic: false } : b));
+      if (editingBd && editingBd.id === id) {
+        setEditingBd({ ...editingBd, isPublic: false });
+      }
       await loadLibrary();
       fl("Removed from Library");
     } else {
