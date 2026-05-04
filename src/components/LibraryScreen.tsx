@@ -834,11 +834,8 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
                     <span onClick={e => handleAuthorTap(e, bd.auId)} style={{
                       fontSize: 14,
                       fontWeight: 700,
-                      color: G,
+                      color: T2,
                       cursor: "pointer",
-                      textDecoration: "underline",
-                      textUnderlineOffset: 3,
-                      textDecorationColor: G + "60",
                     }}>{bd.au}</span>
                   ) : (
                     <span style={{ fontSize: 14, fontWeight: 700, color: T2 }}>{bd.au}</span>
