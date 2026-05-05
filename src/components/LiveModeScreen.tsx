@@ -296,7 +296,6 @@ function ExerciseScreen({ exercise, exercises, currentIndex, totalExercises, onN
 
       {/* ═══ MAIN TELEPROMPTER — swipeable ═══ */}
       <div
-        data-allow-edge-swipe="true"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
