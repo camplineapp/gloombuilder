@@ -10,6 +10,14 @@ export interface ExerciseData {
   pt?: number; // popularity tier: 1=classic, 2=well-known, 3=exotic
   ix?: string; // intensity: low, medium, high
   cr?: boolean; // is_core: true = curated core exercise every PAX knows (60 exercises)
+  // Item 5: Library unification fields (optional — only populated for Supabase-derived rows)
+  id?: string;
+  source?: "seed" | "community";
+  createdAt?: string;
+  createdBy?: string;
+  creatorName?: string;
+  voteCount?: number;
+  commentCount?: number;
 }
 
 // Local fallback exercises (45) — used if Supabase load fails
@@ -196,6 +204,7 @@ export function mapSupabaseExercise(row: Record<string, unknown>): ExerciseData 
     if (!sites.includes(mapped)) sites.push(mapped);
   }
 
+  const profile = row.profiles as Record<string, unknown> | null;
   return {
     n: name,
     f: aliases.length > 0 ? aliases[0] : name,
@@ -207,6 +216,13 @@ export function mapSupabaseExercise(row: Record<string, unknown>): ExerciseData 
     pt: (row.popularity_tier as number) || 3,
     ix: intensity,
     cr: (row.is_core as boolean) || false,
+    id: row.id as string | undefined,
+    source: (row.source as "seed" | "community" | undefined),
+    createdAt: row.created_at as string | undefined,
+    createdBy: row.created_by as string | undefined,
+    creatorName: (profile?.f3_name as string | undefined),
+    voteCount: (row.vote_count as number) ?? 0,
+    commentCount: (row.comment_count as number) ?? 0,
   };
 }
 

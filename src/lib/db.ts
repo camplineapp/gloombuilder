@@ -14,6 +14,7 @@ export async function saveBeatdown(data: {
   sites: string[];
   eq: string[];
   isPublic: boolean;
+  fromNotepad?: boolean;
 }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -33,6 +34,7 @@ export async function saveBeatdown(data: {
       created_by: user.id,
       is_public: data.isPublic,
       generated: data.src === "Generated",
+      from_notepad: data.fromNotepad ?? false,
     })
     .select()
     .single();
@@ -269,8 +271,9 @@ export async function loadSeedExercises() {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("exercises")
-    .select("name, aliases, description, how_to, body_part, exercise_type, equipment, site_type, cadence, difficulty, intensity, movement_type, is_mary, is_transport, popularity_tier")
-    .eq("source", "seed");
+    .select("id, name, aliases, description, how_to, body_part, exercise_type, equipment, site_type, cadence, difficulty, intensity, movement_type, is_mary, is_transport, popularity_tier, vote_count, comment_count, source, created_at, created_by, profiles:created_by(f3_name)")
+    .eq("source", "seed")
+    .order("created_at", { ascending: false });
 
   if (error) {
     console.error("Load seed exercises error:", error);
@@ -618,3 +621,203 @@ export async function updateBeatdown(id: string, data: {
   }
   return true;
 }
+
+// ═══ V2 SHOUT SYSTEM HELPERS (Session V2-2, April 24, 2026) ═══
+
+// ─── PROFILES ───
+
+export async function getProfileById(userId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", userId)
+    .single();
+  if (error) {
+    console.error("Get profile error:", error);
+    return null;
+  }
+  return data;
+}
+
+export async function getMyProfile() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  return getProfileById(user.id);
+}
+
+// ─── FOLLOWS ───
+
+
+
+
+
+
+// ─── PROFILE STATS (aggregates for the Q Profile screen) ───
+
+export interface ProfileStats {
+  beatdowns: number;
+  upvotes: number;
+  steals: number;
+  exercises: number;
+}
+
+export async function getProfileStats(userId: string): Promise<ProfileStats> {
+  const supabase = createClient();
+  // All counts are SHARED-only per spec (is_public = true)
+  // 1. Count of shared beatdowns by this user
+  const { count: bdCount } = await supabase
+    .from("beatdowns")
+    .select("*", { count: "exact", head: true })
+    .eq("created_by", userId)
+    .eq("is_public", true);
+  // 2. Count of shared exercises by this user
+  const { count: exCount } = await supabase
+    .from("exercises")
+    .select("*", { count: "exact", head: true })
+    .eq("created_by", userId)
+    .eq("source", "community");
+  // 3. Total upvotes received on shared content
+  // Get IDs of shared beatdowns + exercises by this user, then count votes against those IDs
+  const { data: sharedBds } = await supabase
+    .from("beatdowns")
+    .select("id")
+    .eq("created_by", userId)
+    .eq("is_public", true);
+  const { data: sharedExs } = await supabase
+    .from("exercises")
+    .select("id")
+    .eq("created_by", userId)
+    .eq("source", "community");
+  const ownedIds = [
+    ...(sharedBds || []).map((b: { id: string }) => b.id),
+    ...(sharedExs || []).map((e: { id: string }) => e.id),
+  ];
+  let upvotes = 0;
+  if (ownedIds.length > 0) {
+    const { count: voteCount } = await supabase
+      .from("votes")
+      .select("*", { count: "exact", head: true })
+      .in("item_id", ownedIds);
+    upvotes = voteCount || 0;
+  }
+  // 4. Steal count: how many times someone else's beatdowns/exercises had this user as inspired_by
+  const { count: stealBd } = await supabase
+    .from("beatdowns")
+    .select("*", { count: "exact", head: true })
+    .eq("inspired_by", userId)
+    .neq("created_by", userId);
+  const { count: stealEx } = await supabase
+    .from("exercises")
+    .select("*", { count: "exact", head: true })
+    .eq("inspired_by", userId)
+    .neq("created_by", userId);
+  const steals = (stealBd || 0) + (stealEx || 0);  return {
+    beatdowns: bdCount || 0,
+    upvotes,
+    steals,
+    exercises: exCount || 0,
+  };
+}
+
+
+// ═══ V2-3 SHARED CONTENT FETCHERS (April 24, 2026) ═══
+
+/**
+ * Fetch all SHARED (public) beatdowns for a given user.
+ * Returns raw Supabase rows; caller should map them to display format.
+ * Sorted by vote_count DESC (top-voted first) per UX decision for Q Profile portfolio.
+ * Falls back to created_at DESC for ties.
+ */
+export async function getUserSharedBeatdowns(userId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("beatdowns")
+    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
+    .eq("created_by", userId)
+    .eq("is_public", true)
+    .order("vote_count", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("Get user shared beatdowns error:", error);
+    return [];
+  }
+  return data || [];
+}
+
+/**
+ * Fetch all SHARED (public) exercises for a given user.
+ * Same sort logic as beatdowns: top-voted first, newest as tiebreaker.
+ */
+export async function getUserSharedExercises(userId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("exercises")
+    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
+    .eq("created_by", userId)
+    .eq("source", "community")
+    .order("vote_count", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("Get user shared exercises error:", error);
+    return [];
+  }
+  return data || [];
+}
+
+// ═══ V2-5 SHOUT SYSTEM + OWNER-VIEW ALL-ITEMS HELPERS (April 26, 2026) ═══
+// APPEND TO END OF src/lib/db.ts
+// ─────────────────────────────────────────────────────────────────────
+
+// ─── SHOUTS ───
+
+
+
+
+
+
+// ─── OWNER-VIEW: ALL ITEMS (V2-5 Locker→Profile merge) ───
+
+/**
+ * Fetch ALL beatdowns for a user (shared + private + inspired-by).
+ * Used on Q Profile owner-view to replace the Locker tab.
+ * Sorted by vote_count DESC then created_at DESC (matches getUserSharedBeatdowns).
+ */
+export async function getMyAllBeatdowns(userId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("beatdowns")
+    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
+    .eq("created_by", userId)
+    .order("vote_count", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("getMyAllBeatdowns error:", error);
+    return [];
+  }
+  return data || [];
+}
+
+/**
+ * Fetch ALL exercises for a user (shared + private + inspired-by).
+ * Used on Q Profile owner-view to replace the Locker tab.
+ */
+export async function getMyAllExercises(userId: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("exercises")
+    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
+    .eq("created_by", userId)
+    .order("vote_count", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.error("getMyAllExercises error:", error);
+    return [];
+  }
+  return data || [];
+}
+// ═══ V2-5 EDIT SHOUT HELPER (April 28, 2026) ═══
+// APPEND THIS TO src/lib/db.ts
+// ─────────────────────────────────────────────────────────────────────
+

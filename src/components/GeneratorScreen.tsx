@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { EX, DIFFS, SITES, EQUIP, generate, mapSupabaseExercise, normalizeSection } from "@/lib/exercises";
 import type { GenConfig, Section, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
-import CopyModal from "@/components/CopyModal";
 import SectionEditor from "@/components/SectionEditor";
+import type { AttachedBeatdown } from "@/components/PreblastComposer";
+import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft, formatTimeAgo } from "@/lib/drafts";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -32,28 +33,66 @@ interface GeneratorScreenProps {
   onSave: (beatdown: {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
-  }) => void;
+  }) => Promise<string | null>;
   onRunThis?: (secs: Section[], title: string, dur: string, saveData: {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
   }) => void;
   profName?: string;
+  onSendPreblast?: (bd: AttachedBeatdown) => void;
+  onOpenCopyModal?: (ctx: { secs: Section[]; beatdownName: string; beatdownDesc: string }) => void;
   userExercises?: { id: string; nm: string; desc: string; tags: string[]; how: string }[];
   communityExercises?: { nm: string; desc: string; tags: string[]; how: string }[];
 }
 
-export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, userExercises, communityExercises }: GeneratorScreenProps) {
+export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, onSendPreblast, onOpenCopyModal, userExercises, communityExercises }: GeneratorScreenProps) {
+  const draftKey = DRAFT_KEYS.generatorResult;
+  type GeneratorDraft = {
+    gc: GenConfig; gr: Section[]; grT: string; grD: string; shareLib: boolean;
+  };
+  const initialDraft = (() => {
+    if (typeof window === "undefined") return null;
+    return loadDraft<GeneratorDraft>(draftKey);
+  })();
+
   const [gs, setGs] = useState(0);
-  const [gc, setGc] = useState<GenConfig>({ dur: null, diff: null, sites: [], eq: [] });
-  const [gr, setGr] = useState<Section[] | null>(null);
-  const [grT, setGrT] = useState("");
-  const [grD, setGrD] = useState("");
+  const [gc, setGc] = useState<GenConfig>(initialDraft?.data.gc ?? { dur: null, diff: null, sites: [], eq: [] });
+  const [gr, setGr] = useState<Section[] | null>(initialDraft?.data.gr ?? null);
+  const [grT, setGrT] = useState(initialDraft?.data.grT ?? "");
+  const [grD, setGrD] = useState(initialDraft?.data.grD ?? "");
   const [ld, setLd] = useState(false);
-  const [shareLib, setShareLib] = useState(false);
+  const [shareLib, setShareLib] = useState(initialDraft?.data.shareLib ?? false);
   const [saving, setSaving] = useState(false);
   const [grDetailsOpen, setGrDetailsOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
+  const [draftRestored, setDraftRestored] = useState<{ timeAgo: string } | null>(null);
+
+  useEffect(() => {
+    if (initialDraft) {
+      setDraftRestored({ timeAgo: formatTimeAgo(initialDraft.savedAt) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!gr) return;
+    const timer = setTimeout(() => {
+      saveDraft<GeneratorDraft>(draftKey, { gc, gr, grT, grD, shareLib });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [gc, gr, grT, grD, shareLib, draftKey]);
+
+  const handleDiscardDraft = () => {
+    clearDraft(draftKey);
+    setDraftRestored(null);
+    setGc({ dur: null, diff: null, sites: [], eq: [] });
+    setGr(null);
+    setGrT("");
+    setGrD("");
+    setShareLib(false);
+    setGs(0);
+  };
 
   // Load exercises from Supabase on mount + merge user custom + community exercises
   useEffect(() => {
@@ -74,8 +113,6 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
       }
     });
   }, [userExercises, communityExercises]);
-
-  const [copyModal, setCopyModal] = useState(false);
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 
@@ -99,7 +136,14 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
     return (
       <div style={{ padding: "0 24px" }}>
         {toastEl}
-        {copyModal && gr ? <CopyModal secs={gr} beatdownName={grT || "Generated Beatdown"} beatdownDesc={grD} qName={profName || "Q"} onClose={() => setCopyModal(false)} onToast={fl} /> : null}
+
+        {/* Draft restored banner */}
+        {draftRestored && (
+          <div style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.30)", borderRadius: 10, padding: "10px 14px", marginTop: 16, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, fontSize: 13, fontWeight: 600, color: A, fontFamily: F }}>
+            <span>↻ Draft restored from {draftRestored.timeAgo}</span>
+            <button onClick={handleDiscardDraft} style={{ fontFamily: F, background: "transparent", border: "1px solid rgba(245,158,11,0.40)", color: A, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 8, cursor: "pointer" }}>Discard</button>
+          </div>
+        )}
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingBottom: 16, borderBottom: "1px solid " + BD }}>
@@ -232,27 +276,61 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
           });
         }} />
 
-        {/* Save + Run This + Backblast */}
+        {/* Action area — Round 3: Layer 1 primary + Layer 2 icon pills */}
         <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
-          <button disabled={saving} onClick={() => {
-            if (saving) return; setSaving(true);
+          {/* LAYER 1 — PRIMARY */}
+          <button disabled={saving} onClick={async () => {
+            if (saving) return;
+            setSaving(true);
             const nm = grT.trim() || "Generated Beatdown";
             const tgs = [gc.dur, ...(gc.sites || []), ...(gc.eq || [])].filter(Boolean) as string[];
-            onSave({ nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib });
-          }} style={{ fontFamily: F, width: "100%", padding: "20px 0", borderRadius: 14, fontSize: 18, fontWeight: 800, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving..." : "Save to locker"}</button>
-          {onRunThis && !saving && (
-            <div style={{ display: "flex", gap: 10 }}>
-              <button onClick={() => {
-                setSaving(true);
-                const nm = grT.trim() || "Generated Beatdown";
-                const tgs = [gc.dur, ...(gc.sites || []), ...(gc.eq || [])].filter(Boolean) as string[];
-                const saveData = { nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib };
-                onRunThis(JSON.parse(JSON.stringify(gr!)), nm, gc.dur || "45 min", saveData);
-              }} style={{ fontFamily: F, flex: 1, padding: "16px 0", borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: "pointer", background: "transparent", border: "2px solid " + G, color: G, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M5 3L17 10L5 17V3Z" fill={G} /></svg>
-                Run This
+            try {
+              const newId = await onSave({ nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib });
+              if (newId) {
+                clearDraft(draftKey);
+                setDraftRestored(null);
+              }
+            } finally {
+              setSaving(false);
+            }
+          }} style={{ fontFamily: F, width: "100%", padding: "20px 0", borderRadius: 14, fontSize: 18, fontWeight: 800, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}>{saving ? "Saving..." : "Save"}</button>
+
+          {/* LAYER 2 — SECONDARY ROW (icon pills) */}
+          {!saving && (
+            <div style={{ display: "flex", gap: 6 }}>
+              {onRunThis && (
+                <button onClick={() => {
+                  setSaving(true);
+                  const nm = grT.trim() || "Generated Beatdown";
+                  const tgs = [gc.dur, ...(gc.sites || []), ...(gc.eq || [])].filter(Boolean) as string[];
+                  const saveData = { nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib };
+                  onRunThis(JSON.parse(JSON.stringify(gr!)), nm, gc.dur || "45 min", saveData);
+                }} style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.30)", color: G, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>▶</span>
+                  <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Live</span>
+                </button>
+              )}
+              <button
+                onClick={() => onSendPreblast?.({
+                  id: "draft",
+                  title: grT || "Untitled beatdown",
+                  duration: gc.dur,
+                  difficulty: DIFFS.find(d => d.id === gc.diff)?.l ?? null,
+                  sections: (gr || []).map(s => ({
+                    label: s.label,
+                    color: s.color,
+                    exercises: s.exercises.map(e => ({ name: e.n, reps: e.r ?? null, cadence: e.c ?? null })),
+                  })),
+                })}
+                style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.30)", color: P, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
+              >
+                <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📣</span>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
               </button>
-              <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, flex: 1, padding: "16px 0", borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: "pointer", background: A + "12", border: "1px solid " + A + "25", color: A }}>Backblast</button>
+              <button onClick={() => { if (!gr) return; onOpenCopyModal?.({ secs: gr, beatdownName: grT || "Generated Beatdown", beatdownDesc: grD }); }} style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.30)", color: A, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📓</span>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Backblast</span>
+              </button>
             </div>
           )}
         </div>

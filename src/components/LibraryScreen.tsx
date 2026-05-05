@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { loadSeedExercises, addComment, loadComments, deleteComment, updateComment } from "@/lib/db";
-import { mapSupabaseExercise } from "@/lib/exercises";
+import { mapSupabaseExercise, EQUIP } from "@/lib/exercises";
 import type { ExerciseData } from "@/lib/exercises";
+import ThumbsUpIcon from "@/components/ThumbsUpIcon";
+import type { AttachedBeatdown } from "@/components/PreblastComposer";
+import { colorForUserId, getInitials } from "@/lib/avatars";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -30,13 +33,31 @@ const REGIONS = ["All","Northeast","Southeast","Midwest","Southwest","West","Mid
 const SITES = [{id:"field",l:"Open field"},{id:"track",l:"Track"},{id:"benches",l:"Benches"},{id:"hills",l:"Hills"},{id:"stairs",l:"Stairs"},{id:"parking",l:"Parking lot"},{id:"pullup",l:"Pull-up bars"},{id:"walls",l:"Walls"}];
 const TAGS = ["Warm-Up","Mary","Core","Cardio","Full Body","Legs","Chest","Arms","Shoulders","Static","Transport","Coupon"];
 
+const TYPE_TAGS = [
+  { value: "Warm-Up", label: "Warm-up" },
+  { value: "Mary", label: "Mary" },
+  { value: "Cardio", label: "Cardio" },
+  { value: "Static", label: "Static" },
+  { value: "Transport", label: "Transport" },
+  { value: "Coupon", label: "Coupon" },
+];
+
+const BODY_TAGS = [
+  { value: "Full Body", label: "Full body" },
+  { value: "Core", label: "Core" },
+  { value: "Legs", label: "Legs" },
+  { value: "Chest", label: "Chest" },
+  { value: "Arms", label: "Arms" },
+  { value: "Shoulders", label: "Shoulders" },
+];
+
 interface Comment { au: string; ao: string; txt: string; dt: string }
 interface Exercise { n: string; r: string; c: string; nt: string }
 interface Section { label: string; color: string; exercises: Exercise[]; note: string }
 interface FeedItem {
-  id: number | string; src: string; nm: string; au: string; ao: string; reg: string;
-  d: string; dur: string | null; aoT: string[]; v: number; u: number; cm: number;
-  ds: string; dt: string; tp: string; tg?: string[]; et?: string[];
+  id: number | string; src: string; nm: string; au: string; auId?: string; ao: string; reg: string;
+  d: string; dur: string | null; aoT: string[]; eq?: string[]; v: number; u: number; cm: number;
+  ds: string; dt: string; createdAt?: string; tp: string; tg?: string[]; et?: string[];
   howTo?: string; inspiredBy?: string; comments: Comment[]; secs?: Section[];
 }
 
@@ -63,9 +84,16 @@ interface LibraryScreenProps {
   onSteal?: (id: string, itemType: "beatdown" | "exercise") => void;
   onRunBeatdown?: (item: FeedItem) => void;
   onRefresh?: () => void;
+  // V2-4: tap author name → open their Q Profile
+  onOpenProfile?: (userId: string | null) => void;
+  currentUserId?: string;
+  onSendPreblast?: (bd: AttachedBeatdown) => void;
+  // Item 3: hardware back coordination
+  onLibDetChange?: (open: boolean) => void;
+  registerBackHandler?: (handler: () => void) => void;
 }
 
-// ════ EXERCISE DETAIL SHEET (with scroll lock) ════
+// ═══ EXERCISE DETAIL SHEET (with scroll lock) ═══
 function ExerciseDetailSheet({ exData, onClose }: { exData: ExerciseData; onClose: () => void }) {
   useEffect(() => {
     const orig = document.body.style.overflow;
@@ -121,7 +149,7 @@ function ExerciseDetailSheet({ exData, onClose }: { exData: ExerciseData; onClos
   );
 }
 
-export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote, onSteal, onRunBeatdown, onRefresh }: LibraryScreenProps) {
+export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote, onSteal, onRunBeatdown, onRefresh, onOpenProfile, currentUserId, onSendPreblast, onLibDetChange, registerBackHandler }: LibraryScreenProps) {
   const [libDet, setLibDet] = useState<FeedItem | null>(null);
   const [libSearch, setLibSearch] = useState("");
   const [libT, setLibT] = useState("beatdowns");
@@ -131,6 +159,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
   const [fDu, setFDu] = useState("All");
   const [fR, setFR] = useState("All");
   const [fAo, setFAo] = useState("All");
+  const [fEq, setFEq] = useState("All");
   const [fSrc, setFSrc] = useState("All");
   const [fET, setFET] = useState("All");
   const [fExR, setFExR] = useState("All");
@@ -141,10 +170,10 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
   const [cmtLoading, setCmtLoading] = useState(false);
   const [editCmtId, setEditCmtId] = useState<string | null>(null);
   const [editCmtText, setEditCmtText] = useState("");
-  const [exMode, setExMode] = useState<"shared" | "database">("shared");
   const [seedEx, setSeedEx] = useState<ExerciseData[]>([]);
-  const [dbSearch, setDbSearch] = useState("");
-  const [dbTag, setDbTag] = useState("All");
+  const [exSearch, setExSearch] = useState("");
+  const [exType, setExType] = useState("All");
+  const [exBody, setExBody] = useState("All");
   const [dbDetail, setDbDetail] = useState<ExerciseData | null>(null);
 
   useEffect(() => {
@@ -189,6 +218,21 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     }
   }, [libDet?.id]);
 
+  // Item 3: notify parent when libDet open state changes
+  useEffect(() => {
+    onLibDetChange?.(libDet !== null);
+  }, [libDet, onLibDetChange]);
+
+  // Item 3: register back handler so parent's popstate can close libDet
+  useEffect(() => {
+    if (registerBackHandler) {
+      registerBackHandler(() => {
+        setLibDet(null);
+        setShowAllCmt(false);
+      });
+    }
+  }, [registerBackHandler]);
+
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 
   const toastEl = toast ? (
@@ -205,7 +249,19 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     <button key={label} onClick={onClick} style={{ fontFamily: F, background: sel ? G + "20" : "rgba(255,255,255,0.04)", color: sel ? G : T4, border: "1px solid " + (sel ? G + "30" : BD), padding: "7px 14px", borderRadius: 10, fontSize: 12, cursor: "pointer", fontWeight: sel ? 700 : 500 }}>{label}</button>
   );
 
-  // ════ DETAIL VIEW ════
+  // V2-4: handler for tapping an author name → open their Q Profile
+  // Stops propagation so it doesn't trigger card-click. If author is current user, opens own profile.
+  const handleAuthorTap = (e: React.MouseEvent, authorId: string | undefined) => {
+    e.stopPropagation();
+    if (!authorId || !onOpenProfile) return;
+    if (authorId === currentUserId) {
+      onOpenProfile(null);  // own profile
+    } else {
+      onOpenProfile(authorId);
+    }
+  };
+
+  // ═══ DETAIL VIEW ═══
   if (libDet) {
     const bd = libDet;
     const voted = userVotes.has(String(bd.id));
@@ -215,23 +271,44 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     return (
       <div style={{ padding: "0 24px" }}>
         {exDetailModal}
-        
+
         <button onClick={() => { setLibDet(null); setShowAllCmt(false); }} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14, marginBottom: 20 }}>← Library</button>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 24, fontWeight: 800, color: T1 }}>{bd.nm}</div>
             {bd.src && bd.tp !== "exercise" ? (() => { const sb = srcBadge(bd.src); return <div style={{ marginTop: 8 }}><span style={{ fontSize: 12, padding: "3px 10px", borderRadius: 6, fontWeight: 700, background: sb.bg, color: sb.c }}>{sb.l}</span></div>; })() : null}
-            <div style={{ fontSize: 15, color: T4, marginTop: 6 }}>{bd.au} · {bd.ao}</div>
+            {bd.tp === "exercise" && bd.au ? (
+              <div style={{ fontSize: 13, color: G, fontWeight: 600, marginTop: 6, fontFamily: F }}>added by {bd.au}</div>
+            ) : null}
+            {bd.tp !== "exercise" ? (
+              <div style={{ fontSize: 15, color: T4, marginTop: 6, display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+                {bd.auId && onOpenProfile ? (
+                  <span onClick={e => handleAuthorTap(e, bd.auId)} style={{ color: G, fontWeight: 600, cursor: "pointer", padding: "4px 0", textDecoration: "underline", textUnderlineOffset: 3, textDecorationColor: G + "60" }}>{bd.au}</span>
+                ) : (
+                  <span>{bd.au}</span>
+                )}
+                <span>· {bd.ao}</span>
+              </div>
+            ) : null}
             {bd.inspiredBy ? <div style={{ fontSize: 12, color: A, marginTop: 4 }}>Inspired by {bd.inspiredBy}</div> : null}
-            <div style={{ fontSize: 13, color: T5, marginTop: 3 }}>{bd.dt}</div>
+            {bd.dt ? <div style={{ fontSize: 13, color: T5, marginTop: 3 }}>{bd.dt}</div> : null}
           </div>
           <span style={{ background: dc(bd.d) + "15", color: dc(bd.d), fontSize: 12, padding: "4px 10px", borderRadius: 6, fontWeight: 700, fontFamily: F, textTransform: "uppercase" }}>{bd.d}</span>
         </div>
         <div style={{ fontSize: 16, color: T3, marginTop: 16, lineHeight: 1.7 }}>{bd.ds}</div>
-        {bd.tp === "exercise" && bd.howTo && bd.howTo !== bd.ds ? <div style={{ marginTop: 16 }}><div style={{ fontFamily: F, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>How to execute</div><div style={{ fontSize: 15, color: T3, lineHeight: 1.7 }}>{bd.howTo}</div></div> : null}
+        {bd.tp === "exercise" && bd.howTo && bd.howTo !== bd.ds ? (
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontFamily: F, color: T5, fontSize: 11, textTransform: "uppercase", letterSpacing: 2, marginBottom: 8 }}>How to execute</div>
+            <div>
+              {bd.howTo.split(/\s(?=(?:[1-9]|1\d|20)\.\s[A-Z])/).filter(Boolean).map((step: string, i: number) => (
+                <div key={i} style={{ color: T3, fontSize: 15, lineHeight: 1.7, marginBottom: 5, fontFamily: F }}>{step.trim()}</div>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {(bd.tg || bd.et) ? <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap" }}>{(bd.tg || bd.et || []).filter(t => t !== bd.dur && !["Easy","Medium","Hard","Beast"].includes(t)).map(t => <span key={t} style={{ background: "rgba(255,255,255,0.05)", color: T4, fontSize: 12, padding: "3px 10px", borderRadius: 6, fontFamily: F }}>{t}</span>)}</div> : null}
         <div style={{ display: "flex", gap: 14, marginTop: 20, alignItems: "center" }}>
-          <button onClick={() => onToggleVote?.(String(bd.id), bd.tp === "exercise" ? "exercise" : "beatdown")} style={{ fontFamily: F, background: voted ? G + "15" : "rgba(255,255,255,0.04)", color: voted ? G : T4, border: "1px solid " + (voted ? G + "30" : BD), padding: "8px 16px", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 600 }}>▲ {bd.v}</button>
+          <button onClick={() => onToggleVote?.(String(bd.id), bd.tp === "exercise" ? "exercise" : "beatdown")} style={{ fontFamily: F, background: voted ? G + "15" : "rgba(255,255,255,0.04)", color: voted ? G : T4, border: "1px solid " + (voted ? G + "30" : BD), padding: "8px 16px", borderRadius: 10, fontSize: 13, cursor: "pointer", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}><ThumbsUpIcon size={14} filled={voted} /> {bd.v}</button>
           <span style={{ fontSize: 13, color: T5 }}>Stolen {bd.u}x</span>
         </div>
         {bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? <div style={{ marginTop: 24 }}>{bd.secs.map((sec, si) => {
@@ -382,20 +459,41 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
           </div>
         </div>
         <div style={{ marginTop: 24 }}>
+          {/* LAYER 1 — PRIMARY */}
+          <button onClick={() => { onSteal?.(String(bd.id), bd.tp as "beatdown" | "exercise"); fl("Saved!"); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save</button>
+          {/* LAYER 2 — SECONDARY ROW (icon pills) — beatdowns with sections only */}
           {bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 && (
-            <button onClick={() => onRunBeatdown?.(bd)} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: "transparent", border: "2px solid " + G, color: G, marginBottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-              <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M5 3L17 10L5 17V3Z" fill={G} /></svg>
-              Run This
-            </button>
+            <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
+              <button onClick={() => onRunBeatdown?.(bd)} style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.30)", color: G, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
+                <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>▶</span>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Live</span>
+              </button>
+              <button
+                onClick={() => onSendPreblast?.({
+                  id: String(bd.id),
+                  title: bd.nm,
+                  duration: bd.dur,
+                  difficulty: bd.d,
+                  sections: bd.secs?.map(s => ({
+                    label: s.label,
+                    color: s.color,
+                    exercises: s.exercises.map(e => ({ name: e.n, reps: e.r ?? null, cadence: e.c ?? null })),
+                  })),
+                })}
+                style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.30)", color: P, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
+              >
+                <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📣</span>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
+              </button>
+            </div>
           )}
-          <button onClick={() => { onSteal?.(String(bd.id), bd.tp as "beatdown" | "exercise"); fl("Saved to locker!"); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? "rgba(255,255,255,0.04)" : G, color: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? T3 : BG, border: bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 ? "1px solid " + BD : "none" }}>Save to Locker</button>
         </div>
         {toastEl}
       </div>
     );
   }
 
-  // ════ FILTERS ════
+  // ═══ FILTERS ═══
   if (libF) {
     return (
       <div style={{ padding: "0 24px" }}>
@@ -413,6 +511,8 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>{REGIONS.map(o => filterBtn(o, fR === o, () => setFR(o)))}</div>
             <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: T5, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10 }}>AO site type</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>{["All", ...SITES.map(s => s.l)].map(o => filterBtn(o, fAo === o, () => setFAo(o)))}</div>
+            <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: T5, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10 }}>Equipment</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>{["All", ...EQUIP.map(e => e.l)].map(o => filterBtn(o, fEq === o, () => setFEq(o)))}</div>
             <div style={{ fontFamily: F, fontSize: 11, fontWeight: 700, color: T5, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10 }}>Source</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 18 }}>{["All","Hand Built","GloomBuilder"].map(o => filterBtn(o, fSrc === o, () => setFSrc(o)))}</div>
           </div>
@@ -431,7 +531,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     );
   }
 
-  // ════ FEED LIST ════
+  // ═══ FEED LIST ═══
   let feed = [...sharedItems];
   if (libSearch.trim()) {
     const q = libSearch.toLowerCase();
@@ -443,6 +543,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     if (fDu !== "All") feed = feed.filter(b => b.dur === fDu);
     if (fR !== "All") feed = feed.filter(b => b.reg === fR);
     if (fAo !== "All") { const sId = SITES.find(s => s.l === fAo); feed = feed.filter(b => sId && b.aoT && b.aoT.includes(sId.id)); }
+    if (fEq !== "All") { const eId = EQUIP.find(e => e.l === fEq); feed = feed.filter(b => eId && b.eq && b.eq.includes(eId.id)); }
     if (fSrc !== "All") feed = feed.filter(b => b.src === fSrc);
   } else {
     feed = feed.filter(b => b.tp === "exercise");
@@ -455,98 +556,223 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
   if (fSort === "stolen") feed.sort((a, b) => b.u - a.u);
 
   const af = libT === "beatdowns"
-    ? [fD, fDu, fR, fAo, fSrc].filter(v => v !== "All").length
+    ? [fD, fDu, fR, fAo, fEq, fSrc].filter(v => v !== "All").length
     : [fET, fD, fExR].filter(v => v !== "All").length;
 
   return (
     <div style={{ padding: "0 24px" }}>
       {exDetailModal}
-        
+
       <div style={{ fontSize: 28, fontWeight: 800, color: T1, marginBottom: 12 }}>Library</div>
-      {!(libT === "exercises" && exMode === "database") ? <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Search by title, Q name, AO..." style={{ ...ist, marginBottom: 14 }} /> : null}
       <div style={{ display: "flex", gap: 0, background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid " + BD, padding: 3, marginBottom: 16 }}>
         {["beatdowns", "exercises"].map(sv => (
           <div key={sv} onClick={() => setLibT(sv)} style={{ flex: 1, textAlign: "center", padding: "10px 0", fontSize: 13, fontWeight: libT === sv ? 700 : 500, color: libT === sv ? G : T4, background: libT === sv ? "rgba(34,197,94,0.08)" : "transparent", borderRadius: 10, cursor: "pointer", textTransform: "capitalize" }}>{sv}</div>
         ))}
       </div>
-      {/* Exercises sub-toggle */}
-      {libT === "exercises" ? (
-        <div style={{ display: "flex", gap: 0, background: "rgba(255,255,255,0.03)", borderRadius: 10, border: "1px solid " + BD, padding: 2, marginBottom: 14 }}>
-          {(["shared", "database"] as const).map(mode => (
-            <div key={mode} onClick={() => setExMode(mode)} style={{ flex: 1, textAlign: "center", padding: "8px 0", fontSize: 12, fontWeight: exMode === mode ? 700 : 500, color: exMode === mode ? P : T4, background: exMode === mode ? P + "12" : "transparent", borderRadius: 8, cursor: "pointer" }}>{mode === "shared" ? "Shared" : "Exercise Database"}</div>
-          ))}
-        </div>
-      ) : null}
 
-      {/* Exercise Database view */}
-      {libT === "exercises" && exMode === "database" ? (
+      {/* Unified exercises feed (Item 5) */}
+      {libT === "exercises" ? (
         <div>
           {(() => {
-            // Merge seed exercises + community-shared exercises for unified search
-            const communityEx: ExerciseData[] = sharedItems.filter(si => si.tp === "exercise").map(si => ({
-              n: si.nm,
-              f: si.nm,
-              t: si.et || [],
-              s: [],
-              h: si.howTo || "",
-              d: si.ds || "",
-            }));
+            // Build communityExercises from sharedItems (already mapped server-side via dbToShared)
+            const communityExercises: ExerciseData[] = sharedItems
+              .filter(si => si.tp === "exercise")
+              .map(si => ({
+                n: si.nm,
+                f: si.nm,
+                t: si.et || [],
+                s: [],
+                h: si.howTo || "",
+                d: si.ds || "",
+                id: String(si.id),
+                source: "community" as const,
+                createdAt: si.createdAt,
+                creatorName: si.au,
+                voteCount: si.v ?? 0,
+                commentCount: si.cm ?? 0,
+              }));
+            // Dedup: drop any community row whose name matches a seed name (shouldn't happen — seed and community are disjoint by source — but defense-in-depth)
             const seedNames = new Set(seedEx.map(e => e.n.toLowerCase()));
-            const uniqueCommunity = communityEx.filter(c => !seedNames.has(c.n.toLowerCase()));
-            const allDbEx = [...seedEx, ...uniqueCommunity];
+            const uniqueCommunity = communityExercises.filter(c => !seedNames.has(c.n.toLowerCase()));
+            const allEx: ExerciseData[] = [...seedEx, ...uniqueCommunity];
+
+            const q = exSearch.trim().toLowerCase();
+            let filtered = allEx.filter(e => {
+              const typeMatch = exType === "All" || e.t.includes(exType);
+              const bodyMatch = exBody === "All" || e.t.includes(exBody);
+              if (!typeMatch || !bodyMatch) return false;
+              if (!q) return true;
+              return (
+                e.n.toLowerCase().includes(q) ||
+                e.f.toLowerCase().includes(q) ||
+                (e.d || "").toLowerCase().includes(q) ||
+                (e.creatorName || "").toLowerCase().includes(q)
+              );
+            });
+
+            if (q) {
+              filtered.sort((a, b) => {
+                const score = (e: ExerciseData) => {
+                  const n = e.n.toLowerCase();
+                  if (n === q) return 0;
+                  if (n.startsWith(q)) return 1;
+                  if (n.includes(q)) return 2;
+                  if (e.f.toLowerCase().includes(q)) return 3;
+                  if ((e.creatorName || "").toLowerCase().includes(q)) return 4;
+                  if ((e.d || "").toLowerCase().includes(q)) return 5;
+                  return 6;
+                };
+                return score(a) - score(b);
+              });
+            } else {
+              filtered.sort((a, b) => {
+                const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                return tb - ta;
+              });
+            }
+            const shown = filtered.slice(0, 50);
+
+            // Click handler: community row → use original FeedItem from sharedItems (preserves auId, region, etc.); seed row → synthesize FeedItem
+            const handleExClick = (e: ExerciseData) => {
+              if (e.source === "community" && e.id) {
+                const original = sharedItems.find(si => String(si.id) === e.id);
+                if (original) { setLibDet(original); return; }
+              }
+              setLibDet({
+                id: e.id || e.n,
+                src: "Hand Built",
+                nm: e.n,
+                au: e.creatorName || "",
+                ao: "",
+                reg: "",
+                d: e.df === 1 ? "easy" : e.df === 3 ? "hard" : "medium",
+                dur: null,
+                aoT: [],
+                v: e.voteCount ?? 0,
+                u: 0,
+                cm: e.commentCount ?? 0,
+                ds: e.d || "",
+                dt: e.createdAt ? new Date(e.createdAt).toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" }) : "",
+                createdAt: e.createdAt,
+                tp: "exercise",
+                et: e.t,
+                howTo: e.h,
+                comments: [],
+              });
+            };
+
             return (
               <>
-              <input value={dbSearch} onChange={e => setDbSearch(e.target.value)} placeholder={`Search ${allDbEx.length} exercises...`} style={{ ...ist, marginBottom: 10 }} />
-              <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 14 }}>
-                {["All", ...TAGS].map(t => (
-                  <button key={t} onClick={() => setDbTag(t)} style={{ fontFamily: F, background: dbTag === t ? P + "20" : "rgba(255,255,255,0.04)", color: dbTag === t ? P : T5, border: "1px solid " + (dbTag === t ? P + "30" : BD), padding: "5px 11px", borderRadius: 20, fontSize: 10, cursor: "pointer", textTransform: "uppercase", fontWeight: 600 }}>{t}</button>
+                <input value={exSearch} onChange={e => setExSearch(e.target.value)} placeholder={`Search ${allEx.length} exercises by name, alias, or PAX...`} style={{ ...ist, marginBottom: 10 }} />
+                {/* TYPE row */}
+                <div style={{ marginBottom: 10 }}>
+                  <div style={{
+                    fontFamily: F,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: T5,
+                    textTransform: "uppercase",
+                    letterSpacing: 1.5,
+                    marginBottom: 6,
+                    paddingLeft: 2,
+                  }}>Type</div>
+                  <div style={{
+                    display: "flex",
+                    gap: 5,
+                    overflowX: "auto",
+                    flexWrap: "nowrap",
+                    scrollbarWidth: "none",
+                    WebkitOverflowScrolling: "touch",
+                    paddingBottom: 2,
+                  }}>
+                    {[{ value: "All", label: "All" }, ...TYPE_TAGS].map(t => (
+                      <button
+                        key={t.value}
+                        onClick={() => setExType(t.value)}
+                        style={{
+                          fontFamily: F,
+                          background: exType === t.value ? P + "20" : "rgba(255,255,255,0.04)",
+                          color: exType === t.value ? P : T5,
+                          border: "1px solid " + (exType === t.value ? P + "30" : BD),
+                          padding: "5px 11px",
+                          borderRadius: 20,
+                          fontSize: 10,
+                          cursor: "pointer",
+                          textTransform: "uppercase",
+                          fontWeight: 600,
+                          flexShrink: 0,
+                          whiteSpace: "nowrap",
+                        }}
+                      >{t.label}</button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* BODY PART row */}
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{
+                    fontFamily: F,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: T5,
+                    textTransform: "uppercase",
+                    letterSpacing: 1.5,
+                    marginBottom: 6,
+                    paddingLeft: 2,
+                  }}>Body part</div>
+                  <div style={{
+                    display: "flex",
+                    gap: 5,
+                    overflowX: "auto",
+                    flexWrap: "nowrap",
+                    scrollbarWidth: "none",
+                    WebkitOverflowScrolling: "touch",
+                    paddingBottom: 2,
+                  }}>
+                    {[{ value: "All", label: "All" }, ...BODY_TAGS].map(t => (
+                      <button
+                        key={t.value}
+                        onClick={() => setExBody(t.value)}
+                        style={{
+                          fontFamily: F,
+                          background: exBody === t.value ? P + "20" : "rgba(255,255,255,0.04)",
+                          color: exBody === t.value ? P : T5,
+                          border: "1px solid " + (exBody === t.value ? P + "30" : BD),
+                          padding: "5px 11px",
+                          borderRadius: 20,
+                          fontSize: 10,
+                          cursor: "pointer",
+                          textTransform: "uppercase",
+                          fontWeight: 600,
+                          flexShrink: 0,
+                          whiteSpace: "nowrap",
+                        }}
+                      >{t.label}</button>
+                    ))}
+                  </div>
+                </div>
+                {allEx.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>Loading exercises...</div> : null}
+                {shown.map(e => (
+                  <div key={e.id || e.n} onClick={() => handleExClick(e)} style={{ background: CD, border: "1px solid " + BD, borderLeft: "3px solid " + P + "40", borderRadius: 14, padding: "14px 18px", marginBottom: 6, cursor: "pointer" }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: T2 }}>{e.n}</div>
+                    {e.f !== e.n ? <div style={{ fontSize: 12, color: T4, marginTop: 3 }}>{e.f}</div> : null}
+                    {e.d ? <div style={{ fontSize: 13, color: T3, marginTop: 6, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{e.d}</div> : null}
+                    {e.source === "community" && e.creatorName ? (
+                      <div style={{ fontSize: 11, color: G, fontWeight: 600, marginTop: 6, fontFamily: F }}>added by {e.creatorName}</div>
+                    ) : null}
+                    {e.t.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" }}>{e.t.map(t => <span key={t} style={{ background: P + "10", color: P, fontSize: 10, padding: "2px 8px", borderRadius: 5, fontFamily: F, textTransform: "uppercase" }}>{t}</span>)}</div> : null}
+                  </div>
                 ))}
-              </div>
-              {allDbEx.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>Loading exercises...</div> : null}
-              {(() => {
-                let filtered = allDbEx.filter(e => {
-                  const mS = !dbSearch.trim() || e.n.toLowerCase().includes(dbSearch.toLowerCase()) || e.f.toLowerCase().includes(dbSearch.toLowerCase()) || (e.d || "").toLowerCase().includes(dbSearch.toLowerCase());
-                  const mT = dbTag === "All" || e.t.includes(dbTag);
-                  return mS && mT;
-                });
-                if (dbSearch.trim()) {
-                  const q = dbSearch.toLowerCase();
-                  filtered.sort((a, b) => {
-                    const scoreOf = (e: typeof a) => {
-                      if (e.n.toLowerCase() === q) return 0;
-                      if (e.n.toLowerCase().startsWith(q)) return 1;
-                      if (e.n.toLowerCase().includes(q)) return 2;
-                      if (e.f.toLowerCase().includes(q)) return 3;
-                      return 4;
-                    };
-                    return scoreOf(a) - scoreOf(b);
-                  });
-                }
-                const shown = filtered.slice(0, 50);
-                return (
-                  <>
-                  {shown.map(e => (
-                    <div key={e.n} onClick={() => setDbDetail(e)} style={{ background: CD, border: "1px solid " + BD, borderLeft: "3px solid " + P + "40", borderRadius: 14, padding: "14px 18px", marginBottom: 6, cursor: "pointer" }}>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: T2 }}>{e.n}</div>
-                      {e.f !== e.n ? <div style={{ fontSize: 12, color: T4, marginTop: 3 }}>{e.f}</div> : null}
-                      {e.d ? <div style={{ fontSize: 13, color: T3, marginTop: 6, lineHeight: 1.5, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{e.d}</div> : null}
-                      {e.t.length > 0 ? <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" }}>{e.t.map(t => <span key={t} style={{ background: P + "10", color: P, fontSize: 10, padding: "2px 8px", borderRadius: 5, fontFamily: F, textTransform: "uppercase" }}>{t}</span>)}</div> : null}
-                    </div>
-                  ))}
-                  {filtered.length === 0 && allDbEx.length > 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>No exercises match your search</div> : null}
-                  {filtered.length > 50 ? <div style={{ textAlign: "center", color: T5, padding: 16, fontSize: 12 }}>Showing first 50 of {filtered.length} results. Search to narrow down.</div> : null}
-                  </>
-                );
-              })()}
+                {filtered.length === 0 && allEx.length > 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>No exercises match your search</div> : null}
+                {filtered.length > 50 ? <div style={{ textAlign: "center", color: T5, padding: 16, fontSize: 12 }}>Showing first 50 of {filtered.length} results. Search to narrow down.</div> : null}
               </>
             );
           })()}
-
-          {exDetailModal}
-        
         </div>
       ) : (
       <>
+      <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Search by title, Q name, AO..." style={{ ...ist, marginBottom: 14 }} />
       <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
         {[{ k: "new", l: "New" }, { k: "top", l: "Top voted" }, { k: "stolen", l: "Most stolen" }].map(sv => (
           <button key={sv.k} onClick={() => setFSort(sv.k)} style={{ fontFamily: F, background: fSort === sv.k ? G + "15" : "rgba(255,255,255,0.04)", color: fSort === sv.k ? G : T4, padding: "7px 14px", borderRadius: 10, fontSize: 13, border: "none", cursor: "pointer", fontWeight: fSort === sv.k ? 700 : 500 }}>{sv.l}</button>
@@ -554,32 +780,179 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
         <button onClick={() => setLibF(true)} style={{ fontFamily: F, marginLeft: "auto", background: af > 0 ? G + "15" : "rgba(255,255,255,0.04)", color: af > 0 ? G : T4, padding: "7px 14px", borderRadius: 10, fontSize: 12, border: "1px solid " + (af > 0 ? G + "30" : BD), cursor: "pointer", fontWeight: 600 }}>Filters{af > 0 ? " (" + af + ")" : ""}</button>
       </div>
       {feed.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40, border: "1px dashed " + BD, borderRadius: 14, marginBottom: 8 }}>No {libT} shared yet. Be the first!</div> : null}
-      {feed.map(bd => (
-        <div key={bd.id} onClick={() => setLibDet(bd)} style={{ background: CD, border: "1px solid " + BD, borderLeft: "3px solid " + (bd.tp === "exercise" ? P + "50" : A + "50"), borderRadius: 14, padding: "16px 18px", marginBottom: 8, cursor: "pointer" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ fontSize: 18, fontWeight: 700, color: T2 }}>{bd.nm}</div>
-                {bd.src && bd.tp !== "exercise" ? (() => { const sb = srcBadge(bd.src); return <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, fontWeight: 700, background: sb.bg, color: sb.c }}>{sb.l}</span>; })() : null}
+      {feed.map(bd => {
+        const isOwn = bd.auId ? bd.auId === currentUserId : false;
+        const avatarColor = colorForUserId(bd.auId || String(bd.id), isOwn);
+        const initials = getInitials(bd.au);
+
+        // Date formatter — "Apr 24" current year, "Apr 24, 2025" prior year
+        let dateStr = bd.dt; // fallback to pre-formatted dt
+        if (bd.createdAt) {
+          const d = new Date(bd.createdAt);
+          const currentYear = new Date().getFullYear();
+          const opts: Intl.DateTimeFormatOptions = d.getFullYear() === currentYear
+            ? { month: "short", day: "numeric" }
+            : { month: "short", day: "numeric", year: "numeric" };
+          dateStr = d.toLocaleDateString("en-US", opts);
+        }
+
+        const sb = bd.src ? srcBadge(bd.src) : null;
+        const diffColor = dc(bd.d);
+
+        return (
+          <div key={bd.id} onClick={() => setLibDet(bd)} style={{
+            background: CD,
+            border: "1px solid " + BD,
+            borderRadius: 14,
+            padding: "16px 18px",
+            marginBottom: 8,
+            cursor: "pointer",
+          }}>
+            {/* HEADER ROW — avatar + author/AO/date + duration pill */}
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
+              <div
+                onClick={bd.auId && onOpenProfile ? (e => handleAuthorTap(e, bd.auId)) : undefined}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  background: avatarColor + "1f",
+                  border: "2px solid " + avatarColor,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: avatarColor,
+                  flexShrink: 0,
+                  letterSpacing: -0.5,
+                  cursor: bd.auId && onOpenProfile ? "pointer" : "default",
+                }}>{initials}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  {bd.auId && onOpenProfile ? (
+                    <span onClick={e => handleAuthorTap(e, bd.auId)} style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: T2,
+                      cursor: "pointer",
+                    }}>{bd.au}</span>
+                  ) : (
+                    <span style={{ fontSize: 14, fontWeight: 700, color: T2 }}>{bd.au}</span>
+                  )}
+                  {isOwn && (
+                    <span style={{
+                      fontSize: 10,
+                      padding: "2px 7px",
+                      borderRadius: 4,
+                      background: G + "20",
+                      color: G,
+                      fontWeight: 700,
+                      letterSpacing: 0.5,
+                    }}>YOU</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: T5, marginTop: 2 }}>
+                  {bd.ao}{bd.ao && dateStr ? " · " : ""}{dateStr}
+                </div>
               </div>
-              <div style={{ fontSize: 14, color: T4, marginTop: 5 }}>{bd.au} · {bd.ao}{bd.au === profName ? <span style={{ color: G, fontSize: 11, marginLeft: 6 }}>· You</span> : null}</div>
-              {bd.inspiredBy ? <div style={{ fontSize: 11, color: A, marginTop: 3 }}>Inspired by {bd.inspiredBy}</div> : null}
-              <div style={{ fontSize: 12, color: T5, marginTop: 3 }}>{bd.dt}</div>
+              {bd.dur && (
+                <span style={{
+                  background: G + "15",
+                  color: G,
+                  fontSize: 12,
+                  padding: "5px 10px",
+                  borderRadius: 6,
+                  fontFamily: F,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}>{bd.dur}</span>
+              )}
             </div>
-            <span style={{ background: dc(bd.d) + "15", color: dc(bd.d), fontSize: 12, padding: "4px 10px", borderRadius: 6, fontWeight: 700, fontFamily: F, textTransform: "uppercase" }}>{bd.d}</span>
-          </div>
-          <div style={{ fontSize: 15, color: T3, marginTop: 10, lineHeight: 1.55, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{bd.ds}</div>
-          {(bd.tg || bd.et || bd.dur) ? <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>{bd.dur ? <span style={{ background: G + "12", color: G, fontSize: 12, padding: "3px 10px", borderRadius: 6, fontFamily: F, fontWeight: 600 }}>{bd.dur}</span> : null}{(bd.tg || bd.et || []).filter(t => t !== bd.dur && !["Easy","Medium","Hard","Beast"].includes(t)).map(t => <span key={t} style={{ background: "rgba(255,255,255,0.05)", color: T4, fontSize: 12, padding: "3px 10px", borderRadius: 6, fontFamily: F }}>{t}</span>)}</div> : null}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-            <div style={{ display: "flex", gap: 14, fontSize: 14, color: T4 }}>
-              {bd.tp === "beatdown" ? <span onClick={e => { e.stopPropagation(); onToggleVote?.(String(bd.id), "beatdown"); }} style={{ color: userVotes.has(String(bd.id)) ? G : T4, fontWeight: 600, cursor: "pointer" }}>▲ {bd.v}</span> : <span onClick={e => { e.stopPropagation(); onToggleVote?.(String(bd.id), "exercise"); }} style={{ color: userVotes.has(String(bd.id)) ? G : T4, fontWeight: 600, cursor: "pointer" }}>▲ {bd.v}</span>}
-              <span>Stolen {bd.u}x</span>
-              {bd.cm > 0 ? <span>{bd.cm} comments</span> : null}
+
+            {/* TITLE */}
+            <div style={{ fontSize: 18, fontWeight: 700, color: T2, marginBottom: 6 }}>{bd.nm}</div>
+
+            {/* INSPIRED-BY (if present) */}
+            {bd.inspiredBy && (
+              <div style={{ fontSize: 11, color: A, marginBottom: 6 }}>Inspired by {bd.inspiredBy}</div>
+            )}
+
+            {/* SOURCE + DIFFICULTY + TAGS row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+              {sb && (
+                <span style={{
+                  fontSize: 11,
+                  padding: "3px 8px",
+                  borderRadius: 5,
+                  fontWeight: 700,
+                  background: sb.bg,
+                  color: sb.c,
+                }}>{sb.l}</span>
+              )}
+              <span style={{
+                background: diffColor + "15",
+                color: diffColor,
+                fontSize: 11,
+                padding: "3px 8px",
+                borderRadius: 5,
+                fontWeight: 700,
+                fontFamily: F,
+                textTransform: "uppercase",
+              }}>{bd.d}</span>
+              {bd.tg && bd.tg.filter(t =>
+                t !== bd.dur && !["Easy","Medium","Hard","Beast"].includes(t)
+              ).length > 0 && (
+                <span style={{ fontSize: 12, color: T4 }}>
+                  · {bd.tg.filter(t =>
+                    t !== bd.dur && !["Easy","Medium","Hard","Beast"].includes(t)
+                  ).join(" · ")}
+                </span>
+              )}
             </div>
-            <span onClick={e => { e.stopPropagation(); onSteal?.(String(bd.id), bd.tp as "beatdown" | "exercise"); fl("Saved to locker!"); }} style={{ fontSize: 14, color: G, cursor: "pointer", padding: "4px 8px", fontWeight: 600 }}>Save</span>
+
+            {/* DESCRIPTION */}
+            {bd.ds && (
+              <div style={{
+                fontSize: 14,
+                color: T3,
+                lineHeight: 1.55,
+                overflow: "hidden",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                marginBottom: 12,
+              }}>{bd.ds}</div>
+            )}
+
+            {/* 3-COUNTER FOOTER (always visible, vote interactive) */}
+            <div style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: 14,
+              paddingTop: 12,
+              borderTop: "1px solid rgba(255,255,255,0.04)",
+              fontSize: 13,
+              color: T4,
+            }}>
+              <span
+                onClick={e => { e.stopPropagation(); onToggleVote?.(String(bd.id), "beatdown"); }}
+                style={{
+                  color: userVotes.has(String(bd.id)) ? G : T4,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >👍 {bd.v}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>↻ {bd.u}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>💬 {bd.cm}</span>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
       {feed.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>No results match your filters</div> : null}
       </>
       )}

@@ -4,8 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import { EX, DIFFS, SITES, EQUIP, mapSupabaseExercise, normalizeSection } from "@/lib/exercises";
 import type { Section, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
-import CopyModal from "@/components/CopyModal";
 import SectionEditor from "@/components/SectionEditor";
+import type { AttachedBeatdown } from "@/components/PreblastComposer";
+import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft, formatTimeAgo } from "@/lib/drafts";
 
 const G = "#22c55e";
 const A = "#f59e0b";
@@ -31,10 +32,11 @@ const eqLabel = (id: string) => EQUIP.find(e => e.id === id)?.l || id;
 
 interface BuilderScreenProps {
   onClose: () => void;
+  backLabel?: string;
   onSave: (beatdown: {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
-  }) => void;
+  }) => Promise<string | null>;
   editData?: {
     id: string; nm: string; desc: string; d: string; secs: Section[];
     tg: string[]; dur: string | null; sites: string[]; eq: string[]; isPublic?: boolean;
@@ -42,7 +44,7 @@ interface BuilderScreenProps {
   onUpdate?: (id: string, data: {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     dur: string | null; sites: string[]; eq: string[];
-  }) => void;
+  }) => Promise<boolean>;
   onRunThis?: (secs: Section[], title: string, dur: string, saveData: {
     nm: string; desc: string; d: string; secs: Section[]; tg: string[];
     src: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean;
@@ -51,6 +53,10 @@ interface BuilderScreenProps {
   onShareBeatdown?: () => void;
   onUnshareBeatdown?: () => void;
   onDeleteBeatdown?: () => void;
+  onSendPreblast?: (bd: AttachedBeatdown) => void;
+  onSavedNew?: (newId: string) => void;
+  onOpenCopyModal?: (ctx: { secs: Section[]; beatdownName: string; beatdownDesc: string }) => void;
+  profName?: string;
   userExercises?: { id: string; nm: string; desc: string; tags: string[]; how: string }[];
   communityExercises?: { nm: string; desc: string; tags: string[]; how: string }[];
 }
@@ -63,26 +69,65 @@ function defaultSections(): Section[] {
   ].map(s => normalizeSection(s as Record<string, unknown>));
 }
 
-export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onRunThis, onRunBeatdown, onShareBeatdown, onUnshareBeatdown, onDeleteBeatdown, userExercises, communityExercises }: BuilderScreenProps) {
-  const [bT, setBT] = useState(editData?.nm || "");
-  const [bD, setBD] = useState(editData?.desc || "");
-  const [bDur, setBDur] = useState<string | null>(editData?.dur || null);
-  const [bDiff, setBDiff] = useState<string | null>(editData?.d || null);
-  const [bSites, setBSites] = useState<string[]>(editData?.sites || []);
-  const [bEq, setBEq] = useState<string[]>(editData?.eq || []);
-  const [secs, setSecs] = useState<Section[]>(() => {
+export default function BuilderScreen({ onClose, backLabel, onSave, editData, onUpdate, onRunThis, onRunBeatdown, onShareBeatdown, onUnshareBeatdown, onDeleteBeatdown, onSendPreblast, onSavedNew, onOpenCopyModal, profName, userExercises, communityExercises }: BuilderScreenProps) {
+  const draftKey = editData ? DRAFT_KEYS.builderEdit(editData.id) : DRAFT_KEYS.builderNew;
+  type BuilderDraft = {
+    bT: string; bD: string; bDur: string | null; bDiff: string | null;
+    bSites: string[]; bEq: string[]; secs: Section[]; shareLib: boolean;
+  };
+  const initialDraft = (() => {
+    if (typeof window === "undefined") return null;
+    return loadDraft<BuilderDraft>(draftKey);
+  })();
+
+  const computeInitialSecs = (): Section[] => {
     if (editData?.secs && editData.secs.length > 0) {
       return editData.secs.map(s => normalizeSection(s as unknown as Record<string, unknown>));
     }
     return defaultSections();
-  });
-  const [shareLib, setShareLib] = useState(editData?.isPublic || false);
+  };
+
+  const [bT, setBT] = useState(initialDraft?.data.bT ?? editData?.nm ?? "");
+  const [bD, setBD] = useState(initialDraft?.data.bD ?? editData?.desc ?? "");
+  const [bDur, setBDur] = useState<string | null>(initialDraft?.data.bDur ?? editData?.dur ?? null);
+  const [bDiff, setBDiff] = useState<string | null>(initialDraft?.data.bDiff ?? editData?.d ?? null);
+  const [bSites, setBSites] = useState<string[]>(initialDraft?.data.bSites ?? editData?.sites ?? []);
+  const [bEq, setBEq] = useState<string[]>(initialDraft?.data.bEq ?? editData?.eq ?? []);
+  const [secs, setSecs] = useState<Section[]>(initialDraft?.data.secs ?? computeInitialSecs());
+  const [shareLib, setShareLib] = useState(initialDraft?.data.shareLib ?? editData?.isPublic ?? false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
-  const [copyModal, setCopyModal] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [unshareConfirm, setUnshareConfirm] = useState(false);
+  const [draftRestored, setDraftRestored] = useState<{ timeAgo: string } | null>(null);
+
+  useEffect(() => {
+    if (initialDraft) {
+      setDraftRestored({ timeAgo: formatTimeAgo(initialDraft.savedAt) });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveDraft<BuilderDraft>(draftKey, { bT, bD, bDur, bDiff, bSites, bEq, secs, shareLib });
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [bT, bD, bDur, bDiff, bSites, bEq, secs, shareLib, draftKey]);
+
+  const handleDiscardDraft = () => {
+    clearDraft(draftKey);
+    setDraftRestored(null);
+    setBT(editData?.nm ?? "");
+    setBD(editData?.desc ?? "");
+    setBDur(editData?.dur ?? null);
+    setBDiff(editData?.d ?? null);
+    setBSites(editData?.sites ?? []);
+    setBEq(editData?.eq ?? []);
+    setSecs(computeInitialSecs());
+    setShareLib(editData?.isPublic ?? false);
+  };
 
   const userExRef = useRef(userExercises);
   const commExRef = useRef(communityExercises);
@@ -125,15 +170,28 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
   // Check if any details have been set (for collapsed chip summary)
   const hasAnyDetails = bDur || bDiff || bSites.length > 0 || bEq.length > 0;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (saving) return;
     setSaving(true);
     const nm = bT.trim() || "Untitled";
     const tgs = buildTags();
-    if (editData && onUpdate) {
-      onUpdate(editData.id, { nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, dur: bDur, sites: bSites, eq: bEq });
-    } else {
-      onSave({ nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib });
+    try {
+      if (editData && onUpdate) {
+        const success = await onUpdate(editData.id, { nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, dur: bDur, sites: bSites, eq: bEq });
+        if (success) {
+          clearDraft(draftKey);
+          setDraftRestored(null);
+        }
+      } else if (onSave) {
+        const newId = await onSave({ nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib });
+        if (newId) {
+          clearDraft(draftKey);
+          setDraftRestored(null);
+          onSavedNew?.(newId);
+        }
+      }
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -148,17 +206,20 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
 
   return (
     <div style={{ padding: "0 24px" }}>
-      {/* Copy Modal */}
-      {copyModal && <CopyModal secs={secs} beatdownName={bT || "Untitled"} beatdownDesc={bD} qName="The Bishop" onClose={() => setCopyModal(false)} onToast={fl} />}
       {toastEl}
+
+      {/* Draft restored banner */}
+      {draftRestored && (
+        <div style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.30)", borderRadius: 10, padding: "10px 14px", marginTop: 16, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, fontSize: 13, fontWeight: 600, color: A, fontFamily: F }}>
+          <span>↻ Draft restored from {draftRestored.timeAgo}</span>
+          <button onClick={handleDiscardDraft} style={{ fontFamily: F, background: "transparent", border: "1px solid rgba(245,158,11,0.40)", color: A, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 8, cursor: "pointer" }}>Discard</button>
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid " + BD }}>
         <button onClick={onClose} style={{ fontFamily: F, color: T3, background: "none", border: "none", cursor: "pointer", fontSize: 17, fontWeight: 600, padding: "8px 0" }}>
-          {editData ? "← Locker" : "← Home"}
-        </button>
-        <button onClick={() => setCopyModal(true)} style={{ fontFamily: F, background: A + "26", border: "1px solid " + A + "4D", color: A, fontSize: 15, fontWeight: 700, padding: "10px 16px", borderRadius: 10, cursor: "pointer" }}>
-          Backblast
+          {backLabel || (editData ? "← Locker" : "← Home")}
         </button>
       </div>
 
@@ -245,34 +306,80 @@ export default function BuilderScreen({ onClose, onSave, editData, onUpdate, onR
         allEx={allEx}
       />
 
-      {/* Save + Run This */}
+      {/* Action area — Round 3: Layer 1 primary, Layer 2 icon pills, Layer 3 destructive footer */}
       <div style={{ marginTop: 32, display: "flex", flexDirection: "column", gap: 10, paddingBottom: 8 }}>
+        {/* LAYER 1 — PRIMARY */}
         <button
           disabled={saving}
           onClick={handleSave}
           style={{ fontFamily: F, width: "100%", padding: "20px 0", borderRadius: 14, fontSize: 18, fontWeight: 800, cursor: saving ? "default" : "pointer", background: saving ? "#1a1a1e" : G, color: saving ? T4 : BG, border: "none", opacity: saving ? 0.7 : 1 }}
         >
-          {saving ? "Saving..." : (editData ? "Save changes" : "Save to locker")}
+          {saving ? "Saving..." : (editData ? "Save changes" : "Save")}
         </button>
-        {/* Run This — show in both new and edit mode */}
-        {!saving && (editData ? onRunBeatdown : onRunThis) && (
-          <button
-            onClick={editData ? onRunBeatdown : handleRunThis}
-            style={{ fontFamily: F, width: "100%", padding: "18px 0", borderRadius: 14, fontSize: 17, fontWeight: 700, cursor: "pointer", background: "transparent", border: "2px solid " + G, color: G, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
-          >
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none"><path d="M5 3L17 10L5 17V3Z" fill={G} /></svg>
-            Run This
-          </button>
-        )}
-        {/* Share/Unshare + Delete — edit mode only */}
-        {editData && !saving && (
-          <div style={{ display: "flex", gap: 12, marginTop: 6, paddingTop: 16, borderTop: "1px solid " + BD }}>
-            {!editData.isPublic ? (
-              <button onClick={onShareBeatdown} style={{ fontFamily: F, flex: 1, padding: "14px 0", background: A + "12", color: A, border: "1px solid " + A + "25", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Share to Library</button>
-            ) : (
-              <button onClick={() => setUnshareConfirm(true)} style={{ fontFamily: F, flex: 1, padding: "14px 0", background: "rgba(239,68,68,0.08)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Unshare</button>
+
+        {/* LAYER 2 — SECONDARY ROW (icon pills) */}
+        {!saving && (
+          <div style={{ display: "flex", gap: 6 }}>
+            {(editData ? onRunBeatdown : onRunThis) && (
+              <button
+                onClick={editData ? onRunBeatdown : handleRunThis}
+                style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.30)", color: G, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
+              >
+                <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>▶</span>
+                <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Live</span>
+              </button>
             )}
-            <button onClick={onDeleteBeatdown} style={{ fontFamily: F, flex: 1, padding: "14px 0", background: "rgba(255,255,255,0.04)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.20)", borderRadius: 12, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Delete</button>
+            <button
+              onClick={() => onSendPreblast?.({
+                id: editData?.id ?? "draft",
+                title: bT || "Untitled beatdown",
+                duration: bDur,
+                difficulty: DIFFS.find(d => d.id === bDiff)?.l ?? null,
+                sections: secs.map(s => ({
+                  label: s.label,
+                  color: s.color,
+                  exercises: s.exercises.map(e => ({ name: e.n, reps: e.r ?? null, cadence: e.c ?? null })),
+                })),
+              })}
+              style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.30)", color: P, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
+            >
+              <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📣</span>
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
+            </button>
+            <button
+              onClick={() => onOpenCopyModal?.({ secs, beatdownName: bT || "Untitled", beatdownDesc: bD })}
+              style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.30)", color: A, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
+            >
+              <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📓</span>
+              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Backblast</span>
+            </button>
+          </div>
+        )}
+
+        {/* LAYER 3 — DESTRUCTIVE FOOTER (edit mode only) */}
+        {editData && !saving && (
+          <div style={{ marginTop: 18, paddingTop: 12, borderTop: "0.5px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            {editData.isPublic ? (
+              <span
+                onClick={() => setUnshareConfirm(true)}
+                style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: "#ef4444", cursor: "pointer" }}
+              >
+                Unshare
+              </span>
+            ) : (
+              <span
+                onClick={onShareBeatdown}
+                style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: "#22c55e", cursor: "pointer" }}
+              >
+                Share to library
+              </span>
+            )}
+            <span
+              onClick={onDeleteBeatdown}
+              style={{ fontFamily: F, fontSize: 13, fontWeight: 700, color: "#ef4444", cursor: "pointer" }}
+            >
+              Delete
+            </span>
           </div>
         )}
       </div>
