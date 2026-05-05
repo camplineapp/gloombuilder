@@ -754,7 +754,7 @@ export default function SectionEditor({ sections, onSectionsChange, allEx, onSec
   };
 
   const handleSaveExercise = (si: number, updated: SectionExercise) => {
-    update(sections.map((s, i) => i !== si ? s : { ...s, exercises: s.exercises.map(e => (e.id === updated.id || e.n === updated.n) ? updated : e) }));
+    update(sections.map((s, i) => i !== si ? s : { ...s, exercises: s.exercises.map(e => e.id === updated.id ? updated : e) }));
     setEditSheet(null);
   };
 
@@ -861,7 +861,7 @@ export default function SectionEditor({ sections, onSectionsChange, allEx, onSec
           onAddTransitionAfter={(text) => {
             const si = editSheet.sectionIdx;
             const sec = sections[si];
-            const exIdx = sec.exercises.findIndex(e => e.id === editSheet.exercise.id || e.n === editSheet.exercise.n);
+            const exIdx = sec.exercises.findIndex(e => e.id === editSheet.exercise.id);
             if (exIdx === -1) return;
             const id = generateId();
             const tr = { id, type: "transition" as const, name: text, n: text, r: "", c: "", nt: "", note: "" };
