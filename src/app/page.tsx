@@ -421,6 +421,39 @@ export default function App() {
     tab, editFromQProfile, savingInFlight,
   ]);
 
+  // ═══════════════════════════════════════════════════════════════
+  // iOS PWA edge-swipe-back blocker
+  // Intercepts touchstart events near the left edge of the viewport
+  // and calls preventDefault to stop iOS Safari's native back-nav
+  // gesture in standalone PWA mode. Live Mode's teleprompter swipe
+  // opts out via data-allow-edge-swipe="true" on the swipeable div.
+  // See Bible v20 amendment for the full diagnostic chain.
+  // ═══════════════════════════════════════════════════════════════
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      // Only intercept gestures starting within 24px of the left edge —
+      // this is the iOS edge-swipe activation zone. Touches starting
+      // further inside the viewport are normal taps/scrolls and pass through.
+      if (touch.clientX > 24) return;
+
+      // Opt-out: if the touch originated inside any element marked with
+      // data-allow-edge-swipe, let it through. This preserves Live Mode's
+      // swipe-between-exercises gesture.
+      const target = e.target as Element | null;
+      if (target && target.closest("[data-allow-edge-swipe]")) return;
+
+      // Block iOS edge-swipe-back. Must be passive: false to allow preventDefault.
+      e.preventDefault();
+    };
+
+    document.addEventListener("touchstart", onTouchStart, { passive: false });
+    return () => document.removeEventListener("touchstart", onTouchStart);
+  }, []);
+
   if (checking) {
     return (
       <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", display: "flex", alignItems: "center", justifyContent: "center" }}>
