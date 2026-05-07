@@ -195,7 +195,7 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid " + BD }}>
         <button onClick={onClose} style={{ fontFamily: F, color: T3, background: "none", border: "none", cursor: "pointer", fontSize: 17, fontWeight: 600, padding: "8px 0" }}>
-          {backLabel || (editData ? "← Locker" : "← Home")}
+          {backLabel || (editData ? "← Profile" : "← Home")}
         </button>
       </div>
 

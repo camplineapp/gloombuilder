@@ -666,34 +666,20 @@ export interface ProfileStats {
 export async function getProfileStats(userId: string): Promise<ProfileStats> {
   const supabase = createClient();
 
-  // Phase 1: 4 independent queries in parallel.
-  // - Shared beatdown rows (id only) — count via .length, IDs feed Phase 2.
-  // - Shared exercise rows (id only) — same pattern.
-  // - Steal count for beatdowns inspired by this user (no self-references).
-  // - Steal count for exercises inspired by this user.
-  // The select("id") collapses the prior count+ids redundancy: a single
-  // round-trip yields both the count (rows.length) and the IDs needed below.
-  const [bdRowsResult, exRowsResult, stealBdResult, stealExResult] = await Promise.all([
+  // Phase 1: 2 parallel queries pulling shared rows with their denormalized
+  // steal_count. Row count → beatdowns/exercises stat; IDs feed Phase 2;
+  // summed steal_count → steals stat (matches per-card counters users see).
+  const [bdRowsResult, exRowsResult] = await Promise.all([
     supabase
       .from("beatdowns")
-      .select("id")
+      .select("id, steal_count")
       .eq("created_by", userId)
       .eq("is_public", true),
     supabase
       .from("exercises")
-      .select("id")
+      .select("id, steal_count")
       .eq("created_by", userId)
       .eq("source", "community"),
-    supabase
-      .from("beatdowns")
-      .select("*", { count: "exact", head: true })
-      .eq("inspired_by", userId)
-      .neq("created_by", userId),
-    supabase
-      .from("exercises")
-      .select("*", { count: "exact", head: true })
-      .eq("inspired_by", userId)
-      .neq("created_by", userId),
   ]);
 
   const sharedBds = bdRowsResult.data || [];
@@ -713,7 +699,21 @@ export async function getProfileStats(userId: string): Promise<ProfileStats> {
     upvotes = voteCount || 0;
   }
 
-  const steals = (stealBdResult.count || 0) + (stealExResult.count || 0);
+  // Sum per-card steal_count to match what users see on individual
+  // beatdown/exercise cards. The previous live-inspired_by count
+  // diverged from per-card counters when forks were deleted, since
+  // steal_count is denormalized and never decrements.
+  const beatdownStealsSum = sharedBds.reduce(
+    (acc: number, row: { steal_count: number | null }) =>
+      acc + (row.steal_count || 0),
+    0
+  );
+  const exerciseStealsSum = sharedExs.reduce(
+    (acc: number, row: { steal_count: number | null }) =>
+      acc + (row.steal_count || 0),
+    0
+  );
+  const steals = beatdownStealsSum + exerciseStealsSum;
 
   return {
     beatdowns: sharedBds.length,
