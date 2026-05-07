@@ -842,8 +842,14 @@ export default function SectionEditor({ sections, onSectionsChange, allEx, onSec
       }}>
         {pickerFi.map(e => (
           <div key={e.n} style={{ padding: "14px 16px", background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, marginBottom: 6, display: "flex", alignItems: "center" }}>
-            <div style={{ flex: 1 }}><div style={{ color: T1, fontWeight: 700, fontSize: 16, fontFamily: F }}>{e.n}</div><div style={{ color: T3, fontSize: 17, lineHeight: 1.65, marginTop: 3, fontFamily: F }}>{e.d || e.f}</div></div>
-            <button onClick={() => { const id = generateId(); const add: SectionExercise = { id, type: "exercise", name: e.n, n: e.n, mode: "reps", value: 10, cadence: "IC", r: "10", c: "IC", note: "", nt: "" }; update(sections.map((s, i) => i !== pkI ? s : { ...s, exercises: [...s.exercises, add] })); setPk2(false); fl(e.n + " added"); }} style={{ fontFamily: F, background: G, color: BG, border: "none", padding: "12px 20px", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: "pointer", flexShrink: 0, marginLeft: 12 }}>+ Add</button>
+            <div style={{ flex: 1 }}>
+              <div style={{ color: T1, fontWeight: 700, fontSize: 16, fontFamily: F }}>{e.n}</div>
+              <div style={{ color: T3, fontSize: 16, lineHeight: 1.65, marginTop: 3, fontFamily: F }}>{e.d || e.f}</div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginLeft: 12, flexShrink: 0 }}>
+              <button onClick={() => { const id = generateId(); const add: SectionExercise = { id, type: "exercise", name: e.n, n: e.n, mode: "reps", value: 10, cadence: "IC", r: "10", c: "IC", note: "", nt: "" }; update(sections.map((s, i) => i !== pkI ? s : { ...s, exercises: [...s.exercises, add] })); setPk2(false); fl(e.n + " added"); }} style={{ fontFamily: F, background: G, color: BG, border: "none", padding: "12px 14px", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>+ Add</button>
+              <button onClick={() => handleShowInfo(e.n)} style={{ fontFamily: F, background: "rgba(167,139,250,0.12)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.25)", padding: "10px 14px", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: "pointer" }}>?</button>
+            </div>
           </div>
         ))}
       </div>
