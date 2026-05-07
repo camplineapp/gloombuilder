@@ -665,35 +665,45 @@ export interface ProfileStats {
 
 export async function getProfileStats(userId: string): Promise<ProfileStats> {
   const supabase = createClient();
-  // All counts are SHARED-only per spec (is_public = true)
-  // 1. Count of shared beatdowns by this user
-  const { count: bdCount } = await supabase
-    .from("beatdowns")
-    .select("*", { count: "exact", head: true })
-    .eq("created_by", userId)
-    .eq("is_public", true);
-  // 2. Count of shared exercises by this user
-  const { count: exCount } = await supabase
-    .from("exercises")
-    .select("*", { count: "exact", head: true })
-    .eq("created_by", userId)
-    .eq("source", "community");
-  // 3. Total upvotes received on shared content
-  // Get IDs of shared beatdowns + exercises by this user, then count votes against those IDs
-  const { data: sharedBds } = await supabase
-    .from("beatdowns")
-    .select("id")
-    .eq("created_by", userId)
-    .eq("is_public", true);
-  const { data: sharedExs } = await supabase
-    .from("exercises")
-    .select("id")
-    .eq("created_by", userId)
-    .eq("source", "community");
+
+  // Phase 1: 4 independent queries in parallel.
+  // - Shared beatdown rows (id only) — count via .length, IDs feed Phase 2.
+  // - Shared exercise rows (id only) — same pattern.
+  // - Steal count for beatdowns inspired by this user (no self-references).
+  // - Steal count for exercises inspired by this user.
+  // The select("id") collapses the prior count+ids redundancy: a single
+  // round-trip yields both the count (rows.length) and the IDs needed below.
+  const [bdRowsResult, exRowsResult, stealBdResult, stealExResult] = await Promise.all([
+    supabase
+      .from("beatdowns")
+      .select("id")
+      .eq("created_by", userId)
+      .eq("is_public", true),
+    supabase
+      .from("exercises")
+      .select("id")
+      .eq("created_by", userId)
+      .eq("source", "community"),
+    supabase
+      .from("beatdowns")
+      .select("*", { count: "exact", head: true })
+      .eq("inspired_by", userId)
+      .neq("created_by", userId),
+    supabase
+      .from("exercises")
+      .select("*", { count: "exact", head: true })
+      .eq("inspired_by", userId)
+      .neq("created_by", userId),
+  ]);
+
+  const sharedBds = bdRowsResult.data || [];
+  const sharedExs = exRowsResult.data || [];
   const ownedIds = [
-    ...(sharedBds || []).map((b: { id: string }) => b.id),
-    ...(sharedExs || []).map((e: { id: string }) => e.id),
+    ...sharedBds.map((b: { id: string }) => b.id),
+    ...sharedExs.map((e: { id: string }) => e.id),
   ];
+
+  // Phase 2: votes query — depends on Phase 1 IDs. Skip when no shared content.
   let upvotes = 0;
   if (ownedIds.length > 0) {
     const { count: voteCount } = await supabase
@@ -702,22 +712,14 @@ export async function getProfileStats(userId: string): Promise<ProfileStats> {
       .in("item_id", ownedIds);
     upvotes = voteCount || 0;
   }
-  // 4. Steal count: how many times someone else's beatdowns/exercises had this user as inspired_by
-  const { count: stealBd } = await supabase
-    .from("beatdowns")
-    .select("*", { count: "exact", head: true })
-    .eq("inspired_by", userId)
-    .neq("created_by", userId);
-  const { count: stealEx } = await supabase
-    .from("exercises")
-    .select("*", { count: "exact", head: true })
-    .eq("inspired_by", userId)
-    .neq("created_by", userId);
-  const steals = (stealBd || 0) + (stealEx || 0);  return {
-    beatdowns: bdCount || 0,
+
+  const steals = (stealBdResult.count || 0) + (stealExResult.count || 0);
+
+  return {
+    beatdowns: sharedBds.length,
     upvotes,
     steals,
-    exercises: exCount || 0,
+    exercises: sharedExs.length,
   };
 }
 
