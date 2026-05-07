@@ -829,7 +829,7 @@ export default function SectionEditor({ sections, onSectionsChange, allEx, onSec
         <div><span style={{ color: T1, fontSize: 18, fontWeight: 700 }}>Browse library</span><div style={{ color: pickerSec.color, fontSize: 12, marginTop: 2 }}>{pickerSec.name || pickerSec.label} · adding to this section</div></div>
         <span onClick={() => setPk2(false)} style={{ color: T4, cursor: "pointer", fontSize: 22 }}>✕</span>
       </div>
-      <div style={{ padding: "0 24px 10px" }}><input value={pS} onChange={e => setPS(e.target.value)} placeholder="Search exercises..." autoFocus style={{ ...ist, borderRadius: 12, padding: "13px 16px", fontSize: 15 }} /></div>
+      <div style={{ padding: "0 24px 10px" }}><input value={pS} onChange={e => setPS(e.target.value)} placeholder="Search exercises..." autoFocus style={{ ...ist, borderRadius: 12, padding: "13px 16px", fontSize: 17 }} /></div>
       <div style={{ padding: "0 24px 10px", display: "flex", gap: 5, flexWrap: "wrap" }}>
         {TAGS.map(t => { const sel = pTg === t; return <button key={t} onClick={() => setPTg(sel ? null : t)} style={{ fontFamily: F, background: sel ? A + "20" : "rgba(255,255,255,0.04)", color: sel ? A : T5, border: "1px solid " + (sel ? A + "30" : BD), padding: "5px 11px", borderRadius: 20, fontSize: 10, cursor: "pointer", textTransform: "uppercase", fontWeight: 600 }}>{t}</button>; })}
       </div>
@@ -842,7 +842,7 @@ export default function SectionEditor({ sections, onSectionsChange, allEx, onSec
       }}>
         {pickerFi.map(e => (
           <div key={e.n} style={{ padding: "14px 16px", background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, marginBottom: 6, display: "flex", alignItems: "center" }}>
-            <div style={{ flex: 1 }}><div style={{ color: T1, fontWeight: 700, fontSize: 16, fontFamily: F }}>{e.n}</div><div style={{ color: T4, fontSize: 12, marginTop: 3, fontFamily: F }}>{e.d || e.f}</div></div>
+            <div style={{ flex: 1 }}><div style={{ color: T1, fontWeight: 700, fontSize: 16, fontFamily: F }}>{e.n}</div><div style={{ color: T3, fontSize: 17, lineHeight: 1.65, marginTop: 3, fontFamily: F }}>{e.d || e.f}</div></div>
             <button onClick={() => { const id = generateId(); const add: SectionExercise = { id, type: "exercise", name: e.n, n: e.n, mode: "reps", value: 10, cadence: "IC", r: "10", c: "IC", note: "", nt: "" }; update(sections.map((s, i) => i !== pkI ? s : { ...s, exercises: [...s.exercises, add] })); setPk2(false); fl(e.n + " added"); }} style={{ fontFamily: F, background: G, color: BG, border: "none", padding: "12px 20px", borderRadius: 10, fontSize: 14, fontWeight: 800, cursor: "pointer", flexShrink: 0, marginLeft: 12 }}>+ Add</button>
           </div>
         ))}
