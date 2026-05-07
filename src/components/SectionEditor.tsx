@@ -698,6 +698,29 @@ export default function SectionEditor({ sections, onSectionsChange, allEx, onSec
   // FIX 4: Exercise info sheet state
   const [infoEx, setInfoEx] = useState<ExerciseData | null>(null);
 
+  // FIX: Lock body scroll when the exercise picker overlay is open.
+  // Mirrors the pattern in ExerciseEditSheet (FIX 2) so scrolling
+  // inside the picker's exercise list doesn't chain to the editor
+  // page underneath.
+  useEffect(() => {
+    if (!pk2) return;
+    const orig = document.body.style.overflow;
+    const origPos = document.body.style.position;
+    const origW = document.body.style.width;
+    const scrollY = window.scrollY;
+    document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.width = "100%";
+    document.body.style.top = `-${scrollY}px`;
+    return () => {
+      document.body.style.overflow = orig;
+      document.body.style.position = origPos;
+      document.body.style.width = origW;
+      document.body.style.top = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, [pk2]);
+
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
   const update = (s: Section[]) => onSectionsChange(s);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { delay: 200, tolerance: 5 } }));
@@ -810,7 +833,13 @@ export default function SectionEditor({ sections, onSectionsChange, allEx, onSec
       <div style={{ padding: "0 24px 10px", display: "flex", gap: 5, flexWrap: "wrap" }}>
         {TAGS.map(t => { const sel = pTg === t; return <button key={t} onClick={() => setPTg(sel ? null : t)} style={{ fontFamily: F, background: sel ? A + "20" : "rgba(255,255,255,0.04)", color: sel ? A : T5, border: "1px solid " + (sel ? A + "30" : BD), padding: "5px 11px", borderRadius: 20, fontSize: 10, cursor: "pointer", textTransform: "uppercase", fontWeight: 600 }}>{t}</button>; })}
       </div>
-      <div style={{ flex: 1, overflowY: "auto", padding: "0 24px 24px" }}>
+      <div style={{
+        flex: 1,
+        overflowY: "auto",
+        overscrollBehavior: "contain",
+        WebkitOverflowScrolling: "touch",
+        padding: "0 24px 24px"
+      }}>
         {pickerFi.map(e => (
           <div key={e.n} style={{ padding: "14px 16px", background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 14, marginBottom: 6, display: "flex", alignItems: "center" }}>
             <div style={{ flex: 1 }}><div style={{ color: T1, fontWeight: 700, fontSize: 16, fontFamily: F }}>{e.n}</div><div style={{ color: T4, fontSize: 12, marginTop: 3, fontFamily: F }}>{e.d || e.f}</div></div>
