@@ -96,9 +96,33 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
   const [draftRestored, setDraftRestored] = useState<{ timeAgo: string } | null>(null);
 
   useEffect(() => {
-    if (initialDraft) {
-      setDraftRestored({ timeAgo: formatTimeAgo(initialDraft.savedAt) });
-    }
+    if (!initialDraft) return;
+    setDraftRestored({ timeAgo: formatTimeAgo(initialDraft.savedAt) });
+
+    // Auto-dismiss after 6 seconds.
+    const dismissTimer = setTimeout(() => setDraftRestored(null), 6000);
+
+    // Also dismiss on first user interaction inside the document.
+    // Captures focus, keydown, and pointerdown — any sign the user
+    // has started working. Once any of these fires, banner clears
+    // and the listeners self-remove.
+    const dismissOnInteraction = () => {
+      setDraftRestored(null);
+      clearTimeout(dismissTimer);
+      document.removeEventListener("focusin", dismissOnInteraction);
+      document.removeEventListener("keydown", dismissOnInteraction);
+      document.removeEventListener("pointerdown", dismissOnInteraction);
+    };
+    document.addEventListener("focusin", dismissOnInteraction);
+    document.addEventListener("keydown", dismissOnInteraction);
+    document.addEventListener("pointerdown", dismissOnInteraction);
+
+    return () => {
+      clearTimeout(dismissTimer);
+      document.removeEventListener("focusin", dismissOnInteraction);
+      document.removeEventListener("keydown", dismissOnInteraction);
+      document.removeEventListener("pointerdown", dismissOnInteraction);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -111,6 +135,7 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
   }, [title, text, draftKey]);
 
   const handleDiscardDraft = () => {
+    if (!confirm("Discard the restored draft? This can't be undone.")) return;
     setTitle("");
     setText("");
     clearDraft(draftKey);
