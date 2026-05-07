@@ -66,6 +66,7 @@ interface BeatdownRow {
   duration: number | null;
   vote_count: number | null;
   steal_count: number | null;
+  comment_count: number | null;
   created_at: string;
   generated: boolean;
   is_public: boolean;
@@ -386,6 +387,7 @@ function TabBtn({ label, count, active, onClick }: { label: string; count: numbe
 function BeatdownCard({ bd, onTap }: { bd: BeatdownRow; onTap?: () => void }) {
   const votes = bd.vote_count || 0;
   const steals = bd.steal_count || 0;
+  const comments = bd.comment_count || 0;
   const date = new Date(bd.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
   const stripeColor = bd.is_public ? G : "#3a3a40";
   const sourcePill = bd.generated
@@ -472,13 +474,14 @@ function BeatdownCard({ bd, onTap }: { bd: BeatdownRow; onTap?: () => void }) {
           color: T4,
           fontWeight: 600,
         }}>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-            <ThumbsUpIcon size={13} filled />
-            <span style={{ color: T1 }}>{votes}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            👍 <span style={{ color: T1 }}>{votes}</span>
           </span>
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-            <span style={{ fontSize: 13 }}>📋</span>
-            <span style={{ color: T1 }}>{steals}</span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            ↻ <span style={{ color: T1 }}>{steals}</span>
+          </span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            💬 <span style={{ color: T1 }}>{comments}</span>
           </span>
           <span style={{ marginLeft: "auto", color: T4 }}>{date}</span>
         </div>
@@ -505,7 +508,7 @@ function BeatdownCard({ bd, onTap }: { bd: BeatdownRow; onTap?: () => void }) {
   );
 }
 
-// Exercise card — V2-Round-4: status stripe + HAND BUILT pill + asymmetric footer
+// Exercise card — V2-Round-4: status stripe + asymmetric footer
 function ExerciseCard({ ex, onTap }: { ex: ExerciseRow; onTap?: () => void }) {
   const votes = ex.vote_count || 0;
   const date = new Date(ex.created_at).toLocaleDateString("en-US", { month: "short", day: "2-digit" });
@@ -526,7 +529,7 @@ function ExerciseCard({ ex, onTap }: { ex: ExerciseRow; onTap?: () => void }) {
         cursor: onTap ? "pointer" : "default",
       }}
     >
-      {/* Title + HAND BUILT pill */}
+      {/* Title */}
       <div style={{
         display: "flex",
         alignItems: "center",
@@ -544,16 +547,6 @@ function ExerciseCard({ ex, onTap }: { ex: ExerciseRow; onTap?: () => void }) {
           textOverflow: "ellipsis",
           whiteSpace: "nowrap",
         }}>{ex.name}</span>
-        <span style={{
-          fontSize: 11,
-          fontWeight: 800,
-          color: GOLD,
-          background: `${GOLD}1A`,
-          border: `1px solid ${GOLD}4D`,
-          padding: "3px 8px",
-          borderRadius: 6,
-          flexShrink: 0,
-        }}>HAND BUILT</span>
       </div>
 
       {/* Description (single-line ellipsis) */}
