@@ -9,7 +9,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Section, SectionExercise, ExerciseData } from "@/lib/exercises";
-import { TAGS, parseSmartText, generateId } from "@/lib/exercises";
+import { parseSmartText, generateId } from "@/lib/exercises";
 
 const G = "#22c55e";
 const A = "#f59e0b";
@@ -693,10 +693,28 @@ export default function SectionEditor({ sections, onSectionsChange, allEx, onSec
   const [pk2, setPk2] = useState(false);
   const [pkI, setPkI] = useState(0);
   const [pS, setPS] = useState("");
-  const [pTg, setPTg] = useState<string | null>(null);
+  const [pType, setPType] = useState("All");
+  const [pBody, setPBody] = useState("All");
   const [toast, setToast] = useState("");
   // FIX 4: Exercise info sheet state
   const [infoEx, setInfoEx] = useState<ExerciseData | null>(null);
+
+  const PICKER_TYPE_TAGS = [
+    { value: "Warm-Up", label: "Warm-up" },
+    { value: "Mary", label: "Mary" },
+    { value: "Cardio", label: "Cardio" },
+    { value: "Static", label: "Static" },
+    { value: "Transport", label: "Transport" },
+    { value: "Coupon", label: "Coupon" },
+  ];
+  const PICKER_BODY_TAGS = [
+    { value: "Full Body", label: "Full body" },
+    { value: "Core", label: "Core" },
+    { value: "Legs", label: "Legs" },
+    { value: "Chest", label: "Chest" },
+    { value: "Arms", label: "Arms" },
+    { value: "Shoulders", label: "Shoulders" },
+  ];
 
   // FIX: Lock body scroll when the exercise picker overlay is open.
   // Mirrors the pattern in ExerciseEditSheet (FIX 2) so scrolling
@@ -812,8 +830,9 @@ export default function SectionEditor({ sections, onSectionsChange, allEx, onSec
   const pickerSec = sections[pkI];
   const pickerFi = pk2 && pickerSec ? allEx.filter(e => {
     const ms = !pS || e.n.toLowerCase().includes(pS.toLowerCase()) || e.f.toLowerCase().includes(pS.toLowerCase()) || (e.d || "").toLowerCase().includes(pS.toLowerCase());
-    const mt = !pTg || e.t.includes(pTg);
-    return ms && mt;
+    const typeMatch = pType === "All" || e.t.includes(pType);
+    const bodyMatch = pBody === "All" || e.t.includes(pBody);
+    return ms && typeMatch && bodyMatch;
   }).sort((a, b) => {
     if (!pS) return 0;
     const q = pS.toLowerCase();
@@ -830,8 +849,55 @@ export default function SectionEditor({ sections, onSectionsChange, allEx, onSec
         <span onClick={() => setPk2(false)} style={{ color: T4, cursor: "pointer", fontSize: 22 }}>✕</span>
       </div>
       <div style={{ padding: "0 24px 10px" }}><input value={pS} onChange={e => setPS(e.target.value)} placeholder="Search exercises..." autoFocus style={{ ...ist, borderRadius: 12, padding: "13px 16px", fontSize: 17 }} /></div>
-      <div style={{ padding: "0 24px 10px", display: "flex", gap: 5, flexWrap: "wrap" }}>
-        {TAGS.map(t => { const sel = pTg === t; return <button key={t} onClick={() => setPTg(sel ? null : t)} style={{ fontFamily: F, background: sel ? A + "20" : "rgba(255,255,255,0.04)", color: sel ? A : T5, border: "1px solid " + (sel ? A + "30" : BD), padding: "5px 11px", borderRadius: 20, fontSize: 10, cursor: "pointer", textTransform: "uppercase", fontWeight: 600 }}>{t}</button>; })}
+      <div style={{ padding: "0 24px 0", marginBottom: 14 }}>
+        <div style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: T5, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6, paddingLeft: 2 }}>Type</div>
+        <div style={{ display: "flex", gap: 5, overflowX: "auto", flexWrap: "nowrap", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", paddingBottom: 2 }}>
+          {[{ value: "All", label: "All" }, ...PICKER_TYPE_TAGS].map(t => (
+            <button
+              key={t.value}
+              onClick={() => setPType(t.value)}
+              style={{
+                fontFamily: F,
+                background: pType === t.value ? A + "20" : "rgba(255,255,255,0.04)",
+                color: pType === t.value ? A : T5,
+                border: "1px solid " + (pType === t.value ? A + "30" : BD),
+                padding: "5px 11px",
+                borderRadius: 20,
+                fontSize: 10,
+                cursor: "pointer",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+              }}
+            >{t.label}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{ padding: "0 24px 10px" }}>
+        <div style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: T5, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6, paddingLeft: 2 }}>Body part</div>
+        <div style={{ display: "flex", gap: 5, overflowX: "auto", flexWrap: "nowrap", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", paddingBottom: 2 }}>
+          {[{ value: "All", label: "All" }, ...PICKER_BODY_TAGS].map(t => (
+            <button
+              key={t.value}
+              onClick={() => setPBody(t.value)}
+              style={{
+                fontFamily: F,
+                background: pBody === t.value ? A + "20" : "rgba(255,255,255,0.04)",
+                color: pBody === t.value ? A : T5,
+                border: "1px solid " + (pBody === t.value ? A + "30" : BD),
+                padding: "5px 11px",
+                borderRadius: 20,
+                fontSize: 10,
+                cursor: "pointer",
+                textTransform: "uppercase",
+                fontWeight: 600,
+                flexShrink: 0,
+                whiteSpace: "nowrap",
+              }}
+            >{t.label}</button>
+          ))}
+        </div>
       </div>
       <div style={{
         flex: 1,
@@ -874,7 +940,7 @@ export default function SectionEditor({ sections, onSectionsChange, allEx, onSec
               onDeleteSec={() => handleDeleteSec(si)}
               onAddExercise={(name, isCustom) => handleAddExercise(si, name, isCustom)}
               onAddTransition={() => handleAddTransition(si)}
-              onOpenPicker={() => { setPk2(true); setPkI(si); setPS(""); setPTg(null); }}
+              onOpenPicker={() => { setPk2(true); setPkI(si); setPS(""); setPType("All"); setPBody("All"); }}
               onExDragEnd={handleExDragEnd(si)}
               onAddSection={() => handleAddSection(si)}
               onQNotesChange={(text) => update(sections.map((s, i) => i !== si ? s : { ...s, qNotes: text, note: text }))}
