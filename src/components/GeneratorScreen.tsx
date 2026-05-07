@@ -6,7 +6,7 @@ import type { GenConfig, Section, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
 import SectionEditor from "@/components/SectionEditor";
 import type { AttachedBeatdown } from "@/components/PreblastComposer";
-import { DRAFT_KEYS, saveDraft, clearDraft } from "@/lib/drafts";
+import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft, PICKUP_INTENT_KEY } from "@/lib/drafts";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -50,9 +50,14 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
   type GeneratorDraft = {
     gc: GenConfig; gr: Section[]; grT: string; grD: string; shareLib: boolean;
   };
-  // Modified Flavor B: no auto-restore on mount. Generator has no edit mode, so always null.
-  // Drafts continue to autosave (see effect below) and surface via the Pick-up card on Home.
-  const initialDraft = null as { data: GeneratorDraft } | null;
+  // Modified Flavor B + Pick-up signal: restore only when user
+  // came from Pick-up on Home (one-shot sessionStorage flag).
+  const initialDraft = (() => {
+    if (typeof window === "undefined") return null;
+    if (sessionStorage.getItem(PICKUP_INTENT_KEY) !== "true") return null;
+    sessionStorage.removeItem(PICKUP_INTENT_KEY);
+    return loadDraft<GeneratorDraft>(draftKey);
+  })();
 
   const [gs, setGs] = useState(0);
   const [gc, setGc] = useState<GenConfig>(initialDraft?.data.gc ?? { dur: null, diff: null, sites: [], eq: [] });

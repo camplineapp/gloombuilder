@@ -9,6 +9,11 @@ export const DRAFT_KEYS = {
   notepadDraft: "gloombuilder.draft.notepad",
 } as const;
 
+// One-shot sessionStorage flag set by HomeScreen's Pick-up card and
+// read-then-cleared by an editor on mount. When present, the editor
+// restores its draft; absent, it stays empty (modified Flavor B).
+export const PICKUP_INTENT_KEY = "gloombuilder.pickup.intent";
+
 export interface DraftEnvelope<T> {
   data: T;
   savedAt: number;

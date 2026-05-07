@@ -6,7 +6,7 @@ import type { Section, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
 import SectionEditor from "@/components/SectionEditor";
 import type { AttachedBeatdown } from "@/components/PreblastComposer";
-import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft } from "@/lib/drafts";
+import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft, PICKUP_INTENT_KEY } from "@/lib/drafts";
 
 const G = "#22c55e";
 const A = "#f59e0b";
@@ -75,10 +75,15 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
     bT: string; bD: string; bDur: string | null; bDiff: string | null;
     bSites: string[]; bEq: string[]; secs: Section[]; shareLib: boolean;
   };
-  // Modified Flavor B: only edit mode auto-restores; new beatdowns recover via the Home Pick-up card.
+  // Modified Flavor B + Pick-up signal: edit mode always restores;
+  // new mode restores only when user came from Pick-up on Home.
   const initialDraft = (() => {
     if (typeof window === "undefined") return null;
-    if (!editData) return null;
+    // Edit mode: always restore in-progress edits to this specific beatdown.
+    if (editData) return loadDraft<BuilderDraft>(draftKey);
+    // New mode: restore only if Pick-up flag is set (read-and-clear).
+    if (sessionStorage.getItem(PICKUP_INTENT_KEY) !== "true") return null;
+    sessionStorage.removeItem(PICKUP_INTENT_KEY);
     return loadDraft<BuilderDraft>(draftKey);
   })();
 

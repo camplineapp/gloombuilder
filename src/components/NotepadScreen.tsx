@@ -5,7 +5,7 @@ import { EX, mapSupabaseExercise } from "@/lib/exercises";
 import type { Section, SectionExercise, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
 import { parseNotepad, type ParseResult } from "@/lib/notepadParser";
-import { DRAFT_KEYS, saveDraft, clearDraft } from "@/lib/drafts";
+import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft, PICKUP_INTENT_KEY } from "@/lib/drafts";
 
 type NotepadDraft = {
   title: string;
@@ -80,9 +80,15 @@ const HELP_ROWS: HelpRow[] = [
 
 export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercises }: NotepadScreenProps) {
   const draftKey = DRAFT_KEYS.notepadDraft;
-  // Modified Flavor B: no auto-restore on mount. Notepad has no edit mode, so always null.
-  // Drafts continue to autosave (see effect below) and surface via the Pick-up card on Home.
-  const initialDraft = null as { data: NotepadDraft } | null;
+  // Modified Flavor B + Pick-up signal: only restore if the user
+  // explicitly tapped Pick-up on Home (one-shot sessionStorage flag).
+  // Drafts continue to autosave; Pick-up card on Home is the recovery path.
+  const initialDraft = (() => {
+    if (typeof window === "undefined") return null;
+    if (sessionStorage.getItem(PICKUP_INTENT_KEY) !== "true") return null;
+    sessionStorage.removeItem(PICKUP_INTENT_KEY);
+    return loadDraft<NotepadDraft>(draftKey);
+  })();
 
   const [title, setTitle] = useState(initialDraft?.data.title ?? "");
   const [text, setText] = useState(initialDraft?.data.text ?? "");

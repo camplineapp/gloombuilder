@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { loadDraft, formatTimeAgo, DRAFT_KEYS } from "@/lib/drafts";
+import { loadDraft, formatTimeAgo, DRAFT_KEYS, PICKUP_INTENT_KEY } from "@/lib/drafts";
 import type { Section } from "@/lib/exercises";
 
 const F = "'Outfit', system-ui, sans-serif";
@@ -185,6 +185,9 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
           }}>Pick up where you left off</div>
           <button
             onClick={() => {
+              // Set one-shot intent flag so editor restores its draft on mount.
+              // Editor reads-and-clears this flag on mount.
+              sessionStorage.setItem(PICKUP_INTENT_KEY, "true");
               if (pickUp.flow === "generate") onGenerate();
               else if (pickUp.flow === "notepad") onCreateNotepad?.();
               else onBuild();
