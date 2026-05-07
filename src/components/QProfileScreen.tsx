@@ -104,13 +104,43 @@ export default function QProfileScreen({
   const [loading, setLoading] = useState(true);
 
   const loadAll = useCallback(async () => {
+    // [PERF] TEMPORARY instrumentation — remove after Stage 2 fix ships
+    const T_START = performance.now();
+    console.log("[PERF] QProfileScreen loadAll start", T_START);
     setLoading(true);
-    const [p, s, bds, exs] = await Promise.all([
-      getProfileById(userId),
-      getProfileStats(userId),
-      isOwn ? getMyAllBeatdowns(userId) : getUserSharedBeatdowns(userId),
-      isOwn ? getMyAllExercises(userId) : getUserSharedExercises(userId),
-    ]);
+
+    const t1 = performance.now();
+    console.log("[PERF] start getProfileById");
+    const pPromise = getProfileById(userId).then(r => {
+      console.log("[PERF] done getProfileById", (performance.now() - t1).toFixed(1), "ms");
+      return r;
+    });
+
+    const t2 = performance.now();
+    console.log("[PERF] start getProfileStats");
+    const sPromise = getProfileStats(userId).then(r => {
+      console.log("[PERF] done getProfileStats", (performance.now() - t2).toFixed(1), "ms");
+      return r;
+    });
+
+    const t3 = performance.now();
+    console.log("[PERF] start beatdowns");
+    const bdsPromise = (isOwn ? getMyAllBeatdowns(userId) : getUserSharedBeatdowns(userId)).then(r => {
+      console.log("[PERF] done beatdowns", (performance.now() - t3).toFixed(1), "ms");
+      return r;
+    });
+
+    const t4 = performance.now();
+    console.log("[PERF] start exercises");
+    const exsPromise = (isOwn ? getMyAllExercises(userId) : getUserSharedExercises(userId)).then(r => {
+      console.log("[PERF] done exercises", (performance.now() - t4).toFixed(1), "ms");
+      return r;
+    });
+
+    const [p, s, bds, exs] = await Promise.all([pPromise, sPromise, bdsPromise, exsPromise]);
+
+    console.log("[PERF] all data loaded", (performance.now() - T_START).toFixed(1), "ms");
+
     setProfile(p as ProfileData | null);
     setStats(s);
     setBeatdowns(bds as BeatdownRow[]);
@@ -121,6 +151,13 @@ export default function QProfileScreen({
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  // [PERF] TEMPORARY — fires when loading flips false, capturing post-render commit
+  useEffect(() => {
+    if (!loading) {
+      console.log("[PERF] first paint", performance.now());
+    }
+  }, [loading]);
 
 
   if (loading) {
