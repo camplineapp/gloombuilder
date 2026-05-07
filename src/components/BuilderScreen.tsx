@@ -6,7 +6,7 @@ import type { Section, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
 import SectionEditor from "@/components/SectionEditor";
 import type { AttachedBeatdown } from "@/components/PreblastComposer";
-import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft, formatTimeAgo } from "@/lib/drafts";
+import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft } from "@/lib/drafts";
 
 const G = "#22c55e";
 const A = "#f59e0b";
@@ -75,8 +75,10 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
     bT: string; bD: string; bDur: string | null; bDiff: string | null;
     bSites: string[]; bEq: string[]; secs: Section[]; shareLib: boolean;
   };
+  // Modified Flavor B: only edit mode auto-restores; new beatdowns recover via the Home Pick-up card.
   const initialDraft = (() => {
     if (typeof window === "undefined") return null;
+    if (!editData) return null;
     return loadDraft<BuilderDraft>(draftKey);
   })();
 
@@ -100,38 +102,6 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [unshareConfirm, setUnshareConfirm] = useState(false);
-  const [draftRestored, setDraftRestored] = useState<{ timeAgo: string } | null>(null);
-
-  useEffect(() => {
-    if (!initialDraft) return;
-    setDraftRestored({ timeAgo: formatTimeAgo(initialDraft.savedAt) });
-
-    // Auto-dismiss after 6 seconds.
-    const dismissTimer = setTimeout(() => setDraftRestored(null), 6000);
-
-    // Also dismiss on first user interaction inside the document.
-    // Captures focus, keydown, and pointerdown — any sign the user
-    // has started working. Once any of these fires, banner clears
-    // and the listeners self-remove.
-    const dismissOnInteraction = () => {
-      setDraftRestored(null);
-      clearTimeout(dismissTimer);
-      document.removeEventListener("focusin", dismissOnInteraction);
-      document.removeEventListener("keydown", dismissOnInteraction);
-      document.removeEventListener("pointerdown", dismissOnInteraction);
-    };
-    document.addEventListener("focusin", dismissOnInteraction);
-    document.addEventListener("keydown", dismissOnInteraction);
-    document.addEventListener("pointerdown", dismissOnInteraction);
-
-    return () => {
-      clearTimeout(dismissTimer);
-      document.removeEventListener("focusin", dismissOnInteraction);
-      document.removeEventListener("keydown", dismissOnInteraction);
-      document.removeEventListener("pointerdown", dismissOnInteraction);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -139,20 +109,6 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
     }, 800);
     return () => clearTimeout(timer);
   }, [bT, bD, bDur, bDiff, bSites, bEq, secs, shareLib, draftKey]);
-
-  const handleDiscardDraft = () => {
-    if (!confirm("Discard the restored draft? This can't be undone.")) return;
-    clearDraft(draftKey);
-    setDraftRestored(null);
-    setBT(editData?.nm ?? "");
-    setBD(editData?.desc ?? "");
-    setBDur(editData?.dur ?? null);
-    setBDiff(editData?.d ?? null);
-    setBSites(editData?.sites ?? []);
-    setBEq(editData?.eq ?? []);
-    setSecs(computeInitialSecs());
-    setShareLib(editData?.isPublic ?? false);
-  };
 
   const userExRef = useRef(userExercises);
   const commExRef = useRef(communityExercises);
@@ -205,13 +161,11 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
         const success = await onUpdate(editData.id, { nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, dur: bDur, sites: bSites, eq: bEq });
         if (success) {
           clearDraft(draftKey);
-          setDraftRestored(null);
         }
       } else if (onSave) {
         const newId = await onSave({ nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib });
         if (newId) {
           clearDraft(draftKey);
-          setDraftRestored(null);
           onSavedNew?.(newId);
         }
       }
@@ -232,14 +186,6 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
   return (
     <div style={{ padding: "0 24px" }}>
       {toastEl}
-
-      {/* Draft restored banner */}
-      {draftRestored && (
-        <div style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.30)", borderRadius: 10, padding: "10px 14px", marginTop: 16, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, fontSize: 13, fontWeight: 600, color: A, fontFamily: F }}>
-          <span>↻ Draft restored from {draftRestored.timeAgo}</span>
-          <button onClick={handleDiscardDraft} style={{ fontFamily: F, background: "transparent", border: "1px solid rgba(245,158,11,0.40)", color: A, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 8, cursor: "pointer" }}>Discard</button>
-        </div>
-      )}
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid " + BD }}>

@@ -6,7 +6,7 @@ import type { GenConfig, Section, ExerciseData } from "@/lib/exercises";
 import { loadSeedExercises } from "@/lib/db";
 import SectionEditor from "@/components/SectionEditor";
 import type { AttachedBeatdown } from "@/components/PreblastComposer";
-import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft, formatTimeAgo } from "@/lib/drafts";
+import { DRAFT_KEYS, saveDraft, clearDraft } from "@/lib/drafts";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -50,10 +50,9 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
   type GeneratorDraft = {
     gc: GenConfig; gr: Section[]; grT: string; grD: string; shareLib: boolean;
   };
-  const initialDraft = (() => {
-    if (typeof window === "undefined") return null;
-    return loadDraft<GeneratorDraft>(draftKey);
-  })();
+  // Modified Flavor B: no auto-restore on mount. Generator has no edit mode, so always null.
+  // Drafts continue to autosave (see effect below) and surface via the Pick-up card on Home.
+  const initialDraft = null as { data: GeneratorDraft } | null;
 
   const [gs, setGs] = useState(0);
   const [gc, setGc] = useState<GenConfig>(initialDraft?.data.gc ?? { dur: null, diff: null, sites: [], eq: [] });
@@ -66,38 +65,6 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
   const [grDetailsOpen, setGrDetailsOpen] = useState(false);
   const [toast, setToast] = useState("");
   const [allEx, setAllEx] = useState<ExerciseData[]>(EX);
-  const [draftRestored, setDraftRestored] = useState<{ timeAgo: string } | null>(null);
-
-  useEffect(() => {
-    if (!initialDraft) return;
-    setDraftRestored({ timeAgo: formatTimeAgo(initialDraft.savedAt) });
-
-    // Auto-dismiss after 6 seconds.
-    const dismissTimer = setTimeout(() => setDraftRestored(null), 6000);
-
-    // Also dismiss on first user interaction inside the document.
-    // Captures focus, keydown, and pointerdown — any sign the user
-    // has started working. Once any of these fires, banner clears
-    // and the listeners self-remove.
-    const dismissOnInteraction = () => {
-      setDraftRestored(null);
-      clearTimeout(dismissTimer);
-      document.removeEventListener("focusin", dismissOnInteraction);
-      document.removeEventListener("keydown", dismissOnInteraction);
-      document.removeEventListener("pointerdown", dismissOnInteraction);
-    };
-    document.addEventListener("focusin", dismissOnInteraction);
-    document.addEventListener("keydown", dismissOnInteraction);
-    document.addEventListener("pointerdown", dismissOnInteraction);
-
-    return () => {
-      clearTimeout(dismissTimer);
-      document.removeEventListener("focusin", dismissOnInteraction);
-      document.removeEventListener("keydown", dismissOnInteraction);
-      document.removeEventListener("pointerdown", dismissOnInteraction);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     if (!gr) return;
@@ -106,18 +73,6 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
     }, 800);
     return () => clearTimeout(timer);
   }, [gc, gr, grT, grD, shareLib, draftKey]);
-
-  const handleDiscardDraft = () => {
-    if (!confirm("Discard the restored draft? This can't be undone.")) return;
-    clearDraft(draftKey);
-    setDraftRestored(null);
-    setGc({ dur: null, diff: null, sites: [], eq: [] });
-    setGr(null);
-    setGrT("");
-    setGrD("");
-    setShareLib(false);
-    setGs(0);
-  };
 
   // Load exercises from Supabase on mount + merge user custom + community exercises
   useEffect(() => {
@@ -161,14 +116,6 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
     return (
       <div style={{ padding: "0 24px" }}>
         {toastEl}
-
-        {/* Draft restored banner */}
-        {draftRestored && (
-          <div style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.30)", borderRadius: 10, padding: "10px 14px", marginTop: 16, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, fontSize: 13, fontWeight: 600, color: A, fontFamily: F }}>
-            <span>↻ Draft restored from {draftRestored.timeAgo}</span>
-            <button onClick={handleDiscardDraft} style={{ fontFamily: F, background: "transparent", border: "1px solid rgba(245,158,11,0.40)", color: A, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 8, cursor: "pointer" }}>Discard</button>
-          </div>
-        )}
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, paddingBottom: 16, borderBottom: "1px solid " + BD }}>
@@ -313,7 +260,6 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
               const newId = await onSave({ nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib });
               if (newId) {
                 clearDraft(draftKey);
-                setDraftRestored(null);
               }
             } finally {
               setSaving(false);

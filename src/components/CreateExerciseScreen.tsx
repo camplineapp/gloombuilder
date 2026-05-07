@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { TAGS } from "@/lib/exercises";
-import { DRAFT_KEYS, loadDraft, saveDraft, clearDraft, formatTimeAgo } from "@/lib/drafts";
+import { DRAFT_KEYS, saveDraft, clearDraft } from "@/lib/drafts";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -41,11 +41,10 @@ export default function CreateExerciseScreen({ onClose, onSave, editData, onUpda
   type ExerciseDraft = {
     cxN: string; cxDesc: string; cxH: string; cxT: string[]; cxShare: boolean;
   };
-  const initialDraft = (() => {
-    if (typeof window === "undefined") return null;
-    if (editData) return null; // edit mode skips drafts entirely
-    return loadDraft<ExerciseDraft>(draftKey);
-  })();
+  // Modified Flavor B: no auto-restore on mount in either edit or new mode.
+  // Edit mode never restored anyway (existing behavior); new mode now also skips.
+  // Drafts continue to autosave in new mode (see effect below).
+  const initialDraft = null as { data: ExerciseDraft } | null;
 
   const [cxN, setCxN] = useState(editData?.nm ?? initialDraft?.data.cxN ?? "");
   const [cxDesc, setCxDesc] = useState(editData?.desc ?? initialDraft?.data.cxDesc ?? "");
@@ -54,39 +53,6 @@ export default function CreateExerciseScreen({ onClose, onSave, editData, onUpda
   const [cxShare, setCxShare] = useState(editData?.isPublic ?? initialDraft?.data.cxShare ?? false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState("");
-  const [draftRestored, setDraftRestored] = useState<{ timeAgo: string } | null>(null);
-
-  useEffect(() => {
-    if (editData) return;
-    if (!initialDraft) return;
-    setDraftRestored({ timeAgo: formatTimeAgo(initialDraft.savedAt) });
-
-    // Auto-dismiss after 6 seconds.
-    const dismissTimer = setTimeout(() => setDraftRestored(null), 6000);
-
-    // Also dismiss on first user interaction inside the document.
-    // Captures focus, keydown, and pointerdown — any sign the user
-    // has started working. Once any of these fires, banner clears
-    // and the listeners self-remove.
-    const dismissOnInteraction = () => {
-      setDraftRestored(null);
-      clearTimeout(dismissTimer);
-      document.removeEventListener("focusin", dismissOnInteraction);
-      document.removeEventListener("keydown", dismissOnInteraction);
-      document.removeEventListener("pointerdown", dismissOnInteraction);
-    };
-    document.addEventListener("focusin", dismissOnInteraction);
-    document.addEventListener("keydown", dismissOnInteraction);
-    document.addEventListener("pointerdown", dismissOnInteraction);
-
-    return () => {
-      clearTimeout(dismissTimer);
-      document.removeEventListener("focusin", dismissOnInteraction);
-      document.removeEventListener("keydown", dismissOnInteraction);
-      document.removeEventListener("pointerdown", dismissOnInteraction);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   useEffect(() => {
     if (editData) return; // no autosave in edit mode
@@ -95,17 +61,6 @@ export default function CreateExerciseScreen({ onClose, onSave, editData, onUpda
     }, 800);
     return () => clearTimeout(timer);
   }, [cxN, cxDesc, cxH, cxT, cxShare, draftKey, editData]);
-
-  const handleDiscardDraft = () => {
-    if (!confirm("Discard the restored draft? This can't be undone.")) return;
-    clearDraft(draftKey);
-    setDraftRestored(null);
-    setCxN("");
-    setCxDesc("");
-    setCxH("");
-    setCxT([]);
-    setCxShare(false);
-  };
 
   const fl = (msg: string) => { setToast(msg); setTimeout(() => setToast(""), 2200); };
 
@@ -119,7 +74,6 @@ export default function CreateExerciseScreen({ onClose, onSave, editData, onUpda
       } else {
         await onSave({ nm: cxN, tags: cxT, how: cxH, desc: cxDesc, share: cxShare });
         clearDraft(draftKey);
-        setDraftRestored(null);
       }
     } finally {
       setSaving(false);
@@ -133,12 +87,6 @@ export default function CreateExerciseScreen({ onClose, onSave, editData, onUpda
   return (
     <div style={{ padding: "0 24px" }}>
       {toastEl}
-      {draftRestored && (
-        <div style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.30)", borderRadius: 10, padding: "10px 14px", marginTop: 16, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, fontSize: 13, fontWeight: 600, color: A, fontFamily: F }}>
-          <span>↻ Draft restored from {draftRestored.timeAgo}</span>
-          <button onClick={handleDiscardDraft} style={{ fontFamily: F, background: "transparent", border: "1px solid rgba(245,158,11,0.40)", color: A, fontSize: 12, fontWeight: 700, padding: "5px 12px", borderRadius: 8, cursor: "pointer" }}>Discard</button>
-        </div>
-      )}
       <button onClick={onClose} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14, marginBottom: 20 }}>{editData ? "← Locker" : "← Home"}</button>
       <div style={{ fontSize: 24, fontWeight: 800, color: T1, marginBottom: 4 }}>{editData ? "Edit exercise" : "Create exercise"}</div>
       <div style={{ fontSize: 13, color: T4, marginBottom: 24 }}>{editData ? "Update your exercise details" : "Add your own exercise"}</div>
