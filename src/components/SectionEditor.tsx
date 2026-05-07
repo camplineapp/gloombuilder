@@ -846,7 +846,25 @@ export default function SectionEditor({ sections, onSectionsChange, allEx, onSec
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.95)", zIndex: 150, display: "flex", flexDirection: "column", fontFamily: F }}>
       <div style={{ padding: "20px 24px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div><span style={{ color: T1, fontSize: 18, fontWeight: 700 }}>Browse library</span><div style={{ color: pickerSec.color, fontSize: 12, marginTop: 2 }}>{pickerSec.name || pickerSec.label} · adding to this section</div></div>
-        <span onClick={() => setPk2(false)} style={{ color: T4, cursor: "pointer", fontSize: 22 }}>✕</span>
+        <span
+          onClick={() => setPk2(false)}
+          style={{
+            color: T2,
+            cursor: "pointer",
+            fontSize: 22,
+            width: 36,
+            height: 36,
+            borderRadius: 8,
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.10)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: F,
+            lineHeight: 1,
+            flexShrink: 0,
+          }}
+        >✕</span>
       </div>
       <div style={{ padding: "0 24px 10px" }}><input value={pS} onChange={e => setPS(e.target.value)} placeholder="Search exercises..." autoFocus style={{ ...ist, borderRadius: 12, padding: "13px 16px", fontSize: 17 }} /></div>
       <div style={{ padding: "0 24px 0", marginBottom: 14 }}>
