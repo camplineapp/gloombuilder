@@ -755,7 +755,7 @@ export default function App() {
       return;
     }
     setEditingBd(bd);
-    setEditFromQProfile(true);
+    setEditFromQProfile(vw === "q-profile");
     setVw("edit-bd");
   };
 
