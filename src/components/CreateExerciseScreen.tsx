@@ -87,7 +87,7 @@ export default function CreateExerciseScreen({ onClose, onSave, editData, onUpda
   return (
     <div style={{ padding: "0 24px" }}>
       {toastEl}
-      <button onClick={onClose} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14, marginBottom: 20 }}>{editData ? "← Locker" : "← Home"}</button>
+      <button onClick={onClose} style={{ fontFamily: F, color: T4, background: "none", border: "none", cursor: "pointer", fontSize: 14, marginBottom: 20 }}>{editData ? "← Profile" : "← Home"}</button>
       <div style={{ fontSize: 24, fontWeight: 800, color: T1, marginBottom: 4 }}>{editData ? "Edit exercise" : "Create exercise"}</div>
       <div style={{ fontSize: 13, color: T4, marginBottom: 24 }}>{editData ? "Update your exercise details" : "Add your own exercise"}</div>
 
