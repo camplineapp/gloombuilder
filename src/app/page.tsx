@@ -995,7 +995,18 @@ export default function App() {
           refreshKey={profileRefreshKey}
         />
       )}
-            <BottomNav active={tab} onTabChange={(t) => { setTab(t); setVw(null); }} />
+            <BottomNav active={tab} onTabChange={(t) => {
+        // Tap while already on tab's root → reset sub-views via registered back handler.
+        // The vw === null guard ensures vw-modal taps still fall through to the normal
+        // setTab/setVw flow (e.g. tapping Library while in q-profile-bd should exit
+        // the modal, not call the Library back handler).
+        if (t === tab && vw === null) {
+          libraryCloseRequestRef.current?.();
+          return;
+        }
+        setTab(t);
+        setVw(null);
+      }} />
       {preblastOpen && <PreblastComposer onClose={() => { setPreblastOpen(false); setPreblastBd(null); }} qName={profName || "Q"} ao={profAO || ""} attachedBeatdown={preblastBd} userBeatdowns={lk} />}
       {copyModalOpen && copyModalContext && (
         <CopyModal

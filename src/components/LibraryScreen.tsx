@@ -187,11 +187,14 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     onLibDetChange?.(libDet !== null);
   }, [libDet, onLibDetChange]);
 
-  // Item 3: register back handler so parent's popstate can close libDet
+  // Item 3: register back handler so parent's popstate (and same-tab tap)
+  // can close libDet and libF. They're mutually exclusive in current rendering,
+  // but resetting both is the correct semantic for "return to Library list root".
   useEffect(() => {
     if (registerBackHandler) {
       registerBackHandler(() => {
         setLibDet(null);
+        setLibF(false);
       });
     }
   }, [registerBackHandler]);
