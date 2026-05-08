@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { loadSeedExercises } from "@/lib/db";
 import { mapSupabaseExercise, EQUIP } from "@/lib/exercises";
 import type { ExerciseData } from "@/lib/exercises";
-import type { AttachedBeatdown } from "@/components/PreblastComposer";
 import { colorForUserId, getInitials } from "@/lib/avatars";
 import BeatdownDetailSheet from "@/components/BeatdownDetailSheet";
 import type { FeedItem } from "@/components/BeatdownDetailSheet";
@@ -74,12 +73,10 @@ interface LibraryScreenProps {
   userVotes?: Set<string>;
   onToggleVote?: (id: string, itemType?: "beatdown" | "exercise") => void;
   onSteal?: (id: string, itemType: "beatdown" | "exercise") => void;
-  onRunBeatdown?: (item: FeedItem) => void;
   onRefresh?: () => void;
   // V2-4: tap author name → open their Q Profile
   onOpenProfile?: (userId: string | null) => void;
   currentUserId?: string;
-  onSendPreblast?: (bd: AttachedBeatdown) => void;
   // Item 3: hardware back coordination
   onLibDetChange?: (open: boolean) => void;
   registerBackHandler?: (handler: () => void) => void;
@@ -142,7 +139,7 @@ export function ExerciseDetailSheet({ exData, onClose }: { exData: ExerciseData;
   );
 }
 
-export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote, onSteal, onRunBeatdown, onRefresh, onOpenProfile, currentUserId, onSendPreblast, onLibDetChange, registerBackHandler }: LibraryScreenProps) {
+export default function LibraryScreen({ sharedItems = [], profName = "", userVotes = new Set(), onToggleVote, onSteal, onRefresh, onOpenProfile, currentUserId, onLibDetChange, registerBackHandler }: LibraryScreenProps) {
   const [libDet, setLibDet] = useState<FeedItem | null>(null);
   const [libSearch, setLibSearch] = useState("");
   const [libT, setLibT] = useState("beatdowns");
@@ -241,8 +238,6 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
           userVotes={userVotes}
           onToggleVote={onToggleVote}
           onSteal={onSteal}
-          onRunBeatdown={onRunBeatdown}
-          onSendPreblast={onSendPreblast}
           onOpenProfile={onOpenProfile}
           onRefresh={onRefresh}
           profName={profName}

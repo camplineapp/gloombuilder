@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { addComment, loadComments, deleteComment, updateComment } from "@/lib/db";
 import type { ExerciseData } from "@/lib/exercises";
 import ThumbsUpIcon from "@/components/ThumbsUpIcon";
-import type { AttachedBeatdown } from "@/components/PreblastComposer";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -59,8 +58,6 @@ interface BeatdownDetailSheetProps {
   userVotes?: Set<string>;
   onToggleVote?: (id: string, itemType?: "beatdown" | "exercise") => void;
   onSteal?: (id: string, itemType: "beatdown" | "exercise") => void;
-  onRunBeatdown?: (item: FeedItem) => void;
-  onSendPreblast?: (bd: AttachedBeatdown) => void;
   onOpenProfile?: (userId: string | null) => void;
   onRefresh?: () => void;
   profName?: string;
@@ -77,8 +74,6 @@ export default function BeatdownDetailSheet({
   userVotes = new Set(),
   onToggleVote,
   onSteal,
-  onRunBeatdown,
-  onSendPreblast,
   onOpenProfile,
   onRefresh,
   profName = "",
@@ -136,6 +131,7 @@ export default function BeatdownDetailSheet({
   };
 
   const bd = item;
+  const isOwn = !!currentUserId && item.auId === currentUserId;
   const voted = userVotes.has(String(bd.id));
   const comments = dbComments;
   const shownComments = showAllCmt ? comments : comments.slice(0, 3);
@@ -328,36 +324,11 @@ export default function BeatdownDetailSheet({
           }} style={{ fontFamily: F, background: G, color: BG, border: "none", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>Post</button>
         </div>
       </div>
-      <div style={{ marginTop: 24 }}>
-        {/* LAYER 1 — PRIMARY */}
-        <button onClick={() => { onSteal?.(String(bd.id), bd.tp as "beatdown" | "exercise"); fl("Saved!"); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Save</button>
-        {/* LAYER 2 — SECONDARY ROW (icon pills) — beatdowns with sections only */}
-        {bd.tp === "beatdown" && bd.secs && bd.secs.length > 0 && (
-          <div style={{ display: "flex", gap: 6, marginTop: 10 }}>
-            <button onClick={() => onRunBeatdown?.(bd)} style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.30)", color: G, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>▶</span>
-              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Live</span>
-            </button>
-            <button
-              onClick={() => onSendPreblast?.({
-                id: String(bd.id),
-                title: bd.nm,
-                duration: bd.dur,
-                difficulty: bd.d,
-                sections: bd.secs?.map(s => ({
-                  label: s.label,
-                  color: s.color,
-                  exercises: s.exercises.map(e => ({ name: e.n, reps: e.r ?? null, cadence: e.c ?? null })),
-                })),
-              })}
-              style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(167,139,250,0.06)", border: "1px solid rgba(167,139,250,0.30)", color: P, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}
-            >
-              <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>📣</span>
-              <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Preblast</span>
-            </button>
-          </div>
-        )}
-      </div>
+      {!isOwn && (
+        <div style={{ marginTop: 24 }}>
+          <button onClick={() => { onSteal?.(String(bd.id), bd.tp as "beatdown" | "exercise"); }} style={{ fontFamily: F, width: "100%", padding: "16px 0", borderRadius: 12, fontSize: 16, fontWeight: 700, cursor: "pointer", background: G, color: BG, border: "none" }}>Steal</button>
+        </div>
+      )}
       {toastEl}
     </div>
   );

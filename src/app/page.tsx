@@ -692,25 +692,6 @@ export default function App() {
     setVw("live");
   };
 
-  // Run a shared beatdown from the Library (read-only, no save)
-  const handleRunLibraryBeatdown = (item: { nm: string; au: string; ao: string; d: string; dur: string | null; secs?: { label: string; color: string; exercises: { n: string; r: string; c: string; nt: string }[]; note: string }[]; tg?: string[] }) => {
-    if (!item.secs || item.secs.length === 0) return;
-    const secs = item.secs.map(s => normalizeSection(s as unknown as Record<string, unknown>));
-    setLiveBd({
-      id: "library-run",
-      nm: item.nm,
-      dt: "",
-      src: "Library",
-      d: item.d || "medium",
-      desc: "",
-      secs,
-      tg: item.tg || [],
-      isPublic: false,
-      inspiredBy: item.au,
-    });
-    setVw("live");
-  };
-
   const handleUpdateBeatdown = async (id: string, data: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; dur: string | null; sites: string[]; eq: string[] }): Promise<boolean> => {
     setSavingInFlight(true);
     try {
@@ -940,8 +921,6 @@ export default function App() {
               userVotes={userVotes}
               onToggleVote={handleToggleVote}
               onSteal={handleSteal}
-              onRunBeatdown={handleRunLibraryBeatdown}
-              onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }}
               onOpenProfile={handleOpenProfile}
               onRefresh={loadLibrary}
               profName={profName}
@@ -983,7 +962,7 @@ export default function App() {
           onCreateEx={() => setVw("create-ex")}
         />
       )}
-      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} onSteal={handleSteal} onRunBeatdown={handleRunLibraryBeatdown} onRefresh={loadLibrary} onOpenProfile={handleOpenProfile} currentUserId={user.id} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onLibDetChange={(open) => setLibDetOpen(open)} registerBackHandler={(handler) => { libraryCloseRequestRef.current = handler; }} />}
+      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} onSteal={handleSteal} onRefresh={loadLibrary} onOpenProfile={handleOpenProfile} currentUserId={user.id} onLibDetChange={(open) => setLibDetOpen(open)} registerBackHandler={(handler) => { libraryCloseRequestRef.current = handler; }} />}
       {tab === "profile" && user && (
         <QProfileScreen
           userId={user.id}
