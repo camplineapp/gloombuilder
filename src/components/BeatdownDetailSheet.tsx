@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { addComment, loadComments, deleteComment, updateComment } from "@/lib/db";
 import type { ExerciseData } from "@/lib/exercises";
 import ThumbsUpIcon from "@/components/ThumbsUpIcon";
+import { colorForUserId, getInitials } from "@/lib/avatars";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -80,7 +81,7 @@ export default function BeatdownDetailSheet({
   currentUserId,
   onToast,
 }: BeatdownDetailSheetProps) {
-  const [dbComments, setDbComments] = useState<{ id: string; au: string; ao: string; txt: string; dt: string }[]>([]);
+  const [dbComments, setDbComments] = useState<{ id: string; auId?: string; au: string; ao: string; txt: string; dt: string }[]>([]);
   const [cmtLoading, setCmtLoading] = useState(false);
   const [cmtText, setCmtText] = useState("");
   const [editCmtId, setEditCmtId] = useState<string | null>(null);
@@ -96,6 +97,7 @@ export default function BeatdownDetailSheet({
         const p = r.profiles as Record<string, unknown> | null;
         return {
           id: (r.id as string) || "",
+          auId: (r.user_id as string) || undefined,
           au: (p?.f3_name as string) || "Unknown",
           ao: ((p?.ao as string) || "") + ((p?.state as string) ? ", " + (p?.state as string) : ""),
           txt: (r.text as string) || "",
@@ -255,74 +257,92 @@ export default function BeatdownDetailSheet({
           <div style={{ fontSize: 16, fontWeight: 700, color: T1 }}>Comments ({comments.length})</div>
           {comments.length > 3 ? <button onClick={() => setShowAllCmt(!showAllCmt)} style={{ fontFamily: F, background: "none", border: "none", color: G, cursor: "pointer", fontSize: 14, fontWeight: 600 }}>{showAllCmt ? "Show less" : "View all"}</button> : null}
         </div>
-        {shownComments.map((c, i) => (
-          <div key={c.id || i} style={{ background: CD, border: "1px solid " + BD, borderRadius: 12, padding: "14px 16px", marginBottom: 8 }}>
-            {editCmtId === c.id ? (
-              <div>
-                <textarea value={editCmtText} onChange={e => setEditCmtText(e.target.value)} rows={2} style={{ ...ist, resize: "vertical" as const, marginBottom: 8 }} />
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={async () => {
-                    const success = await updateComment(c.id, editCmtText);
-                    if (success) {
-                      setDbComments(dbComments.map(cm => cm.id === c.id ? { ...cm, txt: editCmtText } : cm));
-                      setEditCmtId(null);
-                      fl("Comment updated!");
-                    }
-                  }} style={{ fontFamily: F, background: G, color: BG, border: "none", padding: "8px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Save</button>
-                  <button onClick={() => setEditCmtId(null)} style={{ fontFamily: F, background: "rgba(255,255,255,0.04)", color: T4, border: "1px solid " + BD, padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>Cancel</button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <div><span style={{ fontSize: 14, fontWeight: 700, color: T2 }}>{c.au}</span>{c.ao ? <span style={{ fontSize: 13, color: T4, marginLeft: 6 }}>· {c.ao}</span> : null}</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 12, color: T5 }}>{c.dt}</span>
-                    {c.au === profName ? (
-                      <>
-                        <span onClick={() => { setEditCmtId(c.id); setEditCmtText(c.txt); }} style={{ fontSize: 11, color: T4, cursor: "pointer" }}>Edit</span>
-                        <span onClick={async () => {
-                          const success = await deleteComment(c.id);
-                          if (success) {
-                            setDbComments(dbComments.filter(cm => cm.id !== c.id));
-                            fl("Comment deleted");
-                            onRefresh?.();
-                          }
-                        }} style={{ fontSize: 11, color: R, cursor: "pointer" }}>Delete</span>
-                      </>
-                    ) : null}
+        {shownComments.map((c, i) => {
+          const isOwnComment = !!currentUserId && c.auId === currentUserId;
+          const avColor = colorForUserId(c.auId || c.au, isOwnComment);
+          const initials = getInitials(c.au);
+          const isLast = i === shownComments.length - 1;
+          return (
+            <div key={c.id || i} style={{ display: "flex", gap: 12, padding: "14px 0", borderBottom: isLast ? "none" : "0.5px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: avColor + "26", border: "1px solid " + avColor + "66", color: avColor, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F, fontSize: 13, fontWeight: 500, flexShrink: 0 }}>{initials}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4, minWidth: 0 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: T2 }}>{c.au}</span>
+                    {c.ao ? <span style={{ fontSize: 13, color: T4 }}>· {c.ao}</span> : null}
+                    <span style={{ fontSize: 12, color: T5 }}>· {c.dt}</span>
                   </div>
+                  {c.au === profName && editCmtId !== c.id ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+                      <span onClick={() => { setEditCmtId(c.id); setEditCmtText(c.txt); }} style={{ fontSize: 11, color: T4, cursor: "pointer" }}>Edit</span>
+                      <span onClick={async () => {
+                        const success = await deleteComment(c.id);
+                        if (success) {
+                          setDbComments(dbComments.filter(cm => cm.id !== c.id));
+                          fl("Comment deleted");
+                          onRefresh?.();
+                        }
+                      }} style={{ fontSize: 11, color: R, cursor: "pointer" }}>Delete</span>
+                    </div>
+                  ) : null}
                 </div>
-                <div style={{ fontSize: 15, color: T3, marginTop: 6, lineHeight: 1.55, wordBreak: "break-word", overflowWrap: "break-word" }}>{c.txt}</div>
-              </>
-            )}
-          </div>
-        ))}
+                {editCmtId === c.id ? (
+                  <div style={{ marginTop: 6 }}>
+                    <textarea value={editCmtText} onChange={e => setEditCmtText(e.target.value)} rows={2} style={{ ...ist, resize: "vertical" as const, marginBottom: 8 }} />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={async () => {
+                        const success = await updateComment(c.id, editCmtText);
+                        if (success) {
+                          setDbComments(dbComments.map(cm => cm.id === c.id ? { ...cm, txt: editCmtText } : cm));
+                          setEditCmtId(null);
+                          fl("Comment updated!");
+                        }
+                      }} style={{ fontFamily: F, background: G, color: BG, border: "none", padding: "8px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Save</button>
+                      <button onClick={() => setEditCmtId(null)} style={{ fontFamily: F, background: "rgba(255,255,255,0.04)", color: T4, border: "1px solid " + BD, padding: "8px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer" }}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 15, color: T3, marginTop: 4, lineHeight: 1.55, wordBreak: "break-word", overflowWrap: "break-word" }}>{c.txt}</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
         {cmtLoading ? <div style={{ textAlign: "center", color: T5, padding: 16, fontSize: 13 }}>Loading comments...</div> : null}
         {!cmtLoading && comments.length === 0 ? <div style={{ textAlign: "center", color: T6, padding: 16, fontSize: 13 }}>No comments yet. Be the first.</div> : null}
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-          <input value={cmtText} onChange={e => setCmtText(e.target.value)} placeholder="Add a comment..." style={{ ...ist, flex: 1 }} />
-          <button onClick={async () => {
-            if (!cmtText.trim()) return;
-            const itemType = bd.tp === "exercise" ? "exercise" : "beatdown";
-            const result = await addComment(String(bd.id), itemType as "beatdown" | "exercise", cmtText);
-            if (result) {
-              const p = result.profiles as Record<string, unknown> | null;
-              setDbComments([{
-                id: (result.id as string) || "",
-                au: (p?.f3_name as string) || "You",
-                ao: ((p?.ao as string) || "") + ((p?.state as string) ? ", " + (p?.state as string) : ""),
-                txt: (result.text as string) || cmtText,
-                dt: "Just now",
-              }, ...dbComments]);
-              setCmtText("");
-              fl("Comment posted!");
-              onRefresh?.();
-            } else {
-              fl("Comment failed");
-            }
-          }} style={{ fontFamily: F, background: G, color: BG, border: "none", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>Post</button>
-        </div>
+        {(() => {
+          const myColor = colorForUserId(currentUserId || profName || "?", true);
+          const myInitials = getInitials(profName);
+          return (
+            <div style={{ display: "flex", gap: 12, alignItems: "flex-start", paddingTop: 16, marginTop: 8, borderTop: "0.5px solid rgba(255,255,255,0.07)" }}>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: myColor + "26", border: "1px solid " + myColor + "66", color: myColor, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F, fontSize: 13, fontWeight: 500, flexShrink: 0 }}>{myInitials}</div>
+              <div style={{ flex: 1, display: "flex", gap: 8, minWidth: 0 }}>
+                <input value={cmtText} onChange={e => setCmtText(e.target.value)} placeholder="Add a comment..." style={{ ...ist, flex: 1 }} />
+                <button onClick={async () => {
+                  if (!cmtText.trim()) return;
+                  const itemType = bd.tp === "exercise" ? "exercise" : "beatdown";
+                  const result = await addComment(String(bd.id), itemType as "beatdown" | "exercise", cmtText);
+                  if (result) {
+                    const p = result.profiles as Record<string, unknown> | null;
+                    setDbComments([{
+                      id: (result.id as string) || "",
+                      auId: currentUserId,
+                      au: (p?.f3_name as string) || "You",
+                      ao: ((p?.ao as string) || "") + ((p?.state as string) ? ", " + (p?.state as string) : ""),
+                      txt: (result.text as string) || cmtText,
+                      dt: "Just now",
+                    }, ...dbComments]);
+                    setCmtText("");
+                    fl("Comment posted!");
+                    onRefresh?.();
+                  } else {
+                    fl("Comment failed");
+                  }
+                }} style={{ fontFamily: F, background: G, color: BG, border: "none", padding: "10px 16px", borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>Post</button>
+              </div>
+            </div>
+          );
+        })()}
       </div>
       {!isOwn && (
         <div style={{ marginTop: 24 }}>
