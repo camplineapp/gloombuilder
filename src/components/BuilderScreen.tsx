@@ -75,13 +75,16 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
     bT: string; bD: string; bDur: string | null; bDiff: string | null;
     bSites: string[]; bEq: string[]; secs: Section[]; shareLib: boolean;
   };
-  // Modified Flavor B + Pick-up signal: edit mode always restores;
-  // new mode restores only when user came from Pick-up on Home.
+  // Pattern A+B fix: edit mode skips draft restoration entirely.
+  // editData (DB-fresh) is the authoritative source. Drafts in
+  // edit mode are autosave protection mid-session, not cross-
+  // session restoration. clearDraft on close (see handleClose)
+  // ensures stale drafts don't accumulate.
+  // New mode unchanged: Pick-up sessionStorage flag still gates
+  // restoration so the Pick-up card on Home keeps working.
   const initialDraft = (() => {
     if (typeof window === "undefined") return null;
-    // Edit mode: always restore in-progress edits to this specific beatdown.
-    if (editData) return loadDraft<BuilderDraft>(draftKey);
-    // New mode: restore only if Pick-up flag is set (read-and-clear).
+    if (editData) return null;
     if (sessionStorage.getItem(PICKUP_INTENT_KEY) !== "true") return null;
     sessionStorage.removeItem(PICKUP_INTENT_KEY);
     return loadDraft<BuilderDraft>(draftKey);
@@ -179,6 +182,13 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
     }
   };
 
+  // Edit mode: clear the draft on close so the next open reads from DB-fresh
+  // editData, not a stale autosave from a previous session.
+  const handleClose = () => {
+    if (editData) clearDraft(draftKey);
+    onClose();
+  };
+
   const handleRunThis = () => {
     if (saving) return;
     setSaving(true);
@@ -194,7 +204,7 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 16, borderBottom: "1px solid " + BD }}>
-        <button onClick={onClose} style={{ fontFamily: F, color: T3, background: "none", border: "none", cursor: "pointer", fontSize: 17, fontWeight: 600, padding: "8px 0" }}>
+        <button onClick={handleClose} style={{ fontFamily: F, color: T3, background: "none", border: "none", cursor: "pointer", fontSize: 17, fontWeight: 600, padding: "8px 0" }}>
           {backLabel || (editData ? "← Profile" : "← Home")}
         </button>
       </div>
