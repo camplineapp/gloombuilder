@@ -43,8 +43,8 @@ interface QProfileScreenProps {
   currentUserId: string;
   onClose: () => void;
   onOpenSettings?: () => void;
-  // V2-4: tap a beatdown card → open it elsewhere (Library detail)
-  onOpenBeatdownDetail?: (beatdownId: string) => void;
+  // V2-4: tap a beatdown card → open it elsewhere (edit form for own, detail sheet for visitor)
+  onOpenBeatdownDetail?: (beatdownId: string, rawRow?: Record<string, unknown>) => void;
   // Item 5B: tap an exercise card → open in edit mode
   onOpenExerciseDetail?: (exerciseId: string) => void;
   refreshKey?: number;
@@ -308,7 +308,7 @@ export default function QProfileScreen({
               <BeatdownCard
                 key={bd.id}
                 bd={bd}
-                onTap={onOpenBeatdownDetail ? () => onOpenBeatdownDetail(bd.id) : undefined}
+                onTap={onOpenBeatdownDetail ? () => onOpenBeatdownDetail(bd.id, bd as unknown as Record<string, unknown>) : undefined}
               />
             ))
           )

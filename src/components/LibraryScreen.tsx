@@ -86,7 +86,8 @@ interface LibraryScreenProps {
 }
 
 // ═══ EXERCISE DETAIL SHEET (with scroll lock) ═══
-function ExerciseDetailSheet({ exData, onClose }: { exData: ExerciseData; onClose: () => void }) {
+// Exported so page.tsx can mount it for the Q-Profile visitor flow.
+export function ExerciseDetailSheet({ exData, onClose }: { exData: ExerciseData; onClose: () => void }) {
   useEffect(() => {
     const orig = document.body.style.overflow;
     const origPos = document.body.style.position;

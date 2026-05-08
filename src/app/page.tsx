@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { createClient } from "@/lib/supabase";
-import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, unshareBeatdown, unshareExercise, addVote, removeVote, loadUserVotes, stealBeatdown, stealExercise, updateExercise, updateBeatdown  } from "@/lib/db";
+import { saveBeatdown, loadMyBeatdowns, deleteBeatdown, saveExercise, loadMyExercises, deleteExercise, loadPublicBeatdowns, loadPublicExercises, shareBeatdown, shareExercise, unshareBeatdown, unshareExercise, addVote, removeVote, loadUserVotes, stealBeatdown, stealExercise, updateExercise, updateBeatdown, loadSeedExercises  } from "@/lib/db";
 import type { User } from "@supabase/supabase-js";
-import { normalizeSection } from "@/lib/exercises";
-import type { Section } from "@/lib/exercises";
+import { normalizeSection, mapSupabaseExercise } from "@/lib/exercises";
+import type { Section, ExerciseData } from "@/lib/exercises";
 import AuthScreen from "@/components/AuthScreen";
 import BottomNav from "@/components/BottomNav";
 import HomeScreen from "@/components/HomeScreen";
@@ -19,6 +19,8 @@ import LiveModeScreen from "@/components/LiveModeScreen";
 import QProfileScreen from "@/components/QProfileScreen";
 import PreblastComposer, { type AttachedBeatdown } from "@/components/PreblastComposer";
 import CopyModal from "@/components/CopyModal";
+import BeatdownDetailSheet from "@/components/BeatdownDetailSheet";
+import { ExerciseDetailSheet } from "@/components/LibraryScreen";
 
 export interface LockerBeatdown {
   id: string;
@@ -179,6 +181,12 @@ export default function App() {
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   // V2-4.5: tracks whether edit-bd was opened from Q Profile (back button returns there)
   const [editFromQProfile, setEditFromQProfile] = useState(false);
+  // V2-5: visitor-flow beatdown detail view (read-only view of another Q's beatdown)
+  const [viewingSharedBd, setViewingSharedBd] = useState<SharedItem | null>(null);
+  // Exercise sub-detail modal for the visitor flow (mirrors LibraryScreen's dbDetail)
+  const [profDbDetail, setProfDbDetail] = useState<ExerciseData | null>(null);
+  // Seed exercises for the foundEx lookup inside BeatdownDetailSheet (visitor flow)
+  const [seedEx, setSeedEx] = useState<ExerciseData[]>([]);
   // V2-5: bumped after a Shout is posted to trigger Feed re-fetch
   // V2-5: when set, ShoutComposer opens in EDIT mode prefilled with this shout
 
@@ -302,6 +310,24 @@ export default function App() {
     }
   }, [user, loadLocker, loadLibrary]);
 
+  // Load seed exercises once for the visitor-flow BeatdownDetailSheet's foundEx lookup.
+  useEffect(() => {
+    if (!user || seedEx.length > 0) return;
+    loadSeedExercises().then(rows => {
+      if (rows.length > 0) setSeedEx(rows.map(r => mapSupabaseExercise(r as Record<string, unknown>)));
+    });
+  }, [user, seedEx.length]);
+
+  // Sync viewingSharedBd when sharedItems updates (e.g. after vote/comment).
+  // Mirrors LibraryScreen's libDet sync pattern.
+  useEffect(() => {
+    if (viewingSharedBd) {
+      const updated = sharedItems.find(item => item.id === viewingSharedBd.id);
+      if (updated) setViewingSharedBd(updated);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sharedItems]);
+
   // Item 3: pushState whenever a back-able state opens — keeps history stack aligned
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -388,6 +414,13 @@ export default function App() {
           setVw(null);
           setEditingBd(null);
         }
+        window.history.pushState({ gb: "level" }, "");
+        return;
+      }
+      if (vw === "q-profile-bd") {
+        setVw("q-profile");
+        setViewingSharedBd(null);
+        setProfDbDetail(null);
         window.history.pushState({ gb: "level" }, "");
         return;
       }
@@ -741,12 +774,15 @@ export default function App() {
     }
   };
 
-  // V2-4.5: Q Profile beatdown card tap → open Edit Beatdown form (own only)
-  // Visitor-flow (other Q's beatdowns) deferred to V2-5 when there's content to test against.
-  const handleOpenBeatdownDetail = (beatdownId: string) => {
+  // V2-5: Q Profile beatdown card tap.
+  //   Visitor flow (viewingUserId set) → open BeatdownDetailSheet read-only view.
+  //   Owner flow → open Edit Beatdown form. Same routing as before.
+  const handleOpenBeatdownDetail = (beatdownId: string, rawRow?: Record<string, unknown>) => {
     if (viewingUserId !== null) {
-      // Visitor profile — not yet wired in V2-4.5
-      fl("Coming soon");
+      if (!rawRow) { fl("Beatdown not found"); return; }
+      const shared = dbToShared(rawRow);
+      setViewingSharedBd(shared);
+      setVw("q-profile-bd");
       return;
     }
     const bd = lk.find(b => b.id === beatdownId);
@@ -775,7 +811,7 @@ export default function App() {
   };
 
   // ===== FULL-SCREEN VIEWS =====
-  if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "edit-ex" || vw === "live" || vw === "q-profile" || vw === "settings" || vw === "notepad") {
+  if (vw === "gen" || vw === "build" || vw === "create-ex" || vw === "edit-bd" || vw === "edit-ex" || vw === "live" || vw === "q-profile" || vw === "q-profile-bd" || vw === "settings" || vw === "notepad") {
     return (
       <div style={{ maxWidth: 430, margin: "0 auto", minHeight: "100vh", background: "#0E0E10", fontFamily: "'Outfit', system-ui, sans-serif", paddingTop: vw === "live" ? 0 : 20, paddingBottom: vw === "live" ? 0 : 100, position: "relative" }}>
         {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onOpenCopyModal={(ctx) => { setCopyModalContext({ source: "generator", ...ctx }); setCopyModalOpen(true); }} onRunThis={async (secs, title, dur, saveData) => {
@@ -891,6 +927,28 @@ export default function App() {
             onOpenExerciseDetail={handleOpenExerciseDetail}
           refreshKey={profileRefreshKey}
           />
+        )}
+        {vw === "q-profile-bd" && viewingSharedBd && (
+          <>
+            {profDbDetail && <ExerciseDetailSheet exData={profDbDetail} onClose={() => setProfDbDetail(null)} />}
+            <BeatdownDetailSheet
+              item={viewingSharedBd}
+              onClose={() => { setViewingSharedBd(null); setProfDbDetail(null); setVw("q-profile"); }}
+              backLabel="← Back"
+              seedEx={seedEx}
+              onOpenExerciseDetail={ex => setProfDbDetail(ex)}
+              userVotes={userVotes}
+              onToggleVote={handleToggleVote}
+              onSteal={handleSteal}
+              onRunBeatdown={handleRunLibraryBeatdown}
+              onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }}
+              onOpenProfile={handleOpenProfile}
+              onRefresh={loadLibrary}
+              profName={profName}
+              currentUserId={user.id}
+              onToast={fl}
+            />
+          </>
         )}
         {vw === "settings" && (
           <ProfileScreen onProfileSaved={() => { checkUser(); setVw(null); }} onClose={() => setVw(null)} />
