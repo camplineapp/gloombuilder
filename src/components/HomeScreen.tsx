@@ -256,8 +256,9 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
 
       {/* Build from scratch — full-width list-row, primary creation entry */}
       <div style={{ padding: "0 24px", display: "flex", flexDirection: "column" as const, gap: 10, marginBottom: 8 }}>
-        <div onClick={onBuild} style={{ background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: "20px 22px", display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}>
-          <div>
+        <div onClick={onBuild} style={{ background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: "20px 22px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(34,197,94,0.10)", border: "1px solid rgba(34,197,94,0.20)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🛠️</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 16, fontWeight: 700, color: "#D0C8BC" }}>Build from scratch</div>
             <div style={{ fontSize: 13, color: "#928982", marginTop: 4 }}>You pick every exercise and rep yourself.</div>
           </div>
@@ -299,8 +300,8 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
         >
           <span style={{ fontSize: 18, opacity: 0.7, flexShrink: 0 }}>➕</span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#c8c0b8" }}>Add exercise</div>
-            <div style={{ fontSize: 9, color: "#5A534C", marginTop: 2 }}>Suggest one to the database</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#c8c0b8" }}>Add exercise</div>
+            <div style={{ fontSize: 12, color: "#928982", marginTop: 3 }}>Suggest one to the database</div>
           </div>
         </button>
 
@@ -321,8 +322,8 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
         >
           <span style={{ fontSize: 18, opacity: 0.7, flexShrink: 0 }}>📣</span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#c8c0b8" }}>Preblast</div>
-            <div style={{ fontSize: 9, color: "#5A534C", marginTop: 2 }}>Announce a beatdown</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#c8c0b8" }}>Preblast</div>
+            <div style={{ fontSize: 12, color: "#928982", marginTop: 3 }}>Announce a beatdown</div>
           </div>
         </button>
       </div>
