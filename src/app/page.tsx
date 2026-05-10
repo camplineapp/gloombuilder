@@ -302,6 +302,30 @@ export default function App() {
     [sharedItems]
   );
 
+  // Merged exercise pool for the q-profile-bd BeatdownDetailSheet mount.
+  // Mirrors BuilderScreen's allEx pattern (L126-140): seed + user customs + community,
+  // dedup by lowercase name. Without this, the "?" info button only renders for seed
+  // exercises; user customs and community-shared exercises in a beatdown's sections
+  // fall through silently.
+  const beatdownExPool = useMemo(() => {
+    const seedNames = new Set(seedEx.map(e => e.n.toLowerCase()));
+    const userMapped: ExerciseData[] = lkEx.map(ux => ({
+      n: ux.nm, f: ux.nm, t: ux.tags || [], s: [], h: ux.how || "", d: ux.desc || "",
+    }));
+    const uniqueUser = userMapped.filter(u => !seedNames.has(u.n.toLowerCase()));
+    const allNames = new Set([
+      ...seedNames,
+      ...uniqueUser.map(u => u.n.toLowerCase()),
+    ]);
+    const communityFromShared: ExerciseData[] = sharedItems
+      .filter(si => si.tp === "exercise")
+      .map(si => ({
+        n: si.nm, f: si.nm, t: si.et || [], s: [], h: si.howTo || "", d: si.ds || "",
+      }));
+    const uniqueCommunity = communityFromShared.filter(c => !allNames.has(c.n.toLowerCase()));
+    return [...seedEx, ...uniqueUser, ...uniqueCommunity];
+  }, [seedEx, lkEx, sharedItems]);
+
   useEffect(() => {
     if (user) {
       loadLocker();
@@ -916,7 +940,7 @@ export default function App() {
               item={viewingSharedBd}
               onClose={() => { setViewingSharedBd(null); setProfDbDetail(null); setVw("q-profile"); }}
               backLabel="← Back"
-              seedEx={seedEx}
+              seedEx={beatdownExPool}
               onOpenExerciseDetail={ex => setProfDbDetail(ex)}
               userVotes={userVotes}
               onToggleVote={handleToggleVote}

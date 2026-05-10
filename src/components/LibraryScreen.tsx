@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { loadSeedExercises } from "@/lib/db";
 import { mapSupabaseExercise, EQUIP } from "@/lib/exercises";
 import type { ExerciseData } from "@/lib/exercises";
@@ -160,6 +160,26 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
   const [exBody, setExBody] = useState("All");
   const [dbDetail, setDbDetail] = useState<ExerciseData | null>(null);
 
+  // Merged exercise pool for BeatdownDetailSheet's foundEx lookup.
+  // Without this, the "?" info button only renders for seed exercises;
+  // community exercises in a public beatdown's sections fall through silently.
+  // User customs are not in scope here (Library has no owner-flow access).
+  const beatdownExPool = useMemo(() => {
+    const seedNames = new Set(seedEx.map(e => e.n.toLowerCase()));
+    const communityFromShared: ExerciseData[] = sharedItems
+      .filter(si => si.tp === "exercise")
+      .map(si => ({
+        n: si.nm,
+        f: si.nm,
+        t: si.et || [],
+        s: [],
+        h: si.howTo || "",
+        d: si.ds || "",
+      }))
+      .filter(c => !seedNames.has(c.n.toLowerCase()));
+    return [...seedEx, ...communityFromShared];
+  }, [seedEx, sharedItems]);
+
   useEffect(() => {
     if (seedEx.length === 0) {
       loadSeedExercises().then(rows => {
@@ -233,7 +253,7 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
           item={libDet}
           onClose={() => setLibDet(null)}
           backLabel="← Library"
-          seedEx={seedEx}
+          seedEx={beatdownExPool}
           onOpenExerciseDetail={ex => setDbDetail(ex)}
           userVotes={userVotes}
           onToggleVote={onToggleVote}
