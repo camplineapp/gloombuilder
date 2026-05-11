@@ -338,11 +338,56 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
     <div style={{ padding: "0 24px" }}>
       {exDetailModal}
 
-      <div style={{ fontSize: 28, fontWeight: 800, color: T1, marginBottom: 12 }}>Library</div>
-      <div style={{ display: "flex", gap: 0, background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid " + BD, padding: 3, marginBottom: 16 }}>
-        {["beatdowns", "exercises"].map(sv => (
-          <div key={sv} onClick={() => setLibT(sv)} style={{ flex: 1, textAlign: "center", padding: "10px 0", fontSize: 13, fontWeight: libT === sv ? 700 : 500, color: libT === sv ? G : T4, background: libT === sv ? "rgba(34,197,94,0.08)" : "transparent", borderRadius: 10, cursor: "pointer", textTransform: "capitalize" }}>{sv}</div>
-        ))}
+      {/* STICKY HEADER — page title, tab toggle, search, chip rows */}
+      <div style={{
+        position: "sticky" as const,
+        top: 0,
+        zIndex: 10,
+        background: "#0E0E10",
+        marginLeft: -24,
+        marginRight: -24,
+        paddingLeft: 24,
+        paddingRight: 24,
+        paddingTop: "env(safe-area-inset-top, 0px)",
+        paddingBottom: 8,
+      }}>
+        <div style={{ fontSize: 28, fontWeight: 800, color: T1, marginBottom: 12 }}>Library</div>
+        <div style={{ display: "flex", gap: 0, background: "rgba(255,255,255,0.03)", borderRadius: 14, border: "1px solid " + BD, padding: 3, marginBottom: 16 }}>
+          {["beatdowns", "exercises"].map(sv => (
+            <div key={sv} onClick={() => setLibT(sv)} style={{ flex: 1, textAlign: "center", padding: "10px 0", fontSize: 13, fontWeight: libT === sv ? 700 : 500, color: libT === sv ? G : T4, background: libT === sv ? "rgba(34,197,94,0.08)" : "transparent", borderRadius: 10, cursor: "pointer", textTransform: "capitalize" }}>{sv}</div>
+          ))}
+        </div>
+        {libT === "exercises" ? (
+          <>
+            <input value={exSearch} onChange={e => setExSearch(e.target.value)} placeholder={`Search ${beatdownExPool.length} exercises by name, alias, or PAX...`} style={{ ...ist, marginBottom: 10 }} />
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: T5, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6, paddingLeft: 2 }}>Type</div>
+              <div style={{ display: "flex", gap: 5, overflowX: "auto", flexWrap: "nowrap", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", paddingBottom: 2 }}>
+                {[{ value: "All", label: "All" }, ...TYPE_TAGS].map(t => (
+                  <button key={t.value} onClick={() => setExType(t.value)} style={{ fontFamily: F, background: exType === t.value ? P + "20" : "rgba(255,255,255,0.04)", color: exType === t.value ? P : T5, border: "1px solid " + (exType === t.value ? P + "30" : BD), padding: "5px 11px", borderRadius: 20, fontSize: 10, cursor: "pointer", textTransform: "uppercase", fontWeight: 600, flexShrink: 0, whiteSpace: "nowrap" }}>{t.label}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontFamily: F, fontSize: 12, fontWeight: 700, color: T5, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 6, paddingLeft: 2 }}>Body part</div>
+              <div style={{ display: "flex", gap: 5, overflowX: "auto", flexWrap: "nowrap", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", paddingBottom: 2 }}>
+                {[{ value: "All", label: "All" }, ...BODY_TAGS].map(t => (
+                  <button key={t.value} onClick={() => setExBody(t.value)} style={{ fontFamily: F, background: exBody === t.value ? P + "20" : "rgba(255,255,255,0.04)", color: exBody === t.value ? P : T5, border: "1px solid " + (exBody === t.value ? P + "30" : BD), padding: "5px 11px", borderRadius: 20, fontSize: 10, cursor: "pointer", textTransform: "uppercase", fontWeight: 600, flexShrink: 0, whiteSpace: "nowrap" }}>{t.label}</button>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Search by title, Q name, AO..." style={{ ...ist, marginBottom: 14 }} />
+            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+              {[{ k: "new", l: "New" }, { k: "top", l: "Top voted" }, { k: "stolen", l: "Most stolen" }].map(sv => (
+                <button key={sv.k} onClick={() => setFSort(sv.k)} style={{ fontFamily: F, background: fSort === sv.k ? G + "15" : "rgba(255,255,255,0.04)", color: fSort === sv.k ? G : T4, padding: "7px 14px", borderRadius: 10, fontSize: 13, border: "none", cursor: "pointer", fontWeight: fSort === sv.k ? 700 : 500 }}>{sv.l}</button>
+              ))}
+              <button onClick={() => setLibF(true)} style={{ fontFamily: F, marginLeft: "auto", background: af > 0 ? G + "15" : "rgba(255,255,255,0.04)", color: af > 0 ? G : T4, padding: "7px 14px", borderRadius: 10, fontSize: 12, border: "1px solid " + (af > 0 ? G + "30" : BD), cursor: "pointer", fontWeight: 600 }}>Filters{af > 0 ? " (" + af + ")" : ""}</button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Unified exercises feed (Item 5) */}
@@ -439,94 +484,6 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
 
             return (
               <>
-                <input value={exSearch} onChange={e => setExSearch(e.target.value)} placeholder={`Search ${allEx.length} exercises by name, alias, or PAX...`} style={{ ...ist, marginBottom: 10 }} />
-                {/* TYPE row */}
-                <div style={{ marginBottom: 10 }}>
-                  <div style={{
-                    fontFamily: F,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: T5,
-                    textTransform: "uppercase",
-                    letterSpacing: 1.5,
-                    marginBottom: 6,
-                    paddingLeft: 2,
-                  }}>Type</div>
-                  <div style={{
-                    display: "flex",
-                    gap: 5,
-                    overflowX: "auto",
-                    flexWrap: "nowrap",
-                    scrollbarWidth: "none",
-                    WebkitOverflowScrolling: "touch",
-                    paddingBottom: 2,
-                  }}>
-                    {[{ value: "All", label: "All" }, ...TYPE_TAGS].map(t => (
-                      <button
-                        key={t.value}
-                        onClick={() => setExType(t.value)}
-                        style={{
-                          fontFamily: F,
-                          background: exType === t.value ? P + "20" : "rgba(255,255,255,0.04)",
-                          color: exType === t.value ? P : T5,
-                          border: "1px solid " + (exType === t.value ? P + "30" : BD),
-                          padding: "5px 11px",
-                          borderRadius: 20,
-                          fontSize: 10,
-                          cursor: "pointer",
-                          textTransform: "uppercase",
-                          fontWeight: 600,
-                          flexShrink: 0,
-                          whiteSpace: "nowrap",
-                        }}
-                      >{t.label}</button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* BODY PART row */}
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{
-                    fontFamily: F,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: T5,
-                    textTransform: "uppercase",
-                    letterSpacing: 1.5,
-                    marginBottom: 6,
-                    paddingLeft: 2,
-                  }}>Body part</div>
-                  <div style={{
-                    display: "flex",
-                    gap: 5,
-                    overflowX: "auto",
-                    flexWrap: "nowrap",
-                    scrollbarWidth: "none",
-                    WebkitOverflowScrolling: "touch",
-                    paddingBottom: 2,
-                  }}>
-                    {[{ value: "All", label: "All" }, ...BODY_TAGS].map(t => (
-                      <button
-                        key={t.value}
-                        onClick={() => setExBody(t.value)}
-                        style={{
-                          fontFamily: F,
-                          background: exBody === t.value ? P + "20" : "rgba(255,255,255,0.04)",
-                          color: exBody === t.value ? P : T5,
-                          border: "1px solid " + (exBody === t.value ? P + "30" : BD),
-                          padding: "5px 11px",
-                          borderRadius: 20,
-                          fontSize: 10,
-                          cursor: "pointer",
-                          textTransform: "uppercase",
-                          fontWeight: 600,
-                          flexShrink: 0,
-                          whiteSpace: "nowrap",
-                        }}
-                      >{t.label}</button>
-                    ))}
-                  </div>
-                </div>
                 {allEx.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40 }}>Loading exercises...</div> : null}
                 {shown.map(e => (
                   <div key={e.id || e.n} onClick={() => handleExClick(e)} style={{ background: CD, border: "1px solid " + BD, borderLeft: "3px solid " + P + "40", borderRadius: 14, padding: "14px 18px", marginBottom: 6, cursor: "pointer" }}>
@@ -547,13 +504,6 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
         </div>
       ) : (
       <>
-      <input value={libSearch} onChange={e => setLibSearch(e.target.value)} placeholder="Search by title, Q name, AO..." style={{ ...ist, marginBottom: 14 }} />
-      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        {[{ k: "new", l: "New" }, { k: "top", l: "Top voted" }, { k: "stolen", l: "Most stolen" }].map(sv => (
-          <button key={sv.k} onClick={() => setFSort(sv.k)} style={{ fontFamily: F, background: fSort === sv.k ? G + "15" : "rgba(255,255,255,0.04)", color: fSort === sv.k ? G : T4, padding: "7px 14px", borderRadius: 10, fontSize: 13, border: "none", cursor: "pointer", fontWeight: fSort === sv.k ? 700 : 500 }}>{sv.l}</button>
-        ))}
-        <button onClick={() => setLibF(true)} style={{ fontFamily: F, marginLeft: "auto", background: af > 0 ? G + "15" : "rgba(255,255,255,0.04)", color: af > 0 ? G : T4, padding: "7px 14px", borderRadius: 10, fontSize: 12, border: "1px solid " + (af > 0 ? G + "30" : BD), cursor: "pointer", fontWeight: 600 }}>Filters{af > 0 ? " (" + af + ")" : ""}</button>
-      </div>
       {feed.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40, border: "1px dashed " + BD, borderRadius: 14, marginBottom: 8 }}>No {libT} shared yet. Be the first!</div> : null}
       {feed.map(bd => {
         const isOwn = bd.auId ? bd.auId === currentUserId : false;
