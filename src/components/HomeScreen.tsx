@@ -254,76 +254,37 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
         </div>
       )}
 
-      {/* Build from scratch — full-width list-row, primary creation entry */}
-      <div style={{ padding: "0 24px", display: "flex", flexDirection: "column" as const, gap: 10, marginBottom: 8 }}>
-        <div onClick={onBuild} style={{ background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: "20px 22px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(34,197,94,0.10)", border: "1px solid rgba(34,197,94,0.20)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>🛠️</div>
+      {/* 2x2 creation grid — four equal-weight iOS-app-icon-style tiles */}
+      <div style={{ padding: "0 24px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <button onClick={onBuild} style={{ fontFamily: F, background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: 16, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" as const }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: "#4f7dff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>🛠️</div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#D0C8BC" }}>Build from scratch</div>
-            <div style={{ fontSize: 13, color: "#928982", marginTop: 4 }}>You pick every exercise and rep yourself.</div>
-          </div>
-          <div style={{ color: "#7A7268", fontSize: 20 }}>→</div>
-        </div>
-
-        {/* Notepad — full-width Tier 2 row, promoted from former tile grid */}
-        <div onClick={onCreateNotepad} style={{ background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: "20px 22px", display: "flex", alignItems: "center", gap: 14, cursor: "pointer" }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(34,197,94,0.10)", border: "1px solid rgba(34,197,94,0.20)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>📝</div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: "#D0C8BC" }}>Notepad</div>
-            <div style={{ fontSize: 13, color: "#928982", marginTop: 4 }}>Write it like a notepad. We&apos;ll convert it for you.</div>
-          </div>
-          <div style={{ color: "#7A7268", fontSize: 20 }}>→</div>
-        </div>
-      </div>
-
-      {/* Tier 3 muted 2-card grid: Add exercise / Preblast */}
-      <div style={{
-        padding: "0 24px",
-        display: "grid",
-        gridTemplateColumns: "1fr 1fr",
-        gap: 8,
-      }}>
-        <button
-          onClick={onCreateEx}
-          style={{
-            fontFamily: F,
-            background: "#0E0E10",
-            border: "1px solid #1f1f23",
-            borderRadius: 10,
-            padding: 10,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            textAlign: "left" as const,
-          }}
-        >
-          <span style={{ fontSize: 18, opacity: 0.7, flexShrink: 0 }}>➕</span>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#c8c0b8" }}>Add exercise</div>
-            <div style={{ fontSize: 12, color: "#928982", marginTop: 3 }}>Suggest one to the database</div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#F0EDE8", lineHeight: 1.2 }}>Build from scratch</div>
+            <div style={{ fontSize: 12, color: "#928982", marginTop: 4, lineHeight: 1.3 }}>Pick every exercise yourself</div>
           </div>
         </button>
 
-        <button
-          onClick={onSendPreblast}
-          style={{
-            fontFamily: F,
-            background: "#0E0E10",
-            border: "1px solid #1f1f23",
-            borderRadius: 10,
-            padding: 10,
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            textAlign: "left" as const,
-          }}
-        >
-          <span style={{ fontSize: 18, opacity: 0.7, flexShrink: 0 }}>📣</span>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#c8c0b8" }}>Preblast</div>
-            <div style={{ fontSize: 12, color: "#928982", marginTop: 3 }}>Announce a beatdown</div>
+        <button onClick={onCreateNotepad} style={{ fontFamily: F, background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: 16, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" as const }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>📝</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#F0EDE8", lineHeight: 1.2 }}>Notepad</div>
+            <div style={{ fontSize: 12, color: "#928982", marginTop: 4, lineHeight: 1.3 }}>Type it. We&apos;ll convert it</div>
+          </div>
+        </button>
+
+        <button onClick={onCreateEx} style={{ fontFamily: F, background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: 16, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" as const }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: "#a855f7", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>💪</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#F0EDE8", lineHeight: 1.2 }}>Add exercise</div>
+            <div style={{ fontSize: 12, color: "#928982", marginTop: 4, lineHeight: 1.3 }}>Suggest to database</div>
+          </div>
+        </button>
+
+        <button onClick={onSendPreblast} style={{ fontFamily: F, background: "rgba(255,255,255,0.028)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 18, padding: 16, display: "flex", alignItems: "center", gap: 12, cursor: "pointer", textAlign: "left" as const }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: "#ef4444", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, flexShrink: 0 }}>📣</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: "#F0EDE8", lineHeight: 1.2 }}>Preblast</div>
+            <div style={{ fontSize: 12, color: "#928982", marginTop: 4, lineHeight: 1.3 }}>Announce a beatdown</div>
           </div>
         </button>
       </div>
