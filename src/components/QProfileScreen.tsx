@@ -265,37 +265,51 @@ export default function QProfileScreen({
         </div>
       )}
 
-      {/* Body of work header */}
+      {/* STICKY: body-of-work label + tab toggle */}
       <div style={{
-        fontSize: 11,
-        fontWeight: 800,
-        color: T5,
-        textTransform: "uppercase",
-        letterSpacing: 1.3,
-        marginBottom: 10,
-      }}>{isOwn ? "Your body of work" : "Body of work"}</div>
-
-      {/* Tabs */}
-      <div style={{
-        display: "flex",
-        background: CARD_BG,
-        border: `1px solid ${BD}`,
-        borderRadius: 11,
-        padding: 4,
-        marginBottom: 14,
+        position: "sticky" as const,
+        top: 0,
+        zIndex: 10,
+        background: BG,
+        marginLeft: -18,
+        marginRight: -18,
+        paddingLeft: 18,
+        paddingRight: 18,
+        paddingTop: "env(safe-area-inset-top, 0px)",
+        paddingBottom: 8,
       }}>
-        <TabBtn
-          label="Beatdowns"
-          count={beatdowns.length}
-          active={tab === "beatdowns"}
-          onClick={() => setTab("beatdowns")}
-        />
-        <TabBtn
-          label="Exercises"
-          count={exercises.length}
-          active={tab === "exercises"}
-          onClick={() => setTab("exercises")}
-        />
+        {/* Body of work header */}
+        <div style={{
+          fontSize: 11,
+          fontWeight: 800,
+          color: T5,
+          textTransform: "uppercase",
+          letterSpacing: 1.3,
+          marginBottom: 10,
+        }}>{isOwn ? "Your body of work" : "Body of work"}</div>
+
+        {/* Tabs */}
+        <div style={{
+          display: "flex",
+          background: CARD_BG,
+          border: `1px solid ${BD}`,
+          borderRadius: 11,
+          padding: 4,
+          marginBottom: 14,
+        }}>
+          <TabBtn
+            label="Beatdowns"
+            count={beatdowns.length}
+            active={tab === "beatdowns"}
+            onClick={() => setTab("beatdowns")}
+          />
+          <TabBtn
+            label="Exercises"
+            count={exercises.length}
+            active={tab === "exercises"}
+            onClick={() => setTab("exercises")}
+          />
+        </div>
       </div>
 
       {/* Tab content */}
