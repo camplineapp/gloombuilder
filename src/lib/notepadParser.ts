@@ -82,7 +82,7 @@ function extractReps(line: string): RepInfo | null {
   }
 
   // PATTERN 2: trailing duration unit
-  const p2 = workLine.match(/(\d+)\s*(seconds|sec|minutes|min)\s*$/i);
+  const p2 = workLine.match(/(\d+)\s*(seconds|secs|sec|s|minutes|mins|min)\s*$/i);
   if (p2 && typeof p2.index === "number") {
     const num = p2[1];
     const unitRaw = p2[2].toLowerCase();
@@ -90,6 +90,18 @@ function extractReps(line: string): RepInfo | null {
     const reps = num + unit;
     const rest = workLine.slice(0, p2.index).trim();
     return { reps, exerciseName: rest, cadence };
+  }
+
+  // PATTERN 2b: leading duration unit (e.g., "60 sec stretch", "60s stretch")
+  // Requires at least one non-empty character of name after the duration
+  // token to avoid creating empty-name exercises.
+  const p2b = workLine.match(/^(\d+)\s*(seconds|secs|sec|s)\s+(.+)$/i);
+  if (p2b) {
+    const num = p2b[1];
+    const rest = p2b[3].trim();
+    if (rest.length > 0) {
+      return { reps: num + "sec", exerciseName: rest, cadence };
+    }
   }
 
   // PATTERN 3: trailing digit at end of line
