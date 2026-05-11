@@ -82,7 +82,7 @@ function extractReps(line: string): RepInfo | null {
   }
 
   // PATTERN 2: trailing duration unit
-  const p2 = workLine.match(/(\d+)\s*(seconds|secs|sec|s|minutes|mins|min)\s*$/i);
+  const p2 = workLine.match(/(\d+)\s*(seconds|second|secs|sec|s|minutes|minute|mins|min)\s*$/i);
   if (p2 && typeof p2.index === "number") {
     const num = p2[1];
     const unitRaw = p2[2].toLowerCase();
@@ -92,15 +92,18 @@ function extractReps(line: string): RepInfo | null {
     return { reps, exerciseName: rest, cadence };
   }
 
-  // PATTERN 2b: leading duration unit (e.g., "60 sec stretch", "60s stretch")
+  // PATTERN 2b: leading duration unit — seconds OR minutes
+  // (e.g., "60 sec stretch", "30 min walk", "30 minute walk")
   // Requires at least one non-empty character of name after the duration
   // token to avoid creating empty-name exercises.
-  const p2b = workLine.match(/^(\d+)\s*(seconds|secs|sec|s)\s+(.+)$/i);
+  const p2b = workLine.match(/^(\d+)\s*(seconds|second|secs|sec|s|minutes|minute|mins|min)\s+(.+)$/i);
   if (p2b) {
     const num = p2b[1];
+    const unitRaw = p2b[2].toLowerCase();
+    const unit = unitRaw.startsWith("min") ? "min" : "sec";
     const rest = p2b[3].trim();
     if (rest.length > 0) {
-      return { reps: num + "sec", exerciseName: rest, cadence };
+      return { reps: num + unit, exerciseName: rest, cadence };
     }
   }
 
@@ -252,11 +255,12 @@ export function parseNotepad(input: ParseInput): ParseResult {
     if (currentSection === null) {
       currentSection = newSection("Untitled", sections.length);
     }
-    const trimmed = rawLine.trim();
+    const { cadence: q6Cadence, textWithoutCadence: q6Stripped } = extractCadence(rawLine);
+    const trimmed = q6Stripped.trim();
     const matched6 = matchExercise(trimmed, exerciseLibrary);
     pushExercise(
       currentSection,
-      { name: trimmed, r: "", c: "OYO" },
+      { name: trimmed, r: "", c: q6Cadence },
       matched6
     );
     previousLineWasEmpty = false;
