@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase";
+import Avatar from "@/components/Avatar";
 
 const US_STATES = [
   "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming",
@@ -134,12 +135,6 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
       </div>
     );
   }
-
-  const initials = profName
-    .split(" ")
-    .map((w) => (w[0] || "").toUpperCase())
-    .join("")
-    .slice(0, 2);
 
   // ════ ABOUT (static creator info) ════
   if (vw === "about") {
@@ -456,23 +451,8 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
       </div>
 
       <div style={{ textAlign: "center", marginBottom: 28 }}>
-        <div
-          style={{
-            width: 72,
-            height: 72,
-            borderRadius: "50%",
-            background: "rgba(34,197,94,0.1)",
-            border: "2px solid rgba(34,197,94,0.2)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 24,
-            fontWeight: 800,
-            color: G,
-            margin: "0 auto 12px",
-          }}
-        >
-          {initials}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+          <Avatar userId={profName} name={profName} size={72} isOwn={true} />
         </div>
         <div style={{ fontSize: 22, fontWeight: 800, color: T1 }}>
           {profName}

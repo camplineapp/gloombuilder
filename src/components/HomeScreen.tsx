@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { loadDraft, formatTimeAgo, DRAFT_KEYS, PICKUP_INTENT_KEY } from "@/lib/drafts";
 import type { Section } from "@/lib/exercises";
+import Avatar from "@/components/Avatar";
 
 const F = "'Outfit', system-ui, sans-serif";
 const T1 = "#F0EDE8";
@@ -53,12 +54,6 @@ interface HomeScreenProps {
 }
 
 export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild, onCreateEx, onSendPreblast, onCreateNotepad }: HomeScreenProps) {
-  const initials = profName
-    .split(" ")
-    .map((w) => (w[0] || "").toUpperCase())
-    .join("")
-    .slice(0, 2);
-
   const [pickUp, setPickUp] = useState<PickUpInfo | null>(null);
 
   useEffect(() => {
@@ -149,7 +144,7 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
               <div style={{ fontSize: 13, color: "#928982", marginTop: 2 }}>Build. Share. Steal. Repeat.</div>
             </div>
           </div>
-          <div onClick={onProfileTap} style={{ width: 42, height: 42, borderRadius: "50%", background: "rgba(34,197,94,0.09)", border: "1.5px solid rgba(34,197,94,0.19)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#22c55e", cursor: "pointer" }}>{initials}</div>
+          <Avatar userId={profName} name={profName} size={42} isOwn={true} onClick={onProfileTap} />
         </div>
       </div>
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { addComment, loadComments, deleteComment, updateComment } from "@/lib/db";
 import type { ExerciseData } from "@/lib/exercises";
 import ThumbsUpIcon from "@/components/ThumbsUpIcon";
-import { colorForUserId, getInitials } from "@/lib/avatars";
+import Avatar from "@/components/Avatar";
 
 const CD = "rgba(255,255,255,0.028)";
 const BD = "rgba(255,255,255,0.07)";
@@ -259,12 +259,10 @@ export default function BeatdownDetailSheet({
         </div>
         {shownComments.map((c, i) => {
           const isOwnComment = !!currentUserId && c.auId === currentUserId;
-          const avColor = colorForUserId(c.auId || c.au, isOwnComment);
-          const initials = getInitials(c.au);
           const isLast = i === shownComments.length - 1;
           return (
             <div key={c.id || i} style={{ display: "flex", gap: 12, padding: "14px 0", borderBottom: isLast ? "none" : "0.5px solid rgba(255,255,255,0.07)" }}>
-              <div style={{ width: 36, height: 36, borderRadius: "50%", background: avColor + "26", border: "1px solid " + avColor + "66", color: avColor, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F, fontSize: 13, fontWeight: 500, flexShrink: 0 }}>{initials}</div>
+              <Avatar userId={c.auId || c.au} name={c.au} size={36} isOwn={isOwnComment} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4, minWidth: 0 }}>
@@ -311,11 +309,9 @@ export default function BeatdownDetailSheet({
         {cmtLoading ? <div style={{ textAlign: "center", color: T5, padding: 16, fontSize: 13 }}>Loading comments...</div> : null}
         {!cmtLoading && comments.length === 0 ? <div style={{ textAlign: "center", color: T6, padding: 16, fontSize: 13 }}>No comments yet. Be the first.</div> : null}
         {(() => {
-          const myColor = colorForUserId(currentUserId || profName || "?", true);
-          const myInitials = getInitials(profName);
           return (
             <div style={{ display: "flex", gap: 12, alignItems: "flex-start", paddingTop: 16, marginTop: 8, borderTop: "0.5px solid rgba(255,255,255,0.07)" }}>
-              <div style={{ width: 36, height: 36, borderRadius: "50%", background: myColor + "26", border: "1px solid " + myColor + "66", color: myColor, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: F, fontSize: 13, fontWeight: 500, flexShrink: 0 }}>{myInitials}</div>
+              <Avatar userId={currentUserId || profName || "?"} name={profName} size={36} isOwn={true} />
               <div style={{ flex: 1, display: "flex", gap: 8, minWidth: 0 }}>
                 <input value={cmtText} onChange={e => setCmtText(e.target.value)} placeholder="Add a comment..." style={{ ...ist, flex: 1 }} />
                 <button onClick={async () => {

@@ -10,7 +10,8 @@ import {
   type ProfileStats,
 } from "@/lib/db";
 import ThumbsUpIcon from "@/components/ThumbsUpIcon";
-import { colorForUserId, getInitials, AVATAR_COLORS } from "@/lib/avatars";
+import { AVATAR_COLORS } from "@/lib/avatars";
+import Avatar from "@/components/Avatar";
 
 // Design tokens (matches Bible v14 + existing screens)
 const BG = "#0E0E10";
@@ -168,9 +169,6 @@ export default function QProfileScreen({
     );
   }
 
-  const avatarColor = colorForUserId(profile.id, isOwn);
-  const initials = getInitials(profile.f3_name);
-
   return (
     <div style={{
       minHeight: "100vh",
@@ -218,21 +216,14 @@ export default function QProfileScreen({
 
       {/* Identity block */}
       <div style={{ textAlign: "center", marginBottom: 18 }}>
-        <div style={{
-          width: 92,
-          height: 92,
-          borderRadius: "50%",
-          background: `${avatarColor}1f`,
-          border: `2px solid ${avatarColor}`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          margin: "0 auto",
-          fontSize: 32,
-          fontWeight: 800,
-          color: avatarColor,
-          letterSpacing: -0.5,
-        }}>{initials || "?"}</div>
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <Avatar
+            userId={profile.id}
+            name={profile.f3_name || ""}
+            size={92}
+            isOwn={isOwn}
+          />
+        </div>
         <div style={{
           fontSize: 26,
           fontWeight: 800,

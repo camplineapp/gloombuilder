@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { loadSeedExercises } from "@/lib/db";
 import { mapSupabaseExercise, EQUIP } from "@/lib/exercises";
 import type { ExerciseData } from "@/lib/exercises";
-import { colorForUserId, getInitials } from "@/lib/avatars";
+import Avatar from "@/components/Avatar";
 import BeatdownDetailSheet from "@/components/BeatdownDetailSheet";
 import type { FeedItem } from "@/components/BeatdownDetailSheet";
 
@@ -507,8 +507,6 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
       {feed.length === 0 ? <div style={{ textAlign: "center", color: T5, padding: 40, border: "1px dashed " + BD, borderRadius: 14, marginBottom: 8 }}>No {libT} shared yet. Be the first!</div> : null}
       {feed.map(bd => {
         const isOwn = bd.auId ? bd.auId === currentUserId : false;
-        const avatarColor = colorForUserId(bd.auId || String(bd.id), isOwn);
-        const initials = getInitials(bd.au);
 
         // Date formatter — "Apr 24" current year, "Apr 24, 2025" prior year
         let dateStr = bd.dt; // fallback to pre-formatted dt
@@ -535,24 +533,13 @@ export default function LibraryScreen({ sharedItems = [], profName = "", userVot
           }}>
             {/* HEADER ROW — avatar + author/AO/date + duration pill */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 12 }}>
-              <div
+              <Avatar
+                userId={bd.auId || String(bd.id)}
+                name={bd.au}
+                size={36}
+                isOwn={isOwn}
                 onClick={bd.auId && onOpenProfile ? (e => handleAuthorTap(e, bd.auId)) : undefined}
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  background: avatarColor + "1f",
-                  border: "2px solid " + avatarColor,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: avatarColor,
-                  flexShrink: 0,
-                  letterSpacing: -0.5,
-                  cursor: bd.auId && onOpenProfile ? "pointer" : "default",
-                }}>{initials}</div>
+              />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                   {bd.auId && onOpenProfile ? (
