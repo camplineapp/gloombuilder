@@ -7,7 +7,7 @@ interface AvatarProps {
   size: number;
   isOwn?: boolean;
   avatarUrl?: string | null;
-  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onClick?: (e: React.MouseEvent<HTMLElement>) => void;
 }
 
 export default function Avatar({
@@ -15,11 +15,32 @@ export default function Avatar({
   name,
   size,
   isOwn = false,
-  avatarUrl: _avatarUrl,
+  avatarUrl,
   onClick,
 }: AvatarProps) {
-  const color = colorForUserId(userId || name, isOwn);
   const initials = getInitials(name);
+
+  if (avatarUrl && avatarUrl.trim()) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={initials}
+        onClick={onClick}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          objectFit: "cover",
+          flexShrink: 0,
+          cursor: onClick ? "pointer" : "default",
+          display: "block",
+          userSelect: "none",
+        }}
+      />
+    );
+  }
+
+  const color = colorForUserId(userId || name, isOwn);
 
   // Size tiers govern border width, bg/border alpha, font size/weight.
   // ≥80: heavy ring (2px solid). 43-79: faint ring (1.5px). ≤42: thin ring (1px).

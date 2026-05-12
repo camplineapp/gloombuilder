@@ -958,7 +958,7 @@ export default function App() {
           </>
         )}
         {vw === "settings" && (
-          <ProfileScreen onProfileSaved={() => { checkUser(); setVw(null); }} onClose={() => setVw(null)} />
+          <ProfileScreen onProfileSaved={() => { checkUser(); setVw(null); }} onAvatarChanged={() => checkUser()} onClose={() => setVw(null)} />
         )}
         {preblastOpen && <PreblastComposer onClose={() => { setPreblastOpen(false); setPreblastBd(null); }} qName={profName || "Q"} ao={profAO || ""} attachedBeatdown={preblastBd} userBeatdowns={lk} />}
         {copyModalOpen && copyModalContext && (

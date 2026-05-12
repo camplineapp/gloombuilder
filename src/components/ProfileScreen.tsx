@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase";
 import Avatar from "@/components/Avatar";
+import { uploadAvatar } from "@/lib/avatarUpload";
 
 const US_STATES = [
   "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio","Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota","Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming",
@@ -37,10 +38,11 @@ const ist: React.CSSProperties = {
 
 interface ProfileScreenProps {
   onProfileSaved?: () => void;
+  onAvatarChanged?: () => void;
   onClose?: () => void;
 }
 
-export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreenProps) {
+export default function ProfileScreen({ onProfileSaved, onAvatarChanged, onClose }: ProfileScreenProps) {
   const [vw, setVw] = useState<null | "about">(null);
   const [profName, setProfName] = useState("");
   const [profAO, setProfAO] = useState("");
@@ -48,6 +50,8 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
   const [profRegion, setProfRegion] = useState("Northeast");
   const [profAvatarUrl, setProfAvatarUrl] = useState<string | null>(null);
   const [profUserId, setProfUserId] = useState<string>("");
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [customAmt, setCustomAmt] = useState("");
   const [donating, setDonating] = useState(false);
 
@@ -106,6 +110,40 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const handleAvatarClick = () => {
+    if (uploading) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !profUserId) {
+      if (e.target) e.target.value = "";
+      return;
+    }
+    setUploading(true);
+    fl("Uploading photo...");
+    try {
+      const url = await uploadAvatar(file, profUserId);
+      const { error } = await supabase
+        .from("profiles")
+        .update({ avatar_url: url })
+        .eq("id", profUserId);
+      if (error) {
+        throw new Error(`Save failed: ${error.message}`);
+      }
+      setProfAvatarUrl(url);
+      fl("Photo updated!");
+      if (onAvatarChanged) onAvatarChanged();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      fl(msg);
+    } finally {
+      setUploading(false);
+      if (e.target) e.target.value = "";
+    }
+  };
 
   const saveProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -456,7 +494,31 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
 
       <div style={{ textAlign: "center", marginBottom: 28 }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-          <Avatar userId={profUserId || profName} name={profName} size={72} isOwn={true} avatarUrl={profAvatarUrl} />
+          <div
+            onClick={handleAvatarClick}
+            style={{
+              cursor: uploading ? "wait" : "pointer",
+              opacity: uploading ? 0.5 : 1,
+              transition: "opacity 0.2s",
+              position: "relative",
+            }}
+            title="Tap to change photo"
+          >
+            <Avatar
+              userId={profUserId || profName}
+              name={profName}
+              size={72}
+              isOwn={true}
+              avatarUrl={profAvatarUrl}
+            />
+          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            style={{ display: "none" }}
+          />
         </div>
         <div style={{ fontSize: 22, fontWeight: 800, color: T1 }}>
           {profName}
