@@ -265,9 +265,9 @@ export default function NotepadScreen({ onClose, onSave, onSavedNew, userExercis
             placeholder={PLACEHOLDER}
             style={{
               ...ist,
-              fontFamily: MONO,
+              fontFamily: F,
               fontSize: 17,
-              fontWeight: 500,
+              fontWeight: 400,
               minHeight: 360,
               padding: 12,
               resize: "vertical" as const,
