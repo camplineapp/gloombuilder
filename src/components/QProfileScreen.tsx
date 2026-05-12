@@ -57,6 +57,7 @@ interface ProfileData {
   ao: string;
   state: string;
   region: string;
+  avatar_url?: string | null;
 }
 
 interface BeatdownRow {
@@ -222,6 +223,7 @@ export default function QProfileScreen({
             name={profile.f3_name || ""}
             size={92}
             isOwn={isOwn}
+            avatarUrl={profile.avatar_url}
           />
         </div>
         <div style={{

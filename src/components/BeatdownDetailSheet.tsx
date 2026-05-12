@@ -31,7 +31,7 @@ export interface Comment { au: string; ao: string; txt: string; dt: string }
 export interface Exercise { n: string; r: string; c: string; nt: string }
 export interface Section { label: string; color: string; exercises: Exercise[]; note: string }
 export interface FeedItem {
-  id: number | string; src: string; nm: string; au: string; auId?: string; ao: string; reg: string;
+  id: number | string; src: string; nm: string; au: string; auId?: string; auAvatarUrl?: string | null; ao: string; reg: string;
   d: string; dur: string | null; aoT: string[]; eq?: string[]; v: number; u: number; cm: number;
   ds: string; dt: string; createdAt?: string; tp: string; tg?: string[]; et?: string[];
   howTo?: string; inspiredBy?: string; comments: Comment[]; secs?: Section[];
@@ -63,6 +63,7 @@ interface BeatdownDetailSheetProps {
   onRefresh?: () => void;
   profName?: string;
   currentUserId?: string;
+  currentAvatarUrl?: string | null;
   onToast?: (msg: string) => void;
 }
 
@@ -79,9 +80,10 @@ export default function BeatdownDetailSheet({
   onRefresh,
   profName = "",
   currentUserId,
+  currentAvatarUrl,
   onToast,
 }: BeatdownDetailSheetProps) {
-  const [dbComments, setDbComments] = useState<{ id: string; auId?: string; au: string; ao: string; txt: string; dt: string }[]>([]);
+  const [dbComments, setDbComments] = useState<{ id: string; auId?: string; auAvatarUrl?: string | null; au: string; ao: string; txt: string; dt: string }[]>([]);
   const [cmtLoading, setCmtLoading] = useState(false);
   const [cmtText, setCmtText] = useState("");
   const [editCmtId, setEditCmtId] = useState<string | null>(null);
@@ -98,6 +100,7 @@ export default function BeatdownDetailSheet({
         return {
           id: (r.id as string) || "",
           auId: (r.user_id as string) || undefined,
+          auAvatarUrl: (p?.avatar_url as string | null | undefined) ?? undefined,
           au: (p?.f3_name as string) || "Unknown",
           ao: ((p?.ao as string) || "") + ((p?.state as string) ? ", " + (p?.state as string) : ""),
           txt: (r.text as string) || "",
@@ -262,7 +265,7 @@ export default function BeatdownDetailSheet({
           const isLast = i === shownComments.length - 1;
           return (
             <div key={c.id || i} style={{ display: "flex", gap: 12, padding: "14px 0", borderBottom: isLast ? "none" : "0.5px solid rgba(255,255,255,0.07)" }}>
-              <Avatar userId={c.auId || c.au} name={c.au} size={36} isOwn={isOwnComment} />
+              <Avatar userId={c.auId || c.au} name={c.au} size={36} isOwn={isOwnComment} avatarUrl={c.auAvatarUrl} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4, minWidth: 0 }}>
@@ -311,7 +314,7 @@ export default function BeatdownDetailSheet({
         {(() => {
           return (
             <div style={{ display: "flex", gap: 12, alignItems: "flex-start", paddingTop: 16, marginTop: 8, borderTop: "0.5px solid rgba(255,255,255,0.07)" }}>
-              <Avatar userId={currentUserId || profName || "?"} name={profName} size={36} isOwn={true} />
+              <Avatar userId={currentUserId || profName || "?"} name={profName} size={36} isOwn={true} avatarUrl={currentAvatarUrl} />
               <div style={{ flex: 1, display: "flex", gap: 8, minWidth: 0 }}>
                 <input value={cmtText} onChange={e => setCmtText(e.target.value)} placeholder="Add a comment..." style={{ ...ist, flex: 1 }} />
                 <button onClick={async () => {
@@ -323,6 +326,7 @@ export default function BeatdownDetailSheet({
                     setDbComments([{
                       id: (result.id as string) || "",
                       auId: currentUserId,
+                      auAvatarUrl: (p?.avatar_url as string | null | undefined) ?? undefined,
                       au: (p?.f3_name as string) || "You",
                       ao: ((p?.ao as string) || "") + ((p?.state as string) ? ", " + (p?.state as string) : ""),
                       txt: (result.text as string) || cmtText,

@@ -45,6 +45,8 @@ interface PickUpInfo {
 
 interface HomeScreenProps {
   profName: string;
+  avatarUrl?: string | null;
+  currentUserId?: string;
   onProfileTap: () => void;
   onGenerate: () => void;
   onBuild: () => void;
@@ -53,7 +55,7 @@ interface HomeScreenProps {
   onCreateNotepad?: () => void;
 }
 
-export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild, onCreateEx, onSendPreblast, onCreateNotepad }: HomeScreenProps) {
+export default function HomeScreen({ profName, avatarUrl, currentUserId, onProfileTap, onGenerate, onBuild, onCreateEx, onSendPreblast, onCreateNotepad }: HomeScreenProps) {
   const [pickUp, setPickUp] = useState<PickUpInfo | null>(null);
 
   useEffect(() => {
@@ -144,7 +146,7 @@ export default function HomeScreen({ profName, onProfileTap, onGenerate, onBuild
               <div style={{ fontSize: 13, color: "#928982", marginTop: 2 }}>Build. Share. Steal. Repeat.</div>
             </div>
           </div>
-          <Avatar userId={profName} name={profName} size={42} isOwn={true} onClick={onProfileTap} />
+          <Avatar userId={currentUserId || profName} name={profName} size={42} isOwn={true} avatarUrl={avatarUrl} onClick={onProfileTap} />
         </div>
       </div>
 

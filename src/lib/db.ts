@@ -68,7 +68,7 @@ export async function loadPublicBeatdowns() {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("beatdowns")
-    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
+    .select("*, profiles:created_by(f3_name, ao, state, region, avatar_url), inspired_profile:inspired_by(f3_name)")
     .eq("is_public", true)
     .order("created_at", { ascending: false });
 
@@ -180,7 +180,7 @@ export async function loadPublicExercises() {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("exercises")
-    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
+    .select("*, profiles:created_by(f3_name, ao, state, region, avatar_url), inspired_profile:inspired_by(f3_name)")
     .eq("source", "community")
     .order("created_at", { ascending: false });
 
@@ -535,7 +535,7 @@ export async function addComment(itemId: string, itemType: "beatdown" | "exercis
   const { data, error } = await supabase
     .from("comments")
     .insert({ user_id: user.id, item_id: itemId, item_type: itemType, text })
-    .select("*, profiles:user_id(f3_name, ao, state)")
+    .select("*, profiles:user_id(f3_name, ao, state, avatar_url)")
     .single();
 
   if (error) {
@@ -549,7 +549,7 @@ export async function loadComments(itemId: string) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("comments")
-    .select("*, profiles:user_id(f3_name, ao, state)")
+    .select("*, profiles:user_id(f3_name, ao, state, avatar_url)")
     .eq("item_id", itemId)
     .order("created_at", { ascending: false });
 
@@ -736,7 +736,7 @@ export async function getUserSharedBeatdowns(userId: string) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("beatdowns")
-    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
+    .select("*, profiles:created_by(f3_name, ao, state, region, avatar_url), inspired_profile:inspired_by(f3_name)")
     .eq("created_by", userId)
     .eq("is_public", true)
     .order("vote_count", { ascending: false, nullsFirst: false })
@@ -756,7 +756,7 @@ export async function getUserSharedExercises(userId: string) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("exercises")
-    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
+    .select("*, profiles:created_by(f3_name, ao, state, region, avatar_url), inspired_profile:inspired_by(f3_name)")
     .eq("created_by", userId)
     .eq("source", "community")
     .order("vote_count", { ascending: false, nullsFirst: false })
@@ -790,7 +790,7 @@ export async function getMyAllBeatdowns(userId: string) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("beatdowns")
-    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
+    .select("*, profiles:created_by(f3_name, ao, state, region, avatar_url), inspired_profile:inspired_by(f3_name)")
     .eq("created_by", userId)
     .order("vote_count", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
@@ -809,7 +809,7 @@ export async function getMyAllExercises(userId: string) {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("exercises")
-    .select("*, profiles:created_by(f3_name, ao, state, region), inspired_profile:inspired_by(f3_name)")
+    .select("*, profiles:created_by(f3_name, ao, state, region, avatar_url), inspired_profile:inspired_by(f3_name)")
     .eq("created_by", userId)
     .order("vote_count", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });

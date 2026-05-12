@@ -56,6 +56,7 @@ export interface SharedItem {
   nm: string;
   au: string;
   auId?: string;  // V2-4: author user UUID for profile navigation
+  auAvatarUrl?: string | null;
   ao: string;
   reg: string;
   d: string;
@@ -108,6 +109,7 @@ function dbToShared(row: Record<string, unknown>): SharedItem {
     nm: (row.name as string) || "",
     au: (profile?.f3_name as string) || "Unknown",
     auId: (row.created_by as string) || undefined,  // V2-4: extract author UUID
+    auAvatarUrl: (profile?.avatar_url as string | null | undefined) ?? undefined,
     ao: ((profile?.ao as string) || "") + ((profile?.state as string) ? ", " + (profile?.state as string) : ""),
     reg: (profile?.region as string) || "",
     d: (row.difficulty as string) || "medium",
@@ -174,7 +176,7 @@ export default function App() {
   const [liveBd, setLiveBd] = useState<LockerBeatdown | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
-  const [profile, setProfile] = useState<{ f3_name: string; ao: string; state: string; region: string } | null>(null);
+  const [profile, setProfile] = useState<{ f3_name: string; ao: string; state: string; region: string; avatar_url?: string | null } | null>(null);
   const [toast, setToast] = useState("");
 
   // V2-4: which Q's profile is being viewed (null = own profile)
@@ -262,6 +264,7 @@ export default function App() {
         nm: (row.name as string) || "",
         au: (p?.f3_name as string) || "Unknown",
         auId: (row.created_by as string) || undefined,  // V2-4: author UUID
+        auAvatarUrl: (p?.avatar_url as string | null | undefined) ?? undefined,
         ao: ((p?.ao as string) || "") + ((p?.state as string) ? ", " + (p?.state as string) : ""),
         reg: (p?.region as string) || "",
         d: "medium",
@@ -949,6 +952,7 @@ export default function App() {
               onRefresh={loadLibrary}
               profName={profName}
               currentUserId={user.id}
+              currentAvatarUrl={profile?.avatar_url}
               onToast={fl}
             />
           </>
@@ -978,6 +982,8 @@ export default function App() {
       {tab === "home" && (
         <HomeScreen
           profName={profName}
+          avatarUrl={profile?.avatar_url}
+          currentUserId={user?.id}
           onProfileTap={() => handleOpenProfile(null)}
           onGenerate={() => setVw("gen")}
           onSendPreblast={() => { setPreblastBd(null); setPreblastOpen(true); }}
@@ -986,7 +992,7 @@ export default function App() {
           onCreateEx={() => setVw("create-ex")}
         />
       )}
-      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} onSteal={handleSteal} onRefresh={loadLibrary} onOpenProfile={handleOpenProfile} currentUserId={user.id} onLibDetChange={(open) => setLibDetOpen(open)} registerBackHandler={(handler) => { libraryCloseRequestRef.current = handler; }} />}
+      {tab === "library" && <LibraryScreen sharedItems={sharedItems} profName={profName} userVotes={userVotes} onToggleVote={handleToggleVote} onSteal={handleSteal} onRefresh={loadLibrary} onOpenProfile={handleOpenProfile} currentUserId={user.id} currentAvatarUrl={profile?.avatar_url} onLibDetChange={(open) => setLibDetOpen(open)} registerBackHandler={(handler) => { libraryCloseRequestRef.current = handler; }} />}
       {tab === "profile" && user && (
         <QProfileScreen
           userId={user.id}

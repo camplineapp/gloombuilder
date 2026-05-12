@@ -46,6 +46,8 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
   const [profAO, setProfAO] = useState("");
   const [profState, setProfState] = useState("New Jersey");
   const [profRegion, setProfRegion] = useState("Northeast");
+  const [profAvatarUrl, setProfAvatarUrl] = useState<string | null>(null);
+  const [profUserId, setProfUserId] = useState<string>("");
   const [customAmt, setCustomAmt] = useState("");
   const [donating, setDonating] = useState(false);
 
@@ -85,6 +87,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        setProfUserId(user.id);
         const { data } = await supabase
           .from("profiles")
           .select("*")
@@ -95,6 +98,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
           setProfAO(data.ao || "");
           setProfState(data.state || "New Jersey");
           setProfRegion(data.region || "Northeast");
+          setProfAvatarUrl(data.avatar_url ?? null);
         }
       }
       setLoading(false);
@@ -452,7 +456,7 @@ export default function ProfileScreen({ onProfileSaved, onClose }: ProfileScreen
 
       <div style={{ textAlign: "center", marginBottom: 28 }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-          <Avatar userId={profName} name={profName} size={72} isOwn={true} />
+          <Avatar userId={profUserId || profName} name={profName} size={72} isOwn={true} avatarUrl={profAvatarUrl} />
         </div>
         <div style={{ fontSize: 22, fontWeight: 800, color: T1 }}>
           {profName}
