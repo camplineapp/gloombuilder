@@ -21,6 +21,8 @@ import PreblastComposer, { type AttachedBeatdown } from "@/components/PreblastCo
 import CopyModal from "@/components/CopyModal";
 import BeatdownDetailSheet from "@/components/BeatdownDetailSheet";
 import { ExerciseDetailSheet } from "@/components/LibraryScreen";
+import PublishGateModal from "@/components/PublishGateModal";
+import { canPublish, type PublishCheck, type BeatdownGateInput } from "@/lib/publishGate";
 
 export interface LockerBeatdown {
   id: string;
@@ -49,6 +51,15 @@ export interface LockerExercise {
   inspiredBy?: string;
   shared?: boolean;
 }
+
+// Payload accepted by handleSaveBeatdown — kept in sync with its inline param shape.
+// Used by pendingShareIntent so a gate-blocked save can be re-attempted after
+// the user fixes their profile.
+type SaveBeatdownPayload = {
+  nm: string; desc: string; d: string; secs: Section[]; tg: string[];
+  src?: string; dur: string | null; sites: string[]; eq: string[];
+  share?: boolean; isPublic?: boolean; fromNotepad?: boolean;
+};
 
 export interface SharedItem {
   id: string;
@@ -183,6 +194,15 @@ export default function App() {
   const [viewingUserId, setViewingUserId] = useState<string | null>(null);
   // V2-4.5: tracks whether edit-bd was opened from Q Profile (back button returns there)
   const [editFromQProfile, setEditFromQProfile] = useState(false);
+  // Publish gate (May 2026): when set, the gate modal is open. pendingShareIntent
+  // remembers what the user was trying to do so we can re-attempt after they fix
+  // their profile in Settings.
+  const [pendingShareIntent, setPendingShareIntent] = useState<
+    | { kind: "save"; payload: SaveBeatdownPayload; postSuccess?: "live" }
+    | { kind: "share"; bdId: string }
+    | null
+  >(null);
+  const [gateCheck, setGateCheck] = useState<PublishCheck | null>(null);
   // V2-5: visitor-flow beatdown detail view (read-only view of another Q's beatdown)
   const [viewingSharedBd, setViewingSharedBd] = useState<SharedItem | null>(null);
   // Exercise sub-detail modal for the visitor flow (mirrors LibraryScreen's dbDetail)
@@ -395,6 +415,14 @@ export default function App() {
 
       // Priority order: most-recently-opened thing closes first
 
+      // 0. Publish gate modal — dismiss before everything else
+      if (gateCheck && !gateCheck.ok) {
+        setGateCheck(null);
+        setPendingShareIntent(null);
+        window.history.pushState({ gb: "level" }, "");
+        return;
+      }
+
       // 1. Preblast composer (overlay above everything)
       if (preblastOpen) {
         setPreblastOpen(false);
@@ -478,7 +506,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     preblastOpen, copyModalOpen, libDetOpen, vw, liveActive,
-    tab, editFromQProfile, savingInFlight,
+    tab, editFromQProfile, savingInFlight, gateCheck,
   ]);
 
   // ═══════════════════════════════════════════════════════════════
@@ -547,10 +575,44 @@ export default function App() {
     }
   };
 
+  // Adapts an in-memory beatdown to the publishGate's expected input shape.
+  // Section.exercises is the canonical field name; the helpers map defensively.
+  const buildGateInputFromSave = (bd: {
+    nm: string; desc: string; secs: Section[]; sites: string[];
+  }): BeatdownGateInput => ({
+    name: bd.nm,
+    description: bd.desc,
+    site_features: bd.sites,
+    sections: bd.secs.map(s => ({ exercises: s.exercises ?? [] })),
+  });
+
+  const buildGateInputFromLocker = (bd: LockerBeatdown): BeatdownGateInput => ({
+    name: bd.nm,
+    description: bd.desc,
+    site_features: bd.sites ?? [],
+    sections: bd.secs.map(s => ({ exercises: s.exercises ?? [] })),
+  });
+
   const handleSaveBeatdown = async (bd: { nm: string; desc: string; d: string; secs: Section[]; tg: string[]; src?: string; dur: string | null; sites: string[]; eq: string[]; share?: boolean; isPublic?: boolean; fromNotepad?: boolean }): Promise<string | null> => {
     setSavingInFlight(true);
     try {
       const isPublic = bd.isPublic ?? bd.share ?? false;
+
+      // Quality gate — only fires on public share attempts. If blocked,
+      // we save nothing and stash the intent so we can re-attempt after
+      // the user fixes their profile.
+      if (isPublic) {
+        const gateInput = buildGateInputFromSave(bd);
+        const profileInput = profile ?? { f3_name: null, ao: null, state: null, region: null };
+        const check = canPublish(gateInput, profileInput);
+        if (!check.ok) {
+          setGateCheck(check);
+          setPendingShareIntent({ kind: "save", payload: bd });
+          setSavingInFlight(false);
+          return null;
+        }
+      }
+
       const result = await saveBeatdown({
         nm: bd.nm,
         desc: bd.desc,
@@ -636,6 +698,24 @@ export default function App() {
   };
 
   const handleShareBeatdown = async (id: string) => {
+    // Quality gate — find the BD being shared. editingBd is authoritative
+    // (may carry unsaved edits); fall back to the locker list.
+    const bd = editingBd && editingBd.id === id
+      ? editingBd
+      : lk.find(b => b.id === id);
+    if (!bd) {
+      fl("Couldn't find beatdown");
+      return;
+    }
+    const gateInput = buildGateInputFromLocker(bd);
+    const profileInput = profile ?? { f3_name: null, ao: null, state: null, region: null };
+    const check = canPublish(gateInput, profileInput);
+    if (!check.ok) {
+      setGateCheck(check);
+      setPendingShareIntent({ kind: "share", bdId: id });
+      return;
+    }
+
     const success = await shareBeatdown(id);
     if (success) {
       setLk(lk.map(b => b.id === id ? { ...b, isPublic: true } : b));
@@ -825,16 +905,48 @@ export default function App() {
         {vw === "gen" && <GeneratorScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onOpenCopyModal={(ctx) => { setCopyModalContext({ source: "generator", ...ctx }); setCopyModalOpen(true); }} onRunThis={async (secs, title, dur, saveData) => {
           // Save to locker WITHOUT resetting view
           if (saveData) {
-            const result = await saveBeatdown({ nm: saveData.nm, desc: saveData.desc, d: saveData.d, secs: saveData.secs, tg: saveData.tg, src: saveData.src, dur: saveData.dur, sites: saveData.sites, eq: saveData.eq, isPublic: saveData.share || false });
-            if (result) { await loadLocker(); if (saveData.share) await loadLibrary(); fl("Saved!"); }
+            // Funnel through handleSaveBeatdown so the publish gate fires.
+            // If gate blocks (or save fails), handleSaveBeatdown returns null;
+            // abort the Live navigation so the user can address the modal.
+            const newId = await handleSaveBeatdown({
+              nm: saveData.nm, desc: saveData.desc, d: saveData.d,
+              secs: saveData.secs, tg: saveData.tg, src: saveData.src,
+              dur: saveData.dur, sites: saveData.sites, eq: saveData.eq,
+              share: saveData.share,
+            });
+            if (!newId) {
+              // Gate blocked (or save failed). Tag the pending intent so the
+              // bounce-back path resumes Live after the user fixes the gap.
+              setPendingShareIntent(prev =>
+                prev && prev.kind === "save"
+                  ? { ...prev, postSuccess: "live" }
+                  : prev
+              );
+              return;
+            }
           }
           setLiveBd({ id: "temp", nm: title, dt: "", src: "Generated", d: "medium", desc: "", secs, tg: [dur], isPublic: false });
           setVw("live");
         }} />}
         {vw === "build" && <BuilderScreen onClose={() => setVw(null)} onSave={handleSaveBeatdown} profName={profName} userExercises={lkEx} communityExercises={communityExercises} onSendPreblast={(bd) => { setPreblastBd(bd); setPreblastOpen(true); }} onOpenCopyModal={(ctx) => { setCopyModalContext({ source: "builder", ...ctx }); setCopyModalOpen(true); }} onSavedNew={(newId) => { const justSaved = lk.find(b => b.id === newId); if (justSaved) { setEditingBd(justSaved); setVw("edit-bd"); } }} onRunThis={async (secs, title, dur, saveData) => {
           if (saveData) {
-            const result = await saveBeatdown({ nm: saveData.nm, desc: saveData.desc, d: saveData.d, secs: saveData.secs, tg: saveData.tg, src: saveData.src, dur: saveData.dur, sites: saveData.sites, eq: saveData.eq, isPublic: saveData.share || false });
-            if (result) { await loadLocker(); if (saveData.share) await loadLibrary(); fl("Saved!"); }
+            // Funnel through handleSaveBeatdown so the publish gate fires.
+            const newId = await handleSaveBeatdown({
+              nm: saveData.nm, desc: saveData.desc, d: saveData.d,
+              secs: saveData.secs, tg: saveData.tg, src: saveData.src,
+              dur: saveData.dur, sites: saveData.sites, eq: saveData.eq,
+              share: saveData.share,
+            });
+            if (!newId) {
+              // Gate blocked (or save failed). Tag the pending intent so the
+              // bounce-back path resumes Live after the user fixes the gap.
+              setPendingShareIntent(prev =>
+                prev && prev.kind === "save"
+                  ? { ...prev, postSuccess: "live" }
+                  : prev
+              );
+              return;
+            }
           }
           setLiveBd({ id: "temp", nm: title, dt: "", src: "Manual", d: "medium", desc: "", secs, tg: [dur], isPublic: false });
           setVw("live");
@@ -958,7 +1070,39 @@ export default function App() {
           </>
         )}
         {vw === "settings" && (
-          <ProfileScreen onProfileSaved={() => { checkUser(); setVw(null); }} onAvatarChanged={() => checkUser()} onClose={() => setVw(null)} />
+          <ProfileScreen
+            onProfileSaved={async () => {
+              // Refresh profile state before re-checking the gate, so the
+              // re-attempted save/share sees freshly-saved fields.
+              await checkUser();
+              setVw(null);
+              if (pendingShareIntent) {
+                if (pendingShareIntent.kind === "save") {
+                  const payload = pendingShareIntent.payload;
+                  const postSuccess = pendingShareIntent.postSuccess;
+                  setPendingShareIntent(null);
+                  setGateCheck(null);
+                  const newId = await handleSaveBeatdown(payload);
+                  if (newId && postSuccess === "live") {
+                    // User was heading to Live before the gate caught them.
+                    // Resume that intent now that save succeeded.
+                    const saved = lk.find(b => b.id === newId);
+                    if (saved) {
+                      setLiveBd(saved);
+                      setVw("live");
+                    }
+                  }
+                } else {
+                  const id = pendingShareIntent.bdId;
+                  setPendingShareIntent(null);
+                  setGateCheck(null);
+                  await handleShareBeatdown(id);
+                }
+              }
+            }}
+            onAvatarChanged={() => checkUser()}
+            onClose={() => setVw(null)}
+          />
         )}
         {preblastOpen && <PreblastComposer onClose={() => { setPreblastOpen(false); setPreblastBd(null); }} qName={profName || "Q"} ao={profAO || ""} attachedBeatdown={preblastBd} userBeatdowns={lk} />}
         {copyModalOpen && copyModalContext && (
@@ -972,6 +1116,38 @@ export default function App() {
             onToast={fl}
           />
         )}
+      {gateCheck && !gateCheck.ok && (
+        <PublishGateModal
+          check={gateCheck}
+          onFixProfile={() => {
+            // Keep pendingShareIntent — onProfileSaved will re-attempt.
+            setGateCheck(null);
+            setVw("settings");
+          }}
+          onKeepPrivate={async () => {
+            const intent = pendingShareIntent;
+            setGateCheck(null);
+            setPendingShareIntent(null);
+            if (intent && intent.kind === "save") {
+              // Re-save with share forced off. Share intent has nothing to
+              // do — the BD is already private (gate only fires on the
+              // private→public flip).
+              const newId = await handleSaveBeatdown({ ...intent.payload, share: false, isPublic: false });
+              if (newId && intent.postSuccess === "live") {
+                const saved = lk.find(b => b.id === newId);
+                if (saved) {
+                  setLiveBd(saved);
+                  setVw("live");
+                }
+              }
+            }
+          }}
+          onClose={() => {
+            setGateCheck(null);
+            setPendingShareIntent(null);
+          }}
+        />
+      )}
       {toastEl}
       </div>
     );
@@ -1026,6 +1202,34 @@ export default function App() {
           inspiredBy={copyModalContext.inspiredBy}
           onClose={() => { setCopyModalOpen(false); setCopyModalContext(null); }}
           onToast={fl}
+        />
+      )}
+      {gateCheck && !gateCheck.ok && (
+        <PublishGateModal
+          check={gateCheck}
+          onFixProfile={() => {
+            setGateCheck(null);
+            setVw("settings");
+          }}
+          onKeepPrivate={async () => {
+            const intent = pendingShareIntent;
+            setGateCheck(null);
+            setPendingShareIntent(null);
+            if (intent && intent.kind === "save") {
+              const newId = await handleSaveBeatdown({ ...intent.payload, share: false, isPublic: false });
+              if (newId && intent.postSuccess === "live") {
+                const saved = lk.find(b => b.id === newId);
+                if (saved) {
+                  setLiveBd(saved);
+                  setVw("live");
+                }
+              }
+            }
+          }}
+          onClose={() => {
+            setGateCheck(null);
+            setPendingShareIntent(null);
+          }}
         />
       )}
       {toastEl}
