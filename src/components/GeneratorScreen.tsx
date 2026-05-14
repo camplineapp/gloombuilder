@@ -276,11 +276,19 @@ export default function GeneratorScreen({ onClose, onSave, onRunThis, profName, 
             <div style={{ display: "flex", gap: 6 }}>
               {onRunThis && (
                 <button onClick={() => {
+                  if (saving) return;
                   setSaving(true);
-                  const nm = grT.trim() || "Generated Beatdown";
-                  const tgs = [gc.dur, ...(gc.sites || []), ...(gc.eq || [])].filter(Boolean) as string[];
-                  const saveData = { nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib };
-                  onRunThis(JSON.parse(JSON.stringify(gr!)), nm, gc.dur || "45 min", saveData);
+                  try {
+                    const nm = grT.trim() || "Generated Beatdown";
+                    const tgs = [gc.dur, ...(gc.sites || []), ...(gc.eq || [])].filter(Boolean) as string[];
+                    const saveData = { nm, desc: grD, d: gc.diff || "medium", secs: JSON.parse(JSON.stringify(gr)), tg: tgs, src: "Generated", dur: gc.dur, sites: gc.sites, eq: gc.eq, share: shareLib };
+                    onRunThis(JSON.parse(JSON.stringify(gr!)), nm, gc.dur || "45 min", saveData);
+                  } finally {
+                    // Cosmetic reset. Parent's onRunThis handler owns the
+                    // actual save; this just unblocks the button when the
+                    // gate aborts before unmounting the screen.
+                    setSaving(false);
+                  }
                 }} style={{ fontFamily: F, flex: 1, padding: "10px 4px", borderRadius: 10, background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.30)", color: G, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center" }}>
                   <span style={{ fontSize: 16, lineHeight: 1, marginBottom: 5 }}>▶</span>
                   <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.4, textTransform: "uppercase" }}>Live</span>

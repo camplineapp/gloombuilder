@@ -244,7 +244,7 @@ export default function PublishGateModal({
               cursor: "pointer",
             }}
           >
-            Got it
+            Edit beatdown
           </button>
         </div>
       </div>

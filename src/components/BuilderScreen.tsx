@@ -192,10 +192,17 @@ export default function BuilderScreen({ onClose, backLabel, onSave, editData, on
   const handleRunThis = () => {
     if (saving) return;
     setSaving(true);
-    const nm = bT.trim() || "Untitled";
-    const tgs = buildTags();
-    const saveData = { nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib };
-    onRunThis?.(JSON.parse(JSON.stringify(secs)), nm, bDur || "45 min", saveData);
+    try {
+      const nm = bT.trim() || "Untitled";
+      const tgs = buildTags();
+      const saveData = { nm, desc: bD, d: bDiff || "medium", secs: JSON.parse(JSON.stringify(secs)), tg: tgs, src: "Manual", dur: bDur, sites: bSites, eq: bEq, share: shareLib };
+      onRunThis?.(JSON.parse(JSON.stringify(secs)), nm, bDur || "45 min", saveData);
+    } finally {
+      // Cosmetic reset. The actual save resolves async in the parent's
+      // onRunThis handler; this just unblocks the button if the parent
+      // returns early (gate block, save failure) without unmounting.
+      setSaving(false);
+    }
   };
 
   return (
